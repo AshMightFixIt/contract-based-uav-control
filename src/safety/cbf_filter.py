@@ -314,5 +314,5 @@ if __name__ == "__main__":
     print(f"Modified control: {safe_control}")
     
     print("\n" + "=" * 60)
-    print("✓ CBF Safety Filter Test Complete")
+    print("[OK] CBF Safety Filter Test Complete")
     print("=" * 60)

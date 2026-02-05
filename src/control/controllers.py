@@ -186,84 +186,68 @@ class HInfinityController(BaseController):
     Strategy:
     1. Aggressively damp all angular rates
     2. Level attitude (roll, pitch → 0)
-    3. Find safe hover altitude
-    4. Hold position
+    3. Hold altitude from setpoint
     """
-    
+
     def __init__(self, dt: float = 0.02):
         super().__init__("H-infinity", dt)
-        
+
         # Aggressive damping gains
         self.k_rate_damping = 0.8  # Very aggressive rate damping
         self.k_attitude = 5.0      # Strong attitude correction
         self.k_altitude = 3.0      # Strong altitude hold
-        
-        # Safe hover altitude
-        self.safe_altitude = -5.0  # 5m above ground
-        self.emergency_mode = False
-        
+
     def reset(self):
         """Reset controller state"""
-        self.emergency_mode = False
         logger.info(f"{self.name} reset")
     
     def compute_control(self,
                        state: Dict[str, np.ndarray],
                        setpoint: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         """
-        Emergency stabilization control
-        
+        Robust stabilization control
+
         Priority:
         1. Damp angular rates (prevent tumbling)
         2. Level attitude (prevent crashing)
-        3. Maintain safe altitude
+        3. Hold altitude from setpoint
         """
-        
-        # Extract state
+
         position = state['position']
         velocity = state['velocity']
         attitude = state['attitude']
         rates = state['rates']
-        
-        # If first activation, set safe altitude to current + 2m
-        if not self.emergency_mode:
-            self.safe_altitude = min(position[2] - 2.0, -5.0)  # At least 5m up
-            self.emergency_mode = True
-            logger.warning(f"H-infinity emergency mode: safe altitude = {self.safe_altitude:.1f}m")
-        
+
+        target_pos = setpoint.get('position', position)
+
         # === RATE DAMPING (Highest Priority) ===
-        # Aggressively damp all rotations
         rate_damping_torque = -self.k_rate_damping * rates
-        
+
         # === ATTITUDE STABILIZATION ===
-        # Force roll and pitch to zero (level flight)
-        target_attitude = np.array([0.0, 0.0, attitude[2]])  # Keep current yaw
+        # Force roll and pitch to zero (level flight), keep current yaw
+        target_attitude = np.array([0.0, 0.0, attitude[2]])
         att_error = target_attitude - attitude
-        
-        # Normalize yaw error
         att_error[2] = np.arctan2(np.sin(att_error[2]), np.cos(att_error[2]))
-        
+
         attitude_torque = self.k_attitude * att_error
-        
-        # Combined torque
+
         torques = rate_damping_torque + attitude_torque
-        
-        # === ALTITUDE HOLD ===
-        altitude_error = self.safe_altitude - position[2]
-        altitude_rate_error = 0.0 - velocity[2]  # Target zero vertical velocity
-        
-        desired_thrust = 0.5 + (self.k_altitude * altitude_error + 
+
+        # === ALTITUDE HOLD (from setpoint) ===
+        altitude_error = target_pos[2] - position[2]
+        altitude_rate_error = 0.0 - velocity[2]
+
+        desired_thrust = 0.5 + (self.k_altitude * altitude_error +
                                0.5 * altitude_rate_error)
         desired_thrust = np.clip(desired_thrust, 0.2, 0.8)
-        
-        # Return control output
+
         control = {
             'thrust': desired_thrust,
             'torques': torques,
             'desired_attitude': target_attitude,
-            'desired_rates': np.zeros(3)  # Target zero rates
+            'desired_rates': np.zeros(3)
         }
-        
+
         return control
 
 
@@ -283,7 +267,7 @@ class ControllerSwitcher:
         
         # Cooldown to prevent chattering
         self.switch_cooldown = 2.0  # seconds
-        self.last_switch_time = 0.0
+        self.last_switch_time = -self.switch_cooldown  # Allow immediate switch at t=0
         
         logger.info("Controller Switcher initialized")
     
@@ -377,5 +361,5 @@ if __name__ == "__main__":
     print(f"Desired attitude: {control['desired_attitude']}")
     
     print("\n" + "=" * 60)
-    print("✓ Controller Test Complete")
+    print("Controller Test Complete")
     print("=" * 60)

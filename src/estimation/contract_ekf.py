@@ -327,5 +327,5 @@ if __name__ == "__main__":
     print(f"Contract satisfied: {contract_ok}")
     
     print("\n" + "=" * 60)
-    print("✓ Contract-Aware EKF Test Complete")
+    print("[OK] Contract-Aware EKF Test Complete")
     print("=" * 60)

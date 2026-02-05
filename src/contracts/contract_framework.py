@@ -15,8 +15,7 @@ from enum import Enum
 import logging
 
 try:
-    from pacti.terms.polyhedra import PolyhedralContract
-    from pacti.iocontract import Var
+    from pacti.contracts import PolyhedralIoContract
     PACTI_AVAILABLE = True
 except ImportError:
     PACTI_AVAILABLE = False
@@ -189,10 +188,10 @@ class HierarchicalContractMonitor:
         self.controller_contracts['PID'] = SimpleContract(
             name="PID_Controller",
             assumptions={
-                "position_error": (0.0, 2.0),
-                "velocity_error": (0.0, 0.5),
-                "wind_speed": (0.0, 3.0),  # m/s
-                "disturbance": (0.0, 2.0),  # N (force)
+                "position_error": (0.0, 3.0),  # tracking error (lateral drift weighted)
+                "velocity_error": (0.0, 2.0),  # m/s lateral drift tolerance
+                "wind_speed": (0.0, 3.0),  # m/s - primary switching criterion
+                "disturbance": (0.0, 3.0),  # Nm (torque magnitude)
             },
             guarantees={
                 "tracking_error": (0.0, 1.0),  # meters
@@ -525,5 +524,5 @@ if __name__ == "__main__":
     print(f"  Reason: {reason}")
     
     print("\n" + "=" * 60)
-    print("✓ Contract Framework Test Complete")
+    print("[OK] Contract Framework Test Complete")
     print("=" * 60)
