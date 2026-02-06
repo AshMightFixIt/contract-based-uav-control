@@ -45,12 +45,18 @@ class DroneSimulation:
         self.gps_available = available
 
     def update(self, control: dict):
-        """Update dynamics (simplified)"""
+        """Update dynamics (simplified)
+
+        Thrust model: thrust=0.5 is hover (counteracts gravity)
+        - thrust > 0.5: climb
+        - thrust < 0.5: descend
+        """
         thrust = control.get('thrust', 0.5)
         torques = control.get('torques', np.zeros(3))
 
-        # Simple dynamics
-        vertical_accel = (thrust - 0.5) * 20.0 - 9.81
+        # Vertical dynamics: thrust=0.5 is hover, deviation causes acceleration
+        # Scale factor 20.0 determines responsiveness (m/s² per unit thrust deviation)
+        vertical_accel = (thrust - 0.5) * 20.0
         self.velocity[2] += vertical_accel * self.dt
 
         # Wind affects horizontal motion
@@ -63,8 +69,8 @@ class DroneSimulation:
         self.position += self.velocity * self.dt
         self.attitude += self.rates * self.dt
 
-        # Simple damping
-        self.velocity *= 0.95
+        # Simple damping (air resistance)
+        self.velocity *= 0.98
         self.rates *= 0.9
 
     def get_sensor_data(self):

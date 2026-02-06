@@ -152,19 +152,19 @@ class CBFSafetyFilter:
         """
         safe_control = nominal_control.copy()
         
-        # Altitude safety
+        # Altitude safety (NED frame: negative Z = altitude, more negative = higher)
         if barriers['altitude'] < self.margin:
             z = state['position'][2]
             vz = state['velocity'][2]
-            
-            if z < self.altitude_min + 2.0:
-                # Too low - increase thrust
-                safe_control['thrust'] = min(0.8, safe_control['thrust'] + 0.2)
-                logger.warning(f"  Altitude safety: z={z:.2f}m, increasing thrust")
-            elif z > self.altitude_max - 2.0:
-                # Too high - decrease thrust
+
+            if z > self.altitude_max - 1.0:
+                # Too close to ground (z approaching 0) - INCREASE thrust to climb
+                safe_control['thrust'] = min(0.9, safe_control['thrust'] + 0.3)
+                logger.warning(f"  Altitude safety: z={z:.2f}m (too low), increasing thrust")
+            elif z < self.altitude_min + 2.0:
+                # Too high altitude - decrease thrust to descend
                 safe_control['thrust'] = max(0.2, safe_control['thrust'] - 0.2)
-                logger.warning(f"  Altitude safety: z={z:.2f}m, decreasing thrust")
+                logger.warning(f"  Altitude safety: z={z:.2f}m (too high), decreasing thrust")
         
         # Tilt safety
         if barriers['tilt'] < self.margin:

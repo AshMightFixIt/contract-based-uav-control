@@ -201,15 +201,29 @@ class FlightModeSupervisor:
         }
 
     def _setpoint_land(self, state, current_time) -> Dict:
-        """Controlled descent profile."""
+        """Controlled descent profile.
+
+        NED frame: negative Z = altitude above ground
+        - Start: z = -5.0 (5m above ground)
+        - Descend: z increases toward 0
+        - Stop at: z = -0.5 (0.5m above ground for safety)
+        """
         if self.landing_start_position is None:
             self.landing_start_position = state['position'].copy()
             self.landing_start_time = current_time
 
         elapsed = current_time - self.landing_start_time
-        # NED frame: more positive Z = lower altitude
+
+        # In NED, to descend we need Z to become less negative (increase toward 0)
+        # descent_rate is positive, so we ADD it to make Z increase
         target_z = self.landing_start_position[2] + self.landing_descent_rate * elapsed
-        target_z = min(target_z, 0.0)  # ground level
+
+        # Clamp to safe landing altitude (0.5m above ground)
+        landing_altitude = -0.5  # Stop at 0.5m above ground
+        target_z = min(target_z, landing_altitude)
+
+        # If we've reached landing altitude, zero out descent velocity
+        descent_vel = self.landing_descent_rate if target_z > landing_altitude else 0.0
 
         return {
             'position': np.array([
@@ -217,7 +231,7 @@ class FlightModeSupervisor:
                 self.landing_start_position[1],
                 target_z
             ]),
-            'velocity': np.array([0.0, 0.0, self.landing_descent_rate]),
+            'velocity': np.array([0.0, 0.0, descent_vel]),
             'yaw': state['attitude'][2]
         }
 

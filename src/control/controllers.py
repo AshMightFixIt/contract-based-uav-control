@@ -54,34 +54,37 @@ class BaseController(ABC):
 class PIDController(BaseController):
     """
     Cascaded PID Controller for position and attitude
-    
+
     Contract:
     - Assumes: Low wind (<3 m/s), small errors (<2m), nominal conditions
     - Guarantees: Fast response (<5s), low overshoot (<30%), efficient
     """
-    
+
     def __init__(self, dt: float = 0.02):
         super().__init__("PID", dt)
-        
+
         # Position PID gains (outer loop)
         self.kp_pos = np.array([1.5, 1.5, 2.0])  # [x, y, z]
         self.ki_pos = np.array([0.1, 0.1, 0.2])
         self.kd_pos = np.array([0.8, 0.8, 1.0])
-        
+
         # Attitude PID gains (inner loop)
         self.kp_att = np.array([3.0, 3.0, 2.0])  # [roll, pitch, yaw]
         self.ki_att = np.array([0.1, 0.1, 0.1])
         self.kd_att = np.array([0.5, 0.5, 0.3])
-        
+
         # Rate PID gains (innermost loop)
         self.kp_rate = np.array([0.15, 0.15, 0.1])  # [p, q, r]
-        
+
         # Limits
         self.max_tilt = 0.5  # 30 degrees max tilt
         self.max_rate = 2.0  # rad/s
         self.max_thrust = 1.0
         self.min_thrust = 0.0
-        
+
+        # Hover thrust (normalized) - this counteracts gravity
+        self.hover_thrust = 0.5
+
         # Anti-windup
         self.integral_limit = 5.0
         
@@ -159,9 +162,15 @@ class PIDController(BaseController):
         torques = self.kp_rate * rate_error
         
         # === THRUST CONTROL ===
-        # Desired thrust to maintain altitude
+        # Desired thrust = hover thrust + altitude correction
+        # hover_thrust counteracts gravity, corrections adjust for tracking
         altitude_error = target_pos[2] - position[2]
-        desired_thrust = 0.5 + 0.2 * altitude_error - 0.1 * velocity[2]
+        altitude_rate_error = -velocity[2]  # Want zero vertical velocity
+
+        # PD control on altitude with gravity feedforward
+        thrust_correction = (self.kp_pos[2] * altitude_error * 0.1 +
+                            self.kd_pos[2] * altitude_rate_error * 0.05)
+        desired_thrust = self.hover_thrust + thrust_correction
         desired_thrust = np.clip(desired_thrust, self.min_thrust, self.max_thrust)
         
         # Return control output
@@ -195,7 +204,11 @@ class HInfinityController(BaseController):
         # Aggressive damping gains
         self.k_rate_damping = 0.8  # Very aggressive rate damping
         self.k_attitude = 5.0      # Strong attitude correction
-        self.k_altitude = 3.0      # Strong altitude hold
+        self.k_altitude = 0.05     # Altitude hold gain (conservative to avoid overshoot)
+        self.k_altitude_rate = 0.15  # Altitude rate damping (helps slow descent)
+
+        # Hover thrust (normalized) - this counteracts gravity
+        self.hover_thrust = 0.5
 
     def reset(self):
         """Reset controller state"""
@@ -234,12 +247,14 @@ class HInfinityController(BaseController):
         torques = rate_damping_torque + attitude_torque
 
         # === ALTITUDE HOLD (from setpoint) ===
+        # Thrust = hover_thrust + corrections for altitude tracking
         altitude_error = target_pos[2] - position[2]
         altitude_rate_error = 0.0 - velocity[2]
 
-        desired_thrust = 0.5 + (self.k_altitude * altitude_error +
-                               0.5 * altitude_rate_error)
-        desired_thrust = np.clip(desired_thrust, 0.2, 0.8)
+        thrust_correction = (self.k_altitude * altitude_error +
+                            self.k_altitude_rate * altitude_rate_error)
+        desired_thrust = self.hover_thrust + thrust_correction
+        desired_thrust = np.clip(desired_thrust, 0.1, 0.9)
 
         control = {
             'thrust': desired_thrust,

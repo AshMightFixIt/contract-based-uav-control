@@ -2,11 +2,12 @@
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Pacti](https://img.shields.io/badge/Pacti-Enabled-green.svg)](https://github.com/pacti-org/pacti)
 
-A hierarchical contract-based architecture integrating Assume-Guarantee (A/G) contracts with Control Barrier Function (CBF) safety filtering for provably safe multi-mode UAV control.
+A hierarchical contract-based architecture integrating Assume-Guarantee (A/G) contracts with Control Barrier Function (CBF) safety filtering for provably safe multi-mode UAV control. Features **horizon-based predictive planning** using Pacti for formal contract composition.
 
-**Research Project** | University of Michigan  
-**Courses:** AE552 (Aerospace Information Systems) & ECE599 (Formal Methods)  
+**Research Project** | University of Michigan
+**Courses:** AE552 (Aerospace Information Systems) & ECE599 (Formal Methods)
 **Author:** Aswatth Sunil | **Advisor:** Prof. Iñigo Incer (EECS)
 
 ---
@@ -15,6 +16,7 @@ A hierarchical contract-based architecture integrating Assume-Guarantee (A/G) co
 
 - [Overview](#overview)
 - [Key Innovation](#key-innovation)
+- [Horizon-Based Planning](#horizon-based-planning)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [System Architecture](#system-architecture)
@@ -29,17 +31,18 @@ A hierarchical contract-based architecture integrating Assume-Guarantee (A/G) co
 
 ## 🎯 Overview
 
-This system demonstrates formal methods applied to autonomous UAV control through hierarchical contract composition. Instead of ad-hoc threshold-based switching, the system uses mathematically provable Assume-Guarantee contracts to ensure safe controller transitions.
+This system demonstrates formal methods applied to autonomous UAV control through hierarchical contract composition. Instead of ad-hoc threshold-based switching, the system uses mathematically provable Assume-Guarantee contracts to ensure safe controller transitions, with **predictive horizon-based planning** using Pacti.
 
 ### Core Components
 
-- **Hierarchical Contract Framework** (506 lines) - Compositional verification through A/G contracts
-- **Four Controller Modes** - PID, H-infinity, GPS-denied, Safety with formal operating envelopes
-- **Contract-Aware EKF** (331 lines) - Adaptive sensor fusion based on contract satisfaction  
-- **CBF Safety Filter** (200 lines) - Minimally-invasive safety with 4 barrier functions
-- **Runtime Monitoring** (281 lines) - 50 Hz contract verification (2.5 ms avg computation)
+- **Horizon-Based Pacti Planner** - Predictive N-step contract cascade with safety margin optimization
+- **Hierarchical Contract Framework** - Compositional verification through A/G contracts
+- **Flight Mode Supervisor** - Mission-level mode management (TRACK, HOVER, LAND, EMERGENCY)
+- **Dual Controllers** - PID (efficient) and H-infinity (robust) with formal operating envelopes
+- **Contract-Aware EKF** - Adaptive sensor fusion based on contract satisfaction
+- **CBF Safety Filter** - Minimally-invasive safety enforcement with 4 barrier functions
 
-**Implementation:** 1,499 lines of production Python code
+**Implementation:** 2,500+ lines of production Python code
 
 ### System Performance
 
@@ -53,30 +56,77 @@ This system demonstrates formal methods applied to autonomous UAV control throug
 
 ## 💡 Key Innovation
 
-### Traditional Approach: Heuristic Thresholds
+### Traditional Approach: Reactive Heuristic Thresholds
 ```python
 if wind_speed > 3.0:  # Ad-hoc threshold
-    switch_to_robust_controller()
+    switch_to_robust_controller()  # Reactive - already in trouble!
 ```
 
-**Problems:** No safety guarantees, difficult to verify, prone to chattering
+**Problems:** No safety guarantees, reactive (not predictive), prone to chattering
 
-### Our Approach: Hierarchical Contract Composition
+### Our Approach: Predictive Horizon-Based Contract Planning
 ```python
-# Formal verification of entire pipeline
-pipeline_contract = (
-    sensor_contract 
-    >> estimator_contract 
-    >> controller_contract 
-    >> actuator_contract
-)
+# Cascade contracts over N-step planning horizon using Pacti
+for step in range(horizon):
+    step_contract = controller.compose(dynamics)
+    safety_margin = safety_limit - tracking_error_bound
 
-# Pre-flight verification
-if not pipeline_contract.satisfies(mission_requirements):
+    if safety_margin < threshold:
+        replan()  # Predictive - see trouble coming!
+
+# Pre-flight verification of entire pipeline
+pipeline = sensor >> ekf >> controller >> actuator
+if not pipeline.satisfies(mission):
     abort_mission()  # Provably unsafe
 ```
 
-**Benefits:** ✅ Formal verification ✅ Safety guarantees ✅ Certification-ready
+**Benefits:** ✅ Formal verification ✅ Predictive planning ✅ Safety margins ✅ Automatic re-planning
+
+---
+
+## 🔮 Horizon-Based Planning
+
+The system uses [Pacti](https://github.com/pacti-org/pacti) for formal contract composition over a planning horizon.
+
+### Architecture
+```
+Sensors -> EKF -> [HORIZON PLANNER] -> Supervisor -> [PID|H-inf] -> CBF -> Actuators
+                        │
+                 Pacti Contract Cascade
+                        │
+                 Safety Margin Monitor
+                        │
+              Replan if margin < threshold
+```
+
+### How It Works
+
+1. **Contract Cascade**: Compose contracts over N steps (default: 10)
+2. **Safety Optimization**: Use Pacti's `get_variable_bounds()` to find achievable tracking error
+3. **Margin Monitoring**: `margin = safety_limit - tracking_error_bound`
+4. **Automatic Re-planning** when margin falls below threshold:
+   - Try shorter horizon (10 → 3 steps)
+   - Switch controller (PID → H-inf)
+   - Enter emergency mode if all strategies fail
+
+### Example Output
+```
+Time  | Phase    | Wind | Controller | Horizon | Margin | Status
+------|----------|------|------------|---------|--------|--------
+0.02  | NOMINAL  | 0.5  | PID        |      10 |   4.65 | feasible
+3.02  | WIND_UP  | 4.0  | PID        |      10 |   4.31 | feasible
+8.02  | EXTREME  | 10.0 | Hinf       |      10 |   2.00 | feasible
+10.52 | RECOVERY | 2.0  | Hinf       |      10 |   0.98 | marginal
+```
+
+### Pacti Contract Library
+
+Seven formal contracts defined:
+- **GPS/IMU**: Sensor measurement quality
+- **EKF**: State estimation accuracy
+- **PID/H-inf**: Controller tracking performance
+- **Actuator**: Thrust/torque delivery
+- **Dynamics**: State evolution bounds
 
 ---
 
@@ -106,12 +156,25 @@ python simulation_demo.py
 4. Runtime safety monitoring
 5. Results visualization
 
+### Run Horizon Planner Demo
+```bash
+python demo_horizon_planner.py
+```
+
+**Demonstrates:**
+1. Pacti contract cascade over N-step horizon
+2. Safety margin monitoring and optimization
+3. Automatic re-planning when margins are tight
+4. Horizon reduction under extreme conditions
+5. Predictive controller switching
+
 ### Test Components
 ```bash
 python src/contracts/contract_framework.py    # Contract framework
 python src/estimation/contract_ekf.py         # Extended Kalman Filter
 python src/control/controllers.py             # Controllers
 python src/safety/cbf_filter.py              # CBF safety filter
+python src/planning/integrated_planner.py     # Horizon planner
 python src/adaptive_control_system.py         # Complete system
 ```
 
@@ -148,19 +211,24 @@ If G₁ ⇒ A₂, the pipeline is formally verified!
 ```
 contract-based-uav-control/
 │
-├── src/                                # Source code (1,499 lines)
+├── src/                                # Source code (2,500+ lines)
 │   ├── contracts/
 │   │   └── contract_framework.py       # A/G contracts (506 lines)
 │   ├── estimation/
 │   │   └── contract_ekf.py            # Contract-aware EKF (331 lines)
 │   ├── control/
 │   │   ├── controllers.py             # PID & H-infinity (200 lines)
-│   │   └── four_mode_controllers.py   # Four modes (181 lines)
+│   │   └── flight_mode_supervisor.py  # Mission mode management (200 lines)
+│   ├── planning/                       # NEW: Horizon-based planning
+│   │   ├── pacti_contracts.py         # Pacti contract library (150 lines)
+│   │   ├── horizon_planner.py         # N-step contract cascade (250 lines)
+│   │   └── integrated_planner.py      # Control system integration (300 lines)
 │   ├── safety/
 │   │   └── cbf_filter.py             # CBF filter (200 lines)
-│   └── adaptive_control_system.py     # Integration (281 lines)
+│   └── adaptive_control_system.py     # Integration (350 lines)
 │
 ├── simulation_demo.py                  # Main demonstration
+├── demo_horizon_planner.py            # Horizon planner demonstration
 ├── requirements.txt                    # Dependencies
 ├── README.md                           # This file
 └── DEVELOPMENT.md                      # Testing & development guide
@@ -170,14 +238,18 @@ contract-based-uav-control/
 
 ## 🎮 Controller Modes & Contracts
 
-### 1. Nominal PID Controller
+The system uses two feedback controllers managed by a Flight Mode Supervisor.
+
+### Controllers
+
+#### 1. Nominal PID Controller
 **Use:** Efficient control in calm conditions
 
 **Contract:**
-- Assumptions: Wind < 3 m/s, GPS available, Position error < 2m
+- Assumptions: Wind < 3 m/s, GPS available, Position error < 3m, Disturbance < 3
 - Guarantees: Position error < 1.5m, Velocity error < 1.5 m/s
 
-### 2. Wind-Robust H-infinity Controller  
+#### 2. Wind-Robust H-infinity Controller
 **Use:** Robust control under disturbances
 
 **Contract:**
@@ -186,19 +258,22 @@ contract-based-uav-control/
 
 **Key:** Minimal assumptions - always available safety net
 
-### 3. GPS-Denied Controller
-**Use:** Navigation without GPS
+### Flight Mode Supervisor
 
-**Contract:**
-- Assumptions: IMU available, Wind < 5 m/s
-- Guarantees: Position drift < 0.5 m/s
+The supervisor manages mission-level modes (not control laws):
 
-### 4. Safety Controller
-**Use:** Emergency landing
+| Mode | Setpoint Strategy | Controller Selection |
+|------|-------------------|---------------------|
+| **TRACK** | Follow waypoint sequence | PID (nominal) or H-inf (disturbance) |
+| **HOVER** | Hold fixed position | PID (nominal) or H-inf (GPS-denied) |
+| **LAND** | Descending profile at 0.5 m/s | Always H-inf |
+| **EMERGENCY** | Hold position, safe altitude | Always H-inf |
 
-**Contract:**
-- Assumptions: Any sensor available
-- Guarantees: Controlled descent, Velocity < 2 m/s
+**Automatic Transitions:**
+- Wind > 8 m/s → EMERGENCY
+- GPS lost during TRACK → HOVER
+- All waypoints reached → HOVER
+- EMERGENCY recovery (wind < 5, rates < 0.5) → HOVER
 
 ---
 
@@ -234,38 +309,44 @@ contract-based-uav-control/
 
 ## 🗓️ Development Roadmap
 
-### Current Status (January 2025)
+### Current Status (February 2025)
 
 **✅ Completed:**
 - Hierarchical contract framework
-- Four controller modes
+- PID and H-infinity controllers with formal contracts
+- Flight Mode Supervisor (TRACK, HOVER, LAND, EMERGENCY)
 - Contract-aware EKF
-- CBF safety filter
+- CBF safety filter with 4 barrier functions
+- **Horizon-based Pacti planner** (NEW)
+  - N-step contract cascade
+  - Safety margin optimization
+  - Automatic re-planning
 - Runtime monitoring at 50 Hz
-- Python simulation (1,499 lines)
+- Bidirectional controller switching (PID ↔ H-inf)
+- Python simulation (2,500+ lines)
 
-**⚠️ Known Issues:**
-- H-infinity emergency threshold too aggressive
-- Bidirectional switching needs demonstration
-- Initial PID transient causes early switch
+**Recent Fixes:**
+- Controller switch-back now works correctly
+- Lateral drift calculation for accurate tracking error
+- Relaxed PID thresholds to prevent false violations
+- Cooldown initialization for proper switching at t=0
 
 ### Upcoming (February-April 2025)
 
 **February:**
-- Week 1: Debug H-infinity controller
-- Week 2: SITL/Gazebo integration
-- Week 3: GPS-denied mode
-- Week 4: Waypoint following
+- Week 1-2: SITL/Gazebo integration
+- Week 3: GPS-denied mode testing
+- Week 4: Multi-waypoint missions
 
 **March:**
-- Controller optimization
-- Contract refinement
+- Pacti contract refinement
+- Performance optimization
 - Documentation & analysis
 
 **April (Optional):**
-- Fuzzy logic controller
 - C++ implementation
 - Hardware testing prep
+- ROS2 integration
 
 ---
 
@@ -336,4 +417,4 @@ aswatth@umich.edu
 
 ---
 
-**Status:** Active Development | **Updated:** January 2025 | **Version:** 1.0.0
+**Status:** Active Development | **Updated:** February 2025 | **Version:** 1.1.0
