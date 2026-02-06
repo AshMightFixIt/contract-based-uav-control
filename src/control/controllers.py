@@ -63,22 +63,23 @@ class PIDController(BaseController):
     def __init__(self, dt: float = 0.02):
         super().__init__("PID", dt)
 
-        # Position PID gains (outer loop)
-        self.kp_pos = np.array([1.5, 1.5, 2.0])  # [x, y, z]
-        self.ki_pos = np.array([0.1, 0.1, 0.2])
-        self.kd_pos = np.array([0.8, 0.8, 1.0])
+        # Position PID gains (outer loop) - tuned for stability in simplified simulation
+        # MUCH lower gains to prevent overshoot
+        self.kp_pos = np.array([0.2, 0.2, 0.8])  # [x, y, z] - very gentle
+        self.ki_pos = np.array([0.005, 0.005, 0.05])  # minimal integral
+        self.kd_pos = np.array([0.5, 0.5, 0.6])  # strong velocity damping
 
         # Attitude PID gains (inner loop)
-        self.kp_att = np.array([3.0, 3.0, 2.0])  # [roll, pitch, yaw]
-        self.ki_att = np.array([0.1, 0.1, 0.1])
-        self.kd_att = np.array([0.5, 0.5, 0.3])
+        self.kp_att = np.array([1.5, 1.5, 1.0])  # [roll, pitch, yaw] - reduced
+        self.ki_att = np.array([0.02, 0.02, 0.02])
+        self.kd_att = np.array([0.4, 0.4, 0.3])  # increased damping
 
         # Rate PID gains (innermost loop)
-        self.kp_rate = np.array([0.15, 0.15, 0.1])  # [p, q, r]
+        self.kp_rate = np.array([0.08, 0.08, 0.06])  # [p, q, r]
 
         # Limits
-        self.max_tilt = 0.5  # 30 degrees max tilt
-        self.max_rate = 2.0  # rad/s
+        self.max_tilt = 0.15  # ~9 degrees max tilt - very gentle
+        self.max_rate = 1.0  # rad/s
         self.max_thrust = 1.0
         self.min_thrust = 0.0
 
@@ -86,7 +87,7 @@ class PIDController(BaseController):
         self.hover_thrust = 0.5
 
         # Anti-windup
-        self.integral_limit = 5.0
+        self.integral_limit = 2.0  # reduced to prevent windup
         
     def reset(self):
         """Reset integrators"""
@@ -134,9 +135,13 @@ class PIDController(BaseController):
                         self.kd_pos * d_error)
         
         # Convert desired acceleration to desired attitude
-        # (assuming small angles and thrust ~ gravity)
-        desired_roll = -desired_accel[1] / 9.81  # Negative for right-handed frame
-        desired_pitch = desired_accel[0] / 9.81
+        # In NED frame with standard quadrotor convention:
+        # - Positive pitch (nose up) -> backward (negative X)
+        # - Positive roll (right wing down) -> rightward (positive Y)
+        # So to accelerate forward (pos X), need negative pitch
+        # And to accelerate right (pos Y), need positive roll
+        desired_pitch = -desired_accel[0] / 9.81  # Negative: forward accel needs nose down
+        desired_roll = desired_accel[1] / 9.81    # Positive: right accel needs right roll
         desired_yaw = target_yaw
         
         # Limit tilt angles

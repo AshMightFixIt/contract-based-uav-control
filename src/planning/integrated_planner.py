@@ -146,8 +146,7 @@ class IntegratedPlanner:
         position = drone_state.get('position', np.zeros(3))
         velocity = drone_state.get('velocity', np.zeros(3))
 
-        # Compute tracking error as lateral deviation from path to target
-        # NOT the distance to target (which could be large during transit)
+        # Compute tracking error considering BOTH lateral drift AND distance growth
         to_target = target - position
         dist_to_target = np.linalg.norm(to_target)
 
@@ -158,11 +157,31 @@ class IntegratedPlanner:
             lateral_velocity = velocity - closing_speed * direction
             lateral_drift = np.linalg.norm(lateral_velocity)
 
-            # Tracking error: lateral drift + penalty if moving away
-            if closing_speed >= 0:
+            # Track if we're making progress toward target
+            # Large distance when we should be close indicates overshoot
+            expected_progress_rate = 2.0  # m/s reasonable approach speed
+            max_reasonable_distance = 15.0  # If further than this, something is wrong
+
+            # Tracking error combines:
+            # 1. Lateral drift (perpendicular deviation)
+            # 2. Penalty for moving away from target
+            # 3. Penalty for excessive distance (indicates overshoot or loss of tracking)
+            if closing_speed >= 0.5:
+                # Moving toward target at good speed - only lateral drift matters
                 tracking_error = lateral_drift
+            elif closing_speed >= 0:
+                # Slow approach - add small penalty
+                tracking_error = lateral_drift + 0.5
             else:
-                tracking_error = lateral_drift + abs(closing_speed)
+                # Moving AWAY from target - significant penalty
+                tracking_error = lateral_drift + abs(closing_speed) * 2.0
+
+            # Add distance-based penalty when far from target
+            # This catches cases where we've overshot badly
+            if dist_to_target > max_reasonable_distance:
+                distance_penalty = (dist_to_target - max_reasonable_distance) * 0.3
+                tracking_error += distance_penalty
+
         else:
             # Very close to target - use position offset
             tracking_error = dist_to_target
@@ -175,6 +194,7 @@ class IntegratedPlanner:
             'tracking_error': tracking_error,
             'position_est_error': position_est_error,
             'velocity_est_error': velocity_est_error,
+            'distance_to_target': dist_to_target,
         }
 
     def _safety_critical(self,
@@ -192,6 +212,26 @@ class IntegratedPlanner:
 
         # Check safety margin
         if self.state.current_plan.min_safety_margin < self.config.replan_threshold:
+            return True
+
+        # Check for altitude anomaly (positive Z in NED = below ground)
+        position = drone_state.get('position', np.zeros(3))
+        if position[2] > -0.5:  # Less than 0.5m above ground
+            logger.warning(f"Altitude critical: z={position[2]:.2f}")
+            return True
+
+        # Check for high velocity (indicates loss of control)
+        velocity = drone_state.get('velocity', np.zeros(3))
+        speed = np.linalg.norm(velocity)
+        if speed > 8.0:  # Very high speed indicates loss of control
+            logger.warning(f"High speed detected: {speed:.2f} m/s")
+            return True
+
+        # Check attitude (large tilt indicates instability)
+        attitude = drone_state.get('attitude', np.zeros(3))
+        tilt = np.sqrt(attitude[0]**2 + attitude[1]**2)
+        if tilt > 0.5:  # ~30 degrees
+            logger.warning(f"Large tilt detected: {np.degrees(tilt):.1f} deg")
             return True
 
         return False

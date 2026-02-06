@@ -143,7 +143,7 @@ class CBFSafetyFilter:
                             barriers: Dict[str, float]) -> Dict[str, float]:
         """
         Compute minimally-invasive safe control
-        
+
         Strategy:
         1. If altitude barrier violated → adjust thrust
         2. If tilt barrier violated → reduce torques
@@ -151,16 +151,28 @@ class CBFSafetyFilter:
         4. If rate barrier violated → damp rates
         """
         safe_control = nominal_control.copy()
-        
-        # Altitude safety (NED frame: negative Z = altitude, more negative = higher)
-        if barriers['altitude'] < self.margin:
-            z = state['position'][2]
-            vz = state['velocity'][2]
 
-            if z > self.altitude_max - 1.0:
-                # Too close to ground (z approaching 0) - INCREASE thrust to climb
-                safe_control['thrust'] = min(0.9, safe_control['thrust'] + 0.3)
-                logger.warning(f"  Altitude safety: z={z:.2f}m (too low), increasing thrust")
+        # Altitude safety (NED frame: negative Z = altitude, more negative = higher)
+        # CRITICAL: positive Z means below ground - emergency!
+        z = state['position'][2]
+        vz = state['velocity'][2]
+
+        if z > -0.5:  # Below 0.5m altitude or underground!
+            # EMERGENCY: Maximum thrust to climb
+            safe_control['thrust'] = 0.95
+            # Level the drone immediately
+            if 'torques' in safe_control:
+                attitude = state['attitude']
+                leveling_torque = -5.0 * np.array([attitude[0], attitude[1], 0.0])
+                safe_control['torques'] = leveling_torque
+            logger.warning(f"  EMERGENCY altitude: z={z:.2f}m (UNDERGROUND!), MAX thrust")
+        elif barriers['altitude'] < self.margin:
+            if z > self.altitude_max - 1.0:  # z > -3.0
+                # Too close to ground - INCREASE thrust proportionally
+                urgency = min(1.0, (z - (self.altitude_max - 3.0)) / 3.0)
+                thrust_boost = 0.1 + 0.3 * urgency
+                safe_control['thrust'] = min(0.95, safe_control['thrust'] + thrust_boost)
+                logger.warning(f"  Altitude safety: z={z:.2f}m (too low), increasing thrust by {thrust_boost:.2f}")
             elif z < self.altitude_min + 2.0:
                 # Too high altitude - decrease thrust to descend
                 safe_control['thrust'] = max(0.2, safe_control['thrust'] - 0.2)

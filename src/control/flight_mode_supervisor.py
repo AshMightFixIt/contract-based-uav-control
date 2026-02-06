@@ -42,7 +42,11 @@ class FlightModeSupervisor:
         # Waypoint tracking
         self.waypoints: List[np.ndarray] = []
         self.current_waypoint_idx = 0
-        self.waypoint_tolerance = 1.0  # meters
+        self.waypoint_tolerance = 1.5  # meters
+        # Require distance to be below tolerance for multiple consecutive checks
+        self.waypoint_confirm_count = 0
+        self.waypoint_confirm_threshold = 5  # Need 5 consecutive checks within tolerance
+        self.last_distance = float('inf')
 
         # Hover state
         self.hover_position = np.array([0.0, 0.0, -5.0])
@@ -168,18 +172,36 @@ class FlightModeSupervisor:
         return self._setpoint_hover()
 
     def _setpoint_track(self, state) -> Dict:
-        """Track waypoints sequentially."""
+        """Track waypoints sequentially with robust detection."""
         if not self.waypoints:
             return self._setpoint_hover()
 
         target = self.waypoints[self.current_waypoint_idx]
         dist = np.linalg.norm(target - state['position'])
 
+        # Robust waypoint detection: require multiple consecutive checks within tolerance
+        # AND distance should not be increasing significantly
         if dist < self.waypoint_tolerance:
+            # Check if we're not moving away
+            if dist <= self.last_distance + 0.2:  # Allow small increase due to noise
+                self.waypoint_confirm_count += 1
+            else:
+                self.waypoint_confirm_count = max(0, self.waypoint_confirm_count - 1)
+        else:
+            self.waypoint_confirm_count = 0
+
+        self.last_distance = dist
+
+        # Only advance if consistently within tolerance
+        if self.waypoint_confirm_count >= self.waypoint_confirm_threshold:
+            self.waypoint_confirm_count = 0  # Reset for next waypoint
+            self.last_distance = float('inf')
+
             if self.current_waypoint_idx < len(self.waypoints) - 1:
                 self.current_waypoint_idx += 1
                 target = self.waypoints[self.current_waypoint_idx]
-                logger.info(f"Waypoint reached, advancing to {self.current_waypoint_idx}")
+                logger.info(f"Waypoint {self.current_waypoint_idx} reached (dist={dist:.2f}m), "
+                           f"advancing to WP{self.current_waypoint_idx + 1}")
             else:
                 self.hover_position = target.copy()
                 self.mode = FlightMode.HOVER

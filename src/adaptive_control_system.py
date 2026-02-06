@@ -91,6 +91,10 @@ class AdaptiveDroneController:
         self.mission_feasible = False
         self.current_target = np.array([0.0, 0.0, -5.0])
 
+        # Wind estimation with low-pass filter (prevents noise from triggering emergency)
+        self.wind_estimate_filtered = 0.0
+        self.wind_filter_alpha = 0.15  # Moderate smoothing - responsive but stable
+
         # Data logging
         self.flight_log = []
 
@@ -213,11 +217,24 @@ class AdaptiveDroneController:
             lateral_drift = velocity_error
 
         # Wind estimate from lateral drift (unexpected sideways motion)
-        # Only count significant lateral drift as wind indication
-        wind_estimate = min(max(lateral_drift - 0.5, 0.0) * 2.0, 10.0)
+        # Use low-pass filter to prevent transient high velocities from triggering false alarms
+        raw_wind_estimate = min(max(lateral_drift - 0.5, 0.0) * 1.5, 10.0)
+        self.wind_estimate_filtered = (
+            self.wind_filter_alpha * raw_wind_estimate +
+            (1 - self.wind_filter_alpha) * self.wind_estimate_filtered
+        )
+        wind_estimate = self.wind_estimate_filtered
 
-        # Disturbance from control effort
-        disturbance = np.linalg.norm(control.get('torques', np.zeros(3)))
+        # Override with direct wind sensor if available (more accurate)
+        # This is accessed in control_step via self.last_wind_sensor
+        if hasattr(self, 'last_wind_sensor') and self.last_wind_sensor is not None:
+            sensor_wind = self.last_wind_sensor
+            # Use max of sensor reading and drift-based estimate
+            wind_estimate = max(wind_estimate, sensor_wind)
+
+        # Disturbance from control effort (also filtered for stability)
+        raw_disturbance = np.linalg.norm(control.get('torques', np.zeros(3)))
+        disturbance = min(raw_disturbance, 3.0)  # Cap disturbance estimate
 
         return {
             'position_error': tracking_error,
@@ -251,7 +268,14 @@ class AdaptiveDroneController:
         # 1. Process sensors
         measurements = self.update_sensors(raw_sensors)
 
-        # 2. State estimation
+        # Capture wind sensor reading if available
+        if 'wind' in raw_sensors:
+            self.last_wind_sensor = raw_sensors['wind'].get('speed', 0.0)
+        else:
+            self.last_wind_sensor = None
+
+        # 2. State estimation (predict + update)
+        self.ekf.predict(self.dt)  # Propagate state forward
         state, estimation_ok = self.ekf.update(measurements, raw_sensors, self.time)
         state_dict = self.ekf.get_state()
 
