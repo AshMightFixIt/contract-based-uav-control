@@ -41,8 +41,9 @@ This system demonstrates formal methods applied to autonomous UAV control throug
 - **Dual Controllers** - PID (efficient) and H-infinity (robust) with formal operating envelopes
 - **Contract-Aware EKF** - Adaptive sensor fusion based on contract satisfaction
 - **CBF Safety Filter** - Minimally-invasive safety enforcement with 4 barrier functions
+- **Sensor Degradation Testing** - 10 fault types with time-scheduled injection validating graceful degradation
 
-**Implementation:** 2,500+ lines of production Python code
+**Implementation:** 3,300+ lines of production Python code
 
 ### System Performance
 
@@ -156,6 +157,29 @@ python simulation_demo.py
 4. Runtime safety monitoring
 5. Results visualization
 
+### Run Multi-Waypoint Mission
+```bash
+python demo_waypoint_mission.py
+```
+
+**Demonstrates:**
+1. 4-waypoint square mission with altitude variation
+2. Wind disturbance phases (nominal → moderate → extreme → recovery)
+3. Contract-based controller switching during flight
+4. Waypoint detection with confirmation counter
+
+### Run Sensor Degradation Test
+```bash
+python demo_sensor_degradation.py
+```
+
+**Demonstrates:**
+1. 7-phase degradation: nominal → GPS loss → recovery → IMU degradation → combined failure → intermittent GPS → full recovery
+2. EKF fusion mode transitions (full → IMU-only → dead reckoning)
+3. Contract-driven controller switching and flight mode changes
+4. Mission completion despite sensor faults (4/4 waypoints)
+5. 8-panel visualization with sensor health, fusion modes, and covariance
+
 ### Run Horizon Planner Demo
 ```bash
 python demo_horizon_planner.py
@@ -225,9 +249,13 @@ contract-based-uav-control/
 │   │   └── integrated_planner.py      # Control system integration (300 lines)
 │   ├── safety/
 │   │   └── cbf_filter.py             # CBF filter (200 lines)
+│   ├── utils/
+│   │   └── sensor_faults.py          # Fault injection module (235 lines)
 │   └── adaptive_control_system.py     # Integration (350 lines)
 │
 ├── simulation_demo.py                  # Main demonstration
+├── demo_waypoint_mission.py           # Multi-waypoint mission demo
+├── demo_sensor_degradation.py         # Sensor degradation testing demo
 ├── demo_horizon_planner.py            # Horizon planner demonstration
 ├── requirements.txt                    # Dependencies
 ├── README.md                           # This file
@@ -315,38 +343,24 @@ The supervisor manages mission-level modes (not control laws):
 - Hierarchical contract framework
 - PID and H-infinity controllers with formal contracts
 - Flight Mode Supervisor (TRACK, HOVER, LAND, EMERGENCY)
-- Contract-aware EKF
+- Contract-aware EKF with 3 fusion modes
 - CBF safety filter with 4 barrier functions
-- **Horizon-based Pacti planner** (NEW)
-  - N-step contract cascade
-  - Safety margin optimization
-  - Automatic re-planning
+- Horizon-based Pacti planner (N-step cascade, safety margins, re-planning)
+- Multi-waypoint mission demo with wind disturbance
+- **Sensor degradation testing** (NEW)
+  - 10 fault types: GPS satellite loss, HDOP increase, position drift, complete loss, intermittent; IMU noise, temperature drift, bias accumulation, calibration loss, spikes
+  - 7-phase degradation schedule validating contract-driven graceful degradation
+  - Mission completion (4/4 waypoints) despite sensor faults
 - Runtime monitoring at 50 Hz
 - Bidirectional controller switching (PID ↔ H-inf)
-- Python simulation (2,500+ lines)
+- Python simulation (3,300+ lines)
 
-**Recent Fixes:**
-- Controller switch-back now works correctly
-- Lateral drift calculation for accurate tracking error
-- Relaxed PID thresholds to prevent false violations
-- Cooldown initialization for proper switching at t=0
+### Upcoming
 
-### Upcoming (February-April 2025)
-
-**February:**
-- Week 1-2: SITL/Gazebo integration
-- Week 3: GPS-denied mode testing
-- Week 4: Multi-waypoint missions
-
-**March:**
+- SITL/Gazebo integration
 - Pacti contract refinement
-- Performance optimization
-- Documentation & analysis
-
-**April (Optional):**
-- C++ implementation
-- Hardware testing prep
-- ROS2 integration
+- Multi-agent coordination
+- C++ implementation / ROS2 integration
 
 ---
 
@@ -417,4 +431,4 @@ aswatth@umich.edu
 
 ---
 
-**Status:** Active Development | **Updated:** February 2025 | **Version:** 1.1.0
+**Status:** Active Development | **Updated:** February 2026 | **Version:** 1.2.0
