@@ -1,11 +1,11 @@
 """
-Demonstration: Multi-Waypoint Mission
+Demonstration: Multi-Waypoint Mission with Three-Tier Controller Switching
 
 Shows:
 1. Loading a multi-waypoint mission
 2. Autonomous waypoint tracking
 3. Automatic waypoint advancement
-4. Contract-based controller switching during mission
+4. Three-tier contract-based controller switching: PID → MPC → H-inf → MPC → PID
 5. Mission completion with hover at final waypoint
 """
 
@@ -143,7 +143,9 @@ def run_waypoint_mission():
 
     initial_conditions = {
         'gps_satellites': 12.0,
-        'imu_temperature_stable': 1.0,
+        'gps_hdop': 0.8,
+        'imu_temperature': 25.0,
+        'imu_calibrated': 1.0,
         'battery_voltage': 12.4,
         'motor_temperature': 30.0,
         'wind_speed': 0.5,
@@ -164,13 +166,14 @@ def run_waypoint_mission():
 
     controller.start_mission()
 
-    # Wind conditions during mission - with stronger wind phases to test H-inf switching
+    # Wind schedule — designed to demonstrate three-tier graduated degradation:
+    #   PID → MPC → H-inf → MPC → PID
     wind_schedule = [
-        (0.0, 30.0, np.array([0.5, 0.0, 0.0])),    # Nominal - PID should handle
-        (30.0, 50.0, np.array([4.0, 2.0, 0.0])),   # Moderate wind - should trigger H-inf
-        (50.0, 70.0, np.array([6.0, 3.0, 0.0])),   # Strong wind - definitely H-inf
-        (70.0, 90.0, np.array([2.0, 1.0, 0.0])),   # Calming down
-        (90.0, 120.0, np.array([0.5, 0.0, 0.0])),  # Back to calm - may return to PID
+        (0.0,  25.0, np.array([0.5, 0.0, 0.0])),    # Calm       → PID
+        (25.0, 45.0, np.array([4.5, 2.0, 0.0])),    # Moderate   → MPC
+        (45.0, 60.0, np.array([9.0, 4.0, 0.0])),    # Strong     → H-inf
+        (60.0, 80.0, np.array([5.0, 2.0, 0.0])),    # Easing     → MPC
+        (80.0, 120.0, np.array([1.0, 0.5, 0.0])),   # Calm       → PID
     ]
 
     # Data recording
@@ -271,43 +274,41 @@ def run_waypoint_mission():
     print(f"Final position: [{drone.position[0]:.2f}, {drone.position[1]:.2f}, {drone.position[2]:.2f}]")
 
     # Controller usage
+    total_time = time_history[-1]
     pid_time = sum(1 for c in controller_history if c == 'PID') * 0.02
+    mpc_time = sum(1 for c in controller_history if c == 'MPC') * 0.02
     hinf_time = sum(1 for c in controller_history if c == 'Hinf') * 0.02
     print(f"\nController usage:")
-    print(f"  PID: {pid_time:.1f}s ({100*pid_time/time_history[-1]:.1f}%)")
-    print(f"  H-inf: {hinf_time:.1f}s ({100*hinf_time/time_history[-1]:.1f}%)")
+    print(f"  PID:   {pid_time:6.1f}s ({100*pid_time/total_time:5.1f}%)")
+    print(f"  MPC:   {mpc_time:6.1f}s ({100*mpc_time/total_time:5.1f}%)")
+    print(f"  H-inf: {hinf_time:6.1f}s ({100*hinf_time/total_time:5.1f}%)")
 
-    # Plot results
+    # Plot results - comprehensive time series
     print("\nGenerating plots...")
 
-    fig = plt.figure(figsize=(14, 10))
+    fig = plt.figure(figsize=(16, 14))
 
-    # 3D trajectory
-    ax1 = fig.add_subplot(2, 2, 1, projection='3d')
+    # 1. 3D trajectory (top left)
+    ax1 = fig.add_subplot(3, 2, 1, projection='3d')
     ax1.plot(position_history[:, 0], position_history[:, 1], -position_history[:, 2],
-             'b-', linewidth=1, label='Trajectory')
-
-    # Plot waypoints
+             'b-', linewidth=1.5, label='Trajectory')
     wp_array = np.array(waypoints)
     ax1.scatter(wp_array[:, 0], wp_array[:, 1], -wp_array[:, 2],
                 c='red', s=100, marker='^', label='Waypoints')
     for i, wp in enumerate(waypoints):
         ax1.text(wp[0], wp[1], -wp[2] + 0.5, f'WP{i+1}', fontsize=9)
-
-    # Start/end markers
     ax1.scatter([0], [0], [5], c='green', s=150, marker='o', label='Start')
     ax1.scatter([position_history[-1, 0]], [position_history[-1, 1]], [-position_history[-1, 2]],
                 c='purple', s=150, marker='s', label='End')
-
     ax1.set_xlabel('X (m)')
     ax1.set_ylabel('Y (m)')
     ax1.set_zlabel('Altitude (m)')
     ax1.set_title('3D Flight Trajectory')
-    ax1.legend(loc='upper left')
+    ax1.legend(loc='upper left', fontsize=8)
 
-    # Top-down view
-    ax2 = fig.add_subplot(2, 2, 2)
-    ax2.plot(position_history[:, 0], position_history[:, 1], 'b-', linewidth=1, label='Trajectory')
+    # 2. Top-down view (top right)
+    ax2 = fig.add_subplot(3, 2, 2)
+    ax2.plot(position_history[:, 0], position_history[:, 1], 'b-', linewidth=1.5, label='Trajectory')
     ax2.scatter(wp_array[:, 0], wp_array[:, 1], c='red', s=100, marker='^', label='Waypoints')
     for i, wp in enumerate(waypoints):
         ax2.annotate(f'WP{i+1}', (wp[0], wp[1]), textcoords="offset points",
@@ -316,47 +317,85 @@ def run_waypoint_mission():
     ax2.set_xlabel('X (m)')
     ax2.set_ylabel('Y (m)')
     ax2.set_title('Top-Down View (X-Y Plane)')
-    ax2.legend()
+    ax2.legend(fontsize=8)
     ax2.grid(True, alpha=0.3)
     ax2.axis('equal')
 
-    # Position vs time
-    ax3 = fig.add_subplot(2, 2, 3)
-    ax3.plot(time_history, position_history[:, 0], 'b-', label='X')
-    ax3.plot(time_history, position_history[:, 1], 'g-', label='Y')
-    ax3.plot(time_history, -position_history[:, 2], 'r-', label='Altitude')
+    # 3. Position vs time (middle left)
+    ax3 = fig.add_subplot(3, 2, 3)
+    ax3.plot(time_history, position_history[:, 0], 'b-', linewidth=1.5, label='X')
+    ax3.plot(time_history, position_history[:, 1], 'g-', linewidth=1.5, label='Y')
+    ax3.plot(time_history, -position_history[:, 2], 'r-', linewidth=1.5, label='Altitude')
+    # Mark controller switches
+    for i in range(1, len(controller_history)):
+        if controller_history[i] != controller_history[i-1]:
+            ax3.axvline(x=time_history[i], color='orange', linestyle='--', alpha=0.5)
     ax3.set_xlabel('Time (s)')
     ax3.set_ylabel('Position (m)')
     ax3.set_title('Position vs Time')
-    ax3.legend()
+    ax3.legend(loc='upper left', fontsize=8)
     ax3.grid(True, alpha=0.3)
 
-    # Distance to waypoint and controller
-    ax4 = fig.add_subplot(2, 2, 4)
+    # 4. Velocity vs time (middle right)
+    ax4 = fig.add_subplot(3, 2, 4)
+    ax4.plot(time_history, velocity_history[:, 0], 'b-', linewidth=1.5, label='Vx')
+    ax4.plot(time_history, velocity_history[:, 1], 'g-', linewidth=1.5, label='Vy')
+    ax4.plot(time_history, velocity_history[:, 2], 'r-', linewidth=1.5, label='Vz')
+    speed = np.linalg.norm(velocity_history, axis=1)
+    ax4.plot(time_history, speed, 'k--', linewidth=1, label='Speed', alpha=0.7)
+    ax4.set_xlabel('Time (s)')
+    ax4.set_ylabel('Velocity (m/s)')
+    ax4.set_title('Velocity vs Time')
+    ax4.legend(loc='upper right', fontsize=8)
+    ax4.grid(True, alpha=0.3)
 
-    # Calculate distance to current waypoint over time
+    # 5. Active Controller (bottom left)
+    ax5 = fig.add_subplot(3, 2, 5)
+    # Map controller names to numeric: PID=1, MPC=2, H-inf=3
+    ctrl_map = {'PID': 1, 'MPC': 2, 'Hinf': 3}
+    ctrl_numeric = [ctrl_map.get(c, 3) for c in controller_history]
+    ax5.fill_between(time_history, 0, ctrl_numeric, step='post', alpha=0.6,
+                     color='steelblue')
+    # Color-code segments
+    for i in range(len(time_history) - 1):
+        color = {'PID': 'blue', 'MPC': 'green', 'Hinf': 'red'}.get(controller_history[i], 'gray')
+        ax5.fill_between(time_history[i:i+2], 0, ctrl_numeric[i:i+2],
+                         step='post', alpha=0.4, color=color)
+    ax5.set_xlabel('Time (s)')
+    ax5.set_ylabel('Controller')
+    ax5.set_title('Active Controller (PID→MPC→H-inf)')
+    ax5.set_yticks([1, 2, 3])
+    ax5.set_yticklabels(['PID', 'MPC', 'H-inf'])
+    ax5.grid(True, alpha=0.3)
+    ax5.set_ylim(0.5, 3.5)
+
+    # 6. Flight Mode & Waypoint Progress (bottom right)
+    ax6 = fig.add_subplot(3, 2, 6)
+    # Distance to current waypoint
     distances = []
     for i, (pos, wp_idx) in enumerate(zip(position_history, waypoint_idx_history)):
         if wp_idx < len(waypoints):
             distances.append(np.linalg.norm(waypoints[wp_idx] - pos))
         else:
             distances.append(0.0)
-
-    ax4.plot(time_history, distances, 'b-', label='Distance to WP')
-    ax4.axhline(y=1.0, color='r', linestyle='--', label='WP tolerance')
-
+    ax6.plot(time_history, distances, 'b-', linewidth=1.5, label='Distance to WP')
+    ax6.axhline(y=1.5, color='r', linestyle='--', label='WP tolerance', alpha=0.7)
     # Mark waypoint reaches
     for i in range(1, len(waypoint_idx_history)):
         if waypoint_idx_history[i] != waypoint_idx_history[i-1]:
-            ax4.axvline(x=time_history[i], color='g', linestyle=':', alpha=0.7)
-            ax4.text(time_history[i], max(distances)*0.9, f'WP{waypoint_idx_history[i-1]+1}',
-                    rotation=90, fontsize=8)
-
-    ax4.set_xlabel('Time (s)')
-    ax4.set_ylabel('Distance (m)')
-    ax4.set_title('Distance to Current Waypoint')
-    ax4.legend()
-    ax4.grid(True, alpha=0.3)
+            ax6.axvline(x=time_history[i], color='g', linestyle='-', alpha=0.7, linewidth=2)
+            ax6.text(time_history[i]+0.5, max(distances)*0.85, f'WP{waypoint_idx_history[i-1]+1}',
+                    fontsize=9, fontweight='bold')
+    # Secondary axis for waypoint index
+    ax6_twin = ax6.twinx()
+    ax6_twin.plot(time_history, waypoint_idx_history, 'k-', linewidth=1, alpha=0.5, label='WP Index')
+    ax6_twin.set_ylabel('Waypoint Index', color='gray')
+    ax6_twin.tick_params(axis='y', labelcolor='gray')
+    ax6.set_xlabel('Time (s)')
+    ax6.set_ylabel('Distance (m)')
+    ax6.set_title('Waypoint Progress & Flight Mode')
+    ax6.legend(loc='upper right', fontsize=8)
+    ax6.grid(True, alpha=0.3)
 
     plt.tight_layout()
 

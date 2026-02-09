@@ -1,7 +1,12 @@
 """
 Adaptive Drone Control System with Hierarchical Contract Composition
 
-Pipeline: Sensors -> EKF -> [Horizon Planner] -> Supervisor -> [PID | H-inf] -> CBF Filter -> Actuators
+Pipeline: Sensors -> EKF -> [Horizon Planner] -> Supervisor -> [PID | MPC | H-inf] -> CBF Filter -> Actuators
+
+Three-tier graduated degradation:
+  PID  (wind <= 3 m/s)  —  efficient, nominal conditions
+  MPC  (wind <= 8 m/s)  —  optimal, moderate conditions
+  H-inf (wind <= 25 m/s) — robust, emergency stabilization
 
 Key Innovation:
 - BEFORE FLIGHT: Verify mission feasibility via contract composition
@@ -115,37 +120,37 @@ class AdaptiveDroneController:
         target = mission.get('target_position', np.array([0.0, 0.0, -5.0]))
         waypoints = mission.get('waypoints', [target])
 
-        # Try with PID first (most efficient)
-        logger.info("\n[1/3] Checking if PID can handle mission...")
-        feasible_pid, msg_pid = self.contract_monitor.verify_mission_feasibility(
-            'PID', initial_conditions
-        )
+        # Try controllers in order: PID (efficient) → MPC (optimal) → H-inf (robust)
+        controllers = [
+            ('PID', "efficient PID"),
+            ('MPC', "optimal MPC"),
+            ('Hinf', "robust H-infinity"),
+        ]
 
-        if feasible_pid:
-            logger.info(f"PID feasible: {msg_pid}")
-            self.supervisor.set_waypoints(waypoints)
-            self.mission_feasible = True
-            return True, "Mission feasible with PID controller"
-        else:
-            logger.warning(f"PID infeasible: {msg_pid}")
+        for i, (name, desc) in enumerate(controllers, 1):
+            logger.info(f"\n[{i}/{len(controllers)}] Checking {desc}...")
+            # MPC pipeline needs computation_time in conditions
+            check_conditions = initial_conditions.copy()
+            if name == 'MPC' and 'computation_time' not in check_conditions:
+                check_conditions['computation_time'] = 0.01  # typical solve time
 
-        # Try with H-infinity (always works)
-        logger.info("\n[2/3] Checking if H-infinity can handle mission...")
-        feasible_hinf, msg_hinf = self.contract_monitor.verify_mission_feasibility(
-            'Hinf', initial_conditions
-        )
+            feasible, msg = self.contract_monitor.verify_mission_feasibility(
+                name, check_conditions
+            )
 
-        if feasible_hinf:
-            logger.info(f"H-inf feasible: {msg_hinf}")
-            self.controller_switcher.switch_to('Hinf', 0.0, "Pre-flight: conditions require H-infinity")
-            self.supervisor.set_waypoints(waypoints)
-            self.mission_feasible = True
-            return True, "Mission feasible with H-infinity controller (degraded performance expected)"
-        else:
-            logger.error(f"H-inf infeasible: {msg_hinf}")
+            if feasible:
+                logger.info(f"{name} feasible: {msg}")
+                if name != 'PID':
+                    self.controller_switcher.switch_to(
+                        name, 0.0, f"Pre-flight: conditions require {desc}")
+                self.supervisor.set_waypoints(waypoints)
+                self.mission_feasible = True
+                perf_note = "" if name == 'PID' else " (degraded performance expected)"
+                return True, f"Mission feasible with {desc}{perf_note}"
+            else:
+                logger.warning(f"{name} infeasible: {msg}")
 
-        logger.error("\n[3/3] MISSION INFEASIBLE")
-        logger.error("Current conditions violate all controller contracts!")
+        logger.error("MISSION INFEASIBLE - all controller contracts violated!")
         self.mission_feasible = False
         return False, "Mission infeasible - all controller contracts violated"
 
@@ -317,25 +322,40 @@ class AdaptiveDroneController:
             if planner_emergency:
                 logger.warning(f"Horizon planner: EMERGENCY MODE")
 
-        # 7. Check PID contract (reactive check)
-        pid_contract = self.contract_monitor.controller_contracts.get('PID')
-        pid_violated = True
-        if pid_contract:
-            assumptions_met, _ = pid_contract.check_assumptions(system_conditions)
-            pid_violated = not assumptions_met
+        # 7. Three-tier reactive contract check: PID > MPC > H-inf
+        # Add computation_time for MPC contract check
+        check_conditions = system_conditions.copy()
+        mpc_ctrl = self.controller_switcher.controllers.get('MPC')
+        if mpc_ctrl:
+            check_conditions['computation_time'] = getattr(mpc_ctrl, 'last_solve_time', 0.01)
 
-        # Combine planner recommendation with reactive check
-        # Planner takes priority if it says emergency or recommends H-inf
+        recommended = 'Hinf'  # default safety net
+        pid_contract = self.contract_monitor.controller_contracts.get('PID')
+        mpc_contract = self.contract_monitor.controller_contracts.get('MPC')
+
+        if pid_contract:
+            pid_ok, _ = pid_contract.check_assumptions(check_conditions)
+            if pid_ok:
+                recommended = 'PID'
+        if recommended != 'PID' and mpc_contract:
+            mpc_ok, _ = mpc_contract.check_assumptions(check_conditions)
+            if mpc_ok:
+                recommended = 'MPC'
+
+        # Combine with planner recommendation (planner can only escalate, not downgrade)
+        controller_priority = {'PID': 0, 'MPC': 1, 'Hinf': 2}
         if planner_emergency:
-            pid_violated = True  # Force H-inf
-        elif planner_controller == 'hinf' and not pid_violated:
-            # Planner predicts trouble ahead, switch preemptively
-            pid_violated = True
-            logger.info("Horizon planner: preemptive switch to H-inf")
+            recommended = 'Hinf'
+        elif planner_controller:
+            planner_mapped = {'pid': 'PID', 'mpc': 'MPC', 'hinf': 'Hinf'}.get(
+                planner_controller, planner_controller)
+            if controller_priority.get(planner_mapped, 0) > controller_priority.get(recommended, 0):
+                recommended = planner_mapped
+                logger.info(f"Horizon planner: preemptive escalation to {recommended}")
 
         # 8. Supervisor: get setpoint + controller choice
         setpoint, controller_name = self.supervisor.update(
-            state_dict, system_conditions, pid_violated, gps_ok, self.time
+            state_dict, system_conditions, recommended, gps_ok, self.time
         )
 
         # 8. Switch controller if needed
@@ -500,7 +520,9 @@ if __name__ == "__main__":
 
     good_conditions = {
         'gps_satellites': 12.0,
-        'imu_temperature_stable': 1.0,
+        'gps_hdop': 1.0,
+        'imu_temperature': 25.0,
+        'imu_calibrated': 1.0,
         'battery_voltage': 12.4,
         'motor_temperature': 25.0,
         'wind_speed': 1.5,
@@ -562,7 +584,9 @@ if __name__ == "__main__":
 
     bad_conditions = {
         'gps_satellites': 3.0,
-        'imu_temperature_stable': 0.0,
+        'gps_hdop': 6.0,
+        'imu_temperature': 60.0,
+        'imu_calibrated': 0.0,
         'battery_voltage': 10.5,
         'motor_temperature': 85.0,
         'wind_speed': 12.0,

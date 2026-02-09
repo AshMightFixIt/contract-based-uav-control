@@ -1,8 +1,9 @@
 """
 Flight Mode Supervisor
-Manages mission-level flight modes and delegates control to PID or H-infinity.
+Manages mission-level flight modes and delegates control selection.
 
 Does NOT compute control — generates setpoints and selects controller.
+Supports three-tier controller selection: PID > MPC > H-inf.
 
 Flight Modes:
 - TRACK: Follow waypoints using position setpoints
@@ -94,7 +95,7 @@ class FlightModeSupervisor:
     def update(self,
                state: Dict[str, np.ndarray],
                system_conditions: Dict[str, float],
-               pid_violated: bool,
+               recommended_controller: str,
                gps_available: bool,
                current_time: float) -> Tuple[Dict, str]:
         """
@@ -103,12 +104,12 @@ class FlightModeSupervisor:
         Args:
             state: Current state dict (position, velocity, attitude, rates)
             system_conditions: Wind speed, disturbance, errors
-            pid_violated: Whether PID contract assumptions are violated
+            recommended_controller: Contract-based recommendation ('PID', 'MPC', or 'Hinf')
             gps_available: Whether GPS sensor contract is satisfied
             current_time: Simulation time
 
         Returns:
-            (setpoint, controller_name) where controller_name is 'PID' or 'Hinf'
+            (setpoint, controller_name)
         """
         self.gps_available = gps_available
 
@@ -118,8 +119,8 @@ class FlightModeSupervisor:
         # Generate setpoint for current mode
         setpoint = self._generate_setpoint(state, current_time)
 
-        # Select controller
-        controller = self._select_controller(pid_violated)
+        # Select controller (supervisor may override recommendation)
+        controller = self._select_controller(recommended_controller)
 
         return setpoint, controller
 
@@ -269,15 +270,14 @@ class FlightModeSupervisor:
             'yaw': state['attitude'][2]
         }
 
-    def _select_controller(self, pid_violated: bool) -> str:
+    def _select_controller(self, recommended: str) -> str:
         """
-        Select PID or H-inf based on mode and contract status.
+        Select controller based on flight mode and contract recommendation.
 
-        - EMERGENCY -> always H-inf
-        - LAND -> H-inf
+        Mode overrides:
+        - EMERGENCY / LAND -> always H-inf
         - HOVER without GPS -> H-inf
-        - TRACK/HOVER with PID contract ok -> PID
-        - Otherwise -> H-inf
+        Otherwise, use the contract-recommended controller.
         """
         if self.mode == FlightMode.EMERGENCY:
             return 'Hinf'
@@ -285,9 +285,7 @@ class FlightModeSupervisor:
             return 'Hinf'
         if self.mode == FlightMode.HOVER and not self.gps_available:
             return 'Hinf'
-        if not pid_violated:
-            return 'PID'
-        return 'Hinf'
+        return recommended
 
     def get_mode(self) -> FlightMode:
         return self.mode
@@ -326,41 +324,41 @@ if __name__ == "__main__":
         np.array([5.0, 5.0, -8.0]),
     ])
     conditions = {'wind_speed': 1.0, 'disturbance': 0.5}
-    setpoint, ctrl = supervisor.update(state, conditions, pid_violated=False, gps_available=True, current_time=0.0)
+    setpoint, ctrl = supervisor.update(state, conditions, recommended_controller='PID', gps_available=True, current_time=0.0)
     print(f"  Mode: {supervisor.get_mode().value}, Controller: {ctrl}")
     print(f"  Setpoint: {setpoint['position']}")
 
-    # Test 2: Wind causes PID violation -> H-inf
-    print("\n[TEST 2] PID contract violated (high wind)")
+    # Test 2: Wind → MPC recommended
+    print("\n[TEST 2] Moderate wind -> MPC recommended")
     conditions = {'wind_speed': 4.0, 'disturbance': 1.0}
-    setpoint, ctrl = supervisor.update(state, conditions, pid_violated=True, gps_available=True, current_time=2.0)
+    setpoint, ctrl = supervisor.update(state, conditions, recommended_controller='MPC', gps_available=True, current_time=2.0)
     print(f"  Mode: {supervisor.get_mode().value}, Controller: {ctrl}")
 
-    # Test 3: GPS loss -> HOVER
-    print("\n[TEST 3] GPS loss during tracking")
+    # Test 3: GPS loss -> HOVER (overrides recommendation)
+    print("\n[TEST 3] GPS loss during tracking -> H-inf override")
     conditions = {'wind_speed': 1.0, 'disturbance': 0.5}
-    setpoint, ctrl = supervisor.update(state, conditions, pid_violated=False, gps_available=False, current_time=4.0)
+    setpoint, ctrl = supervisor.update(state, conditions, recommended_controller='PID', gps_available=False, current_time=4.0)
     print(f"  Mode: {supervisor.get_mode().value}, Controller: {ctrl}")
     print(f"  Hover position: {setpoint['position']}")
 
     # Test 4: Severe wind -> EMERGENCY
-    print("\n[TEST 4] Severe wind -> EMERGENCY")
+    print("\n[TEST 4] Severe wind -> EMERGENCY (H-inf forced)")
     supervisor.mode = FlightMode.TRACK
     conditions = {'wind_speed': 9.0, 'disturbance': 6.0}
-    setpoint, ctrl = supervisor.update(state, conditions, pid_violated=True, gps_available=True, current_time=6.0)
+    setpoint, ctrl = supervisor.update(state, conditions, recommended_controller='Hinf', gps_available=True, current_time=6.0)
     print(f"  Mode: {supervisor.get_mode().value}, Controller: {ctrl}")
 
     # Test 5: Recovery from emergency
     print("\n[TEST 5] Recovery from EMERGENCY")
     conditions = {'wind_speed': 2.0, 'disturbance': 1.0}
     state['rates'] = np.array([0.1, 0.1, 0.0])
-    setpoint, ctrl = supervisor.update(state, conditions, pid_violated=False, gps_available=True, current_time=8.0)
+    setpoint, ctrl = supervisor.update(state, conditions, recommended_controller='PID', gps_available=True, current_time=8.0)
     print(f"  Mode: {supervisor.get_mode().value}, Controller: {ctrl}")
 
-    # Test 6: Landing
-    print("\n[TEST 6] Landing command")
+    # Test 6: Landing (H-inf always)
+    print("\n[TEST 6] Landing command -> H-inf always")
     supervisor.command_land()
-    setpoint, ctrl = supervisor.update(state, conditions, pid_violated=False, gps_available=True, current_time=10.0)
+    setpoint, ctrl = supervisor.update(state, conditions, recommended_controller='PID', gps_available=True, current_time=10.0)
     print(f"  Mode: {supervisor.get_mode().value}, Controller: {ctrl}")
     print(f"  Landing setpoint: {setpoint['position']}")
 

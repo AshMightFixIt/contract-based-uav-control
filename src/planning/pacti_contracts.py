@@ -140,6 +140,32 @@ class PactiContractLibrary:
             ]
         )
 
+        # MPC Controller - optimal, intermediate envelope
+        self.contracts['mpc'] = PolyhedralIoContract.from_strings(
+            input_vars=['position_est_error', 'velocity_est_error',
+                       'wind_speed', 'initial_tracking_error'],
+            output_vars=['tracking_error', 'control_effort', 'settling_time'],
+            assumptions=[
+                'position_est_error >= 0',
+                'position_est_error <= 5',       # Wider than PID (model handles more)
+                'velocity_est_error >= 0',
+                'velocity_est_error <= 2',
+                'wind_speed >= 0',
+                'wind_speed <= 8',               # Intermediate envelope
+                'initial_tracking_error >= 0',
+                'initial_tracking_error <= 10',
+            ],
+            guarantees=[
+                'tracking_error >= 0',
+                # MPC optimizes: better than PID (α<1), narrower than H-inf
+                'tracking_error <= 0.3 * position_est_error + 0.15 * wind_speed + 0.1',
+                'control_effort >= 0.1',
+                'control_effort <= 0.7',
+                'settling_time >= 1.5',
+                'settling_time <= 7',
+            ]
+        )
+
         # H-infinity Controller - robust but conservative
         self.contracts['hinf'] = PolyhedralIoContract.from_strings(
             input_vars=['position_est_error', 'velocity_est_error',
@@ -233,7 +259,7 @@ class PactiContractLibrary:
         - System-level assumptions (on environment)
         - System-level guarantees (on performance)
         """
-        if controller not in ['pid', 'hinf']:
+        if controller not in ['pid', 'mpc', 'hinf']:
             raise ValueError(f"Unknown controller: {controller}")
 
         # Start with sensor contracts
@@ -306,6 +332,16 @@ if __name__ == "__main__":
         # Get bounds on tracking error
         bounds = library.get_safety_bounds(pipeline, 'tracking_error')
         print(f"\nTracking error bounds: {bounds}")
+    except Exception as e:
+        print(f"Composition error: {e}")
+
+    print("\n=== Composing Pipeline with MPC ===")
+    try:
+        pipeline_mpc = library.compose_pipeline('mpc')
+        print(f"Input vars: {pipeline_mpc.inputvars}")
+        print(f"Output vars: {pipeline_mpc.outputvars}")
+        bounds = library.get_safety_bounds(pipeline_mpc, 'tracking_error')
+        print(f"Tracking error bounds (MPC): {bounds}")
     except Exception as e:
         print(f"Composition error: {e}")
 

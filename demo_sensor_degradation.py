@@ -141,11 +141,14 @@ def run_sensor_degradation_demo():
 
     initial_conditions = {
         'gps_satellites': 12.0,
-        'imu_temperature_stable': 1.0,
+        'gps_hdop': 0.8,
+        'imu_temperature': 25.0,
+        'imu_calibrated': 1.0,
         'battery_voltage': 12.4,
         'motor_temperature': 30.0,
         'wind_speed': 1.0,
         'disturbance': 0.2,
+        'computation_time': 0.001,
     }
 
     mission = {
@@ -313,9 +316,11 @@ def run_sensor_degradation_demo():
     print(f"Mission status: {'COMPLETE' if mission_complete else 'INCOMPLETE'}")
 
     pid_time = sum(1 for c in controller_history if c == 'PID') * 0.02
+    mpc_time = sum(1 for c in controller_history if c == 'MPC') * 0.02
     hinf_time = sum(1 for c in controller_history if c == 'Hinf') * 0.02
     print(f"\nController usage:")
     print(f"  PID:   {pid_time:5.1f}s ({100*pid_time/total_time:4.1f}%)")
+    print(f"  MPC:   {mpc_time:5.1f}s ({100*mpc_time/total_time:4.1f}%)")
     print(f"  H-inf: {hinf_time:5.1f}s ({100*hinf_time/total_time:4.1f}%)")
 
     full_time = sum(1 for f in fusion_mode_history if f == 'full') * 0.02
@@ -459,9 +464,10 @@ def run_sensor_degradation_demo():
     ax6 = fig.add_subplot(4, 2, 6)
     add_phase_shading(ax6)
     # Controller lane (upper)
-    ctrl_y = [1.6 if c == 'PID' else 1.6 for c in controller_history]
     ax6.fill_between(time_arr, 1.1, [1.9 if c == 'PID' else 1.1 for c in controller_history],
                      alpha=0.6, color='blue', step='post')
+    ax6.fill_between(time_arr, 1.1, [1.9 if c == 'MPC' else 1.1 for c in controller_history],
+                     alpha=0.6, color='green', step='post')
     ax6.fill_between(time_arr, 1.1, [1.9 if c == 'Hinf' else 1.1 for c in controller_history],
                      alpha=0.6, color='red', step='post')
     # Flight mode lane (lower)
@@ -474,8 +480,9 @@ def run_sensor_degradation_demo():
     ax6.set_yticklabels(['Flight Mode', 'Controller'])
     ax6.set_title('Controller & Flight Mode')
     legend_items = [Patch(facecolor='blue', alpha=0.6, label='PID'),
+                    Patch(facecolor='green', alpha=0.6, label='MPC'),
                     Patch(facecolor='red', alpha=0.6, label='H-inf'),
-                    Patch(facecolor='green', alpha=0.6, label='TRACK'),
+                    Patch(facecolor='green', alpha=0.3, label='TRACK'),
                     Patch(facecolor='#FFA500', alpha=0.6, label='HOVER'),
                     Patch(facecolor='red', alpha=0.3, label='EMERGENCY')]
     ax6.legend(handles=legend_items, fontsize=7, loc='upper right', ncol=2)

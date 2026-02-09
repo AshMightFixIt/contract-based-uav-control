@@ -204,10 +204,13 @@ class IntegratedPlanner:
         if self.state.current_plan is None:
             return True
 
-        # Check wind change
+        # Check if wind exceeds current controller's envelope
         current_wind = environment.get('wind_speed', 0.0)
-        if self.state.current_plan.recommended_controller == 'pid' and current_wind > 3.0:
-            logger.warning(f"Wind spike detected: {current_wind:.1f} m/s")
+        ctrl = self.state.current_plan.recommended_controller
+        wind_limits = {'pid': 3.0, 'mpc': 8.0, 'hinf': 15.0}
+        wind_limit = wind_limits.get(ctrl, 15.0)
+        if current_wind > wind_limit:
+            logger.warning(f"Wind ({current_wind:.1f} m/s) exceeds {ctrl} envelope ({wind_limit} m/s)")
             return True
 
         # Check safety margin

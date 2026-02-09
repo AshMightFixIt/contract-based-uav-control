@@ -40,7 +40,7 @@ class PlanStatus(Enum):
 class HorizonStep:
     """One step in the planning horizon."""
     timestep: int
-    controller: str                 # 'pid' or 'hinf'
+    controller: str                 # 'pid', 'mpc', or 'hinf'
     tracking_error_bound: float     # Upper bound on tracking error
     safety_margin: float            # Distance from safety limit
     contract: Optional[PolyhedralIoContract] = None
@@ -122,29 +122,25 @@ class HorizonPlanner:
         # Start with maximum horizon
         horizon = self.config.max_horizon
 
-        # Try PID first (more efficient)
-        plan = self._try_plan(current_state, environment, horizon, 'pid')
+        # Try controllers in order: PID (efficient) → MPC (optimal) → H-inf (robust)
+        for ctrl in ['pid', 'mpc', 'hinf']:
+            plan = self._try_plan(current_state, environment, horizon, ctrl)
+            if plan.is_safe():
+                logger.info(f"{ctrl.upper()} plan feasible: horizon={horizon}, "
+                           f"min_margin={plan.min_safety_margin:.2f}")
+                return plan
+            logger.warning(f"{ctrl.upper()} plan failed: {plan.replan_reason}")
 
-        if plan.is_safe():
-            logger.info(f"PID plan feasible: horizon={horizon}, min_margin={plan.min_safety_margin:.2f}")
-            return plan
-
-        # PID failed, try H-inf
-        logger.warning(f"PID plan failed: {plan.replan_reason}")
-        plan = self._try_plan(current_state, environment, horizon, 'hinf')
-
-        if plan.is_safe():
-            logger.info(f"H-inf plan feasible: horizon={horizon}, min_margin={plan.min_safety_margin:.2f}")
-            return plan
-
-        # H-inf failed at max horizon, try shrinking horizon
-        logger.warning(f"H-inf plan failed at horizon={horizon}, trying shorter horizons")
+        # All controllers failed at max horizon, try shrinking
+        logger.warning(f"All controllers failed at horizon={horizon}, trying shorter horizons")
 
         for h in range(horizon - 1, self.config.min_horizon - 1, -1):
-            plan = self._try_plan(current_state, environment, h, 'hinf')
-            if plan.is_safe():
-                logger.info(f"H-inf plan feasible at reduced horizon={h}")
-                return plan
+            # Try each controller at reduced horizon (MPC before H-inf)
+            for ctrl in ['mpc', 'hinf']:
+                plan = self._try_plan(current_state, environment, h, ctrl)
+                if plan.is_safe():
+                    logger.info(f"{ctrl.upper()} plan feasible at reduced horizon={h}")
+                    return plan
 
         # All plans failed
         logger.error("No feasible plan found!")
@@ -367,11 +363,15 @@ class HorizonPlanner:
             )
             return True, new_plan
 
-        # Check if environment violates current plan's assumptions
-        if self.current_plan.recommended_controller == 'pid' and wind > 3.0:
+        # Check if environment violates current plan's controller assumptions
+        ctrl = self.current_plan.recommended_controller
+        wind_limits = {'pid': 3.0, 'mpc': 8.0, 'hinf': 15.0}
+        wind_limit = wind_limits.get(ctrl, 15.0)
+
+        if wind > wind_limit:
             new_plan = self.replan(
                 current_state, environment,
-                f"Wind exceeds PID envelope: {wind:.1f} m/s"
+                f"Wind ({wind:.1f} m/s) exceeds {ctrl.upper()} envelope ({wind_limit} m/s)"
             )
             return True, new_plan
 
