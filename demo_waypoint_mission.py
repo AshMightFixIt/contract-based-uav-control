@@ -21,6 +21,12 @@ logging.basicConfig(level=logging.ERROR, format='%(message)s')
 
 from adaptive_control_system import AdaptiveDroneController
 
+try:
+    from visualization.live_visualizer import LiveVisualizer
+    HAS_VISUALIZER = True
+except ImportError:
+    HAS_VISUALIZER = False
+
 
 class DroneSimulation:
     """Simple drone dynamics for waypoint mission testing"""
@@ -132,6 +138,16 @@ def run_waypoint_mission():
         np.array([0.0, 0.0, -5.0]),     # WP4: Return to start
     ]
 
+    # Optional live visualizer
+    viz = None
+    if HAS_VISUALIZER:
+        try:
+            viz = LiveVisualizer(waypoints)
+            print("\n[LIVE VISUALIZER] Window opened (drag=orbit, scroll=zoom, F=follow, Esc=exit)")
+        except Exception as e:
+            print(f"\n[LIVE VISUALIZER] Could not start: {e}")
+            viz = None
+
     print(f"\nMission: Square pattern with {len(waypoints)} waypoints")
     print("Waypoints:")
     for i, wp in enumerate(waypoints):
@@ -222,6 +238,23 @@ def run_waypoint_mission():
         wp_idx = sup_status['waypoint_idx']
         waypoint_idx_history.append(wp_idx)
 
+        # Update live visualizer
+        if viz is not None:
+            viz_state = {
+                'time': t,
+                'position': telemetry['position'],
+                'velocity': drone.velocity.copy(),
+                'attitude': drone.attitude.copy(),
+                'active_controller': telemetry['active_controller'],
+                'flight_mode': telemetry['flight_mode'],
+                'cbf_intervened': telemetry['cbf_intervened'],
+                'wind_speed': np.linalg.norm(current_wind[0:2]),
+                'waypoint_idx': wp_idx,
+            }
+            if not viz.update(viz_state):
+                print("\n[LIVE VISUALIZER] Window closed by user")
+                break
+
         if wp_idx < len(waypoints):
             target_history.append(waypoints[wp_idx].copy())
         else:
@@ -255,6 +288,9 @@ def run_waypoint_mission():
         # End 5 seconds after mission complete
         if mission_complete and mission_complete_time and t > mission_complete_time + 5:
             break
+
+    if viz is not None:
+        viz.close()
 
     controller.stop_mission()
 

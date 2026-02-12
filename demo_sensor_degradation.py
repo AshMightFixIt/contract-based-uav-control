@@ -29,6 +29,12 @@ from adaptive_control_system import AdaptiveDroneController
 from control.flight_mode_supervisor import FlightMode
 from utils.sensor_faults import SensorFaultInjector, create_standard_degradation_schedule
 
+try:
+    from visualization.live_visualizer import LiveVisualizer
+    HAS_VISUALIZER = True
+except ImportError:
+    HAS_VISUALIZER = False
+
 
 class DroneSimulation:
     """Simple drone dynamics for testing (identical to demo_waypoint_mission.py)"""
@@ -123,6 +129,16 @@ def run_sensor_degradation_demo():
         np.array([0.0, 5.0, -6.0]),     # WP3: North, mid altitude
         np.array([0.0, 0.0, -5.0]),     # WP4: Return to start
     ]
+
+    # Optional live visualizer
+    viz = None
+    if HAS_VISUALIZER:
+        try:
+            viz = LiveVisualizer(waypoints)
+            print("\n[LIVE VISUALIZER] Window opened (drag=orbit, scroll=zoom, F=follow, Esc=exit)")
+        except Exception as e:
+            print(f"\n[LIVE VISUALIZER] Could not start: {e}")
+            viz = None
 
     print(f"\nMission: {len(waypoints)}-waypoint square pattern (5m legs)")
     print("Wind: Mild [1.0, 0.5, 0.0] m/s (constant, isolating sensor effects)")
@@ -260,6 +276,23 @@ def run_sensor_degradation_demo():
         cbf_intervention_history.append(telemetry['cbf_intervened'])
         phase_history.append(phase)
 
+        # Update live visualizer
+        if viz is not None:
+            viz_state = {
+                'time': t,
+                'position': telemetry['position'],
+                'velocity': drone.velocity.copy(),
+                'attitude': drone.attitude.copy(),
+                'active_controller': telemetry['active_controller'],
+                'flight_mode': telemetry['flight_mode'],
+                'cbf_intervened': telemetry['cbf_intervened'],
+                'wind_speed': np.linalg.norm(constant_wind[0:2]),
+                'waypoint_idx': sup_status['waypoint_idx'],
+            }
+            if not viz.update(viz_state):
+                print("\n[LIVE VISUALIZER] Window closed by user")
+                break
+
         # Waypoint tracking
         sup_status = controller.supervisor.get_status()
         wp_idx = sup_status['waypoint_idx']
@@ -296,6 +329,9 @@ def run_sensor_degradation_demo():
 
         if mission_complete and mission_complete_time and t > mission_complete_time + 5:
             break
+
+    if viz is not None:
+        viz.close()
 
     controller.stop_mission()
 
