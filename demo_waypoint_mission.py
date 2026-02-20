@@ -64,8 +64,8 @@ class DroneSimulation:
         ])
         self.velocity[0:2] += horizontal_accel[0:2] * self.dt
 
-        # Wind affects velocity - stronger coupling for realistic disturbance effect
-        self.velocity[0:2] += self.wind[0:2] * 0.1 * self.dt
+        # Wind affects velocity (drag-like disturbance)
+        self.velocity[0:2] += self.wind[0:2] * 0.06 * self.dt
 
         # Limit maximum velocity
         max_vel = 3.0  # m/s - reduced from 5.0 for gentler flight
@@ -87,9 +87,9 @@ class DroneSimulation:
         # Attitude follows command with delay (slower response)
         self.attitude = 0.95 * self.attitude + 0.05 * desired_att
 
-        # Stronger velocity damping for stability
-        self.velocity *= 0.92
-        self.rates *= 0.8
+        # Velocity damping (drag model)
+        self.velocity *= 0.97
+        self.rates *= 0.85
 
     def get_sensor_data(self):
         # Minimal noise for clean waypoint tracking demo

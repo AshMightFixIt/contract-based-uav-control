@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Pacti](https://img.shields.io/badge/Pacti-Enabled-green.svg)](https://github.com/pacti-org/pacti)
 
-A hierarchical contract-based architecture integrating Assume-Guarantee (A/G) contracts with Control Barrier Function (CBF) safety filtering for provably safe multi-mode UAV control. Features **horizon-based predictive planning** using Pacti for formal contract composition.
+A hierarchical contract-based architecture integrating Assume-Guarantee (A/G) contracts with Control Barrier Function (CBF) safety filtering for provably safe multi-mode UAV control. Features **horizon-based predictive planning** using Pacti for formal contract composition and a **three-tier controller cascade** (PID → MPC → H-infinity) with live visualization.
 
 **Research Project** | University of Michigan
 **Courses:** AE552 (Aerospace Information Systems) & ECE599 (Formal Methods)
@@ -38,12 +38,13 @@ This system demonstrates formal methods applied to autonomous UAV control throug
 - **Horizon-Based Pacti Planner** - Predictive N-step contract cascade with safety margin optimization
 - **Hierarchical Contract Framework** - Compositional verification through A/G contracts
 - **Flight Mode Supervisor** - Mission-level mode management (TRACK, HOVER, LAND, EMERGENCY)
-- **Dual Controllers** - PID (efficient) and H-infinity (robust) with formal operating envelopes
+- **Three-Tier Controller Cascade** - PID (wind ≤ 3 m/s) → MPC (wind ≤ 8 m/s) → H-infinity (wind ≤ 25 m/s)
 - **Contract-Aware EKF** - Adaptive sensor fusion based on contract satisfaction
 - **CBF Safety Filter** - Minimally-invasive safety enforcement with 4 barrier functions
 - **Sensor Degradation Testing** - 10 fault types with time-scheduled injection validating graceful degradation
+- **Live Visualizations** - Pygame 3D flight visualizer and matplotlib live 2×2 racing speed panels
 
-**Implementation:** 3,300+ lines of production Python code
+**Implementation:** 3,500+ lines of production Python code
 
 ### System Performance
 
@@ -180,6 +181,33 @@ python demo_sensor_degradation.py
 4. Mission completion despite sensor faults (4/4 waypoints)
 5. 8-panel visualization with sensor health, fusion modes, and covariance
 
+### Run Live Racing Visualization
+```bash
+python demo_racing_live.py
+```
+
+**Demonstrates:**
+1. All 4 controller configurations (Adaptive, PID, MPC, H-inf) racing simultaneously
+2. Live 2×2 speed-heatmap panels — plasma colormap trail (dark = slow → bright = fast)
+3. Per-drone speedometer bar gauge updating in real time
+4. Waypoint progress and elapsed time per panel
+5. Shared colorbar for cross-drone speed comparison
+
+### Run Racing Benchmark
+```bash
+python benchmark_racing.py
+```
+
+**Produces `benchmark_racing.png` with 8 panels:**
+1. 3D trajectory comparison
+2. XY racing trajectory with numbered waypoints
+3. Altitude over time
+4. Speed over time
+5. Tracking error over time
+6. Per-waypoint completion time (grouped bars)
+7. Performance scores — all metrics on a unified 0–100 scale
+8. Performance radar — normalized polygon chart (larger = better)
+
 ### Run Horizon Planner Demo
 ```bash
 python demo_horizon_planner.py
@@ -235,15 +263,15 @@ If G₁ ⇒ A₂, the pipeline is formally verified!
 ```
 contract-based-uav-control/
 │
-├── src/                                # Source code (2,500+ lines)
+├── src/                                # Source code (2,700+ lines)
 │   ├── contracts/
 │   │   └── contract_framework.py       # A/G contracts (506 lines)
 │   ├── estimation/
 │   │   └── contract_ekf.py            # Contract-aware EKF (331 lines)
 │   ├── control/
-│   │   ├── controllers.py             # PID & H-infinity (200 lines)
-│   │   └── flight_mode_supervisor.py  # Mission mode management (200 lines)
-│   ├── planning/                       # NEW: Horizon-based planning
+│   │   ├── controllers.py             # PID, MPC & H-infinity (330 lines)
+│   │   └── flight_mode_supervisor.py  # Mission mode management (220 lines)
+│   ├── planning/                       # Horizon-based planning
 │   │   ├── pacti_contracts.py         # Pacti contract library (150 lines)
 │   │   ├── horizon_planner.py         # N-step contract cascade (250 lines)
 │   │   └── integrated_planner.py      # Control system integration (300 lines)
@@ -251,12 +279,18 @@ contract-based-uav-control/
 │   │   └── cbf_filter.py             # CBF filter (200 lines)
 │   ├── utils/
 │   │   └── sensor_faults.py          # Fault injection module (235 lines)
+│   ├── visualization/
+│   │   └── live_visualizer.py         # Pygame 3D live visualizer (525 lines)
 │   └── adaptive_control_system.py     # Integration (350 lines)
 │
 ├── simulation_demo.py                  # Main demonstration
-├── demo_waypoint_mission.py           # Multi-waypoint mission demo
+├── demo_waypoint_mission.py           # Three-tier wind demo (PID→MPC→H-inf)
 ├── demo_sensor_degradation.py         # Sensor degradation testing demo
 ├── demo_horizon_planner.py            # Horizon planner demonstration
+├── demo_racing_live.py                # Live 2x2 racing speed panels (NEW)
+├── benchmark_racing.py                # Racing course benchmark (4 controllers)
+├── benchmark_controllers.py           # Controller performance benchmark
+├── benchmark_sensor_degradation.py    # Sensor degradation benchmark
 ├── requirements.txt                    # Dependencies
 ├── README.md                           # This file
 └── DEVELOPMENT.md                      # Testing & development guide
@@ -266,25 +300,33 @@ contract-based-uav-control/
 
 ## 🎮 Controller Modes & Contracts
 
-The system uses two feedback controllers managed by a Flight Mode Supervisor.
+The system uses three feedback controllers in a graduated cascade, managed by a Flight Mode Supervisor that selects the appropriate tier based on contract satisfaction.
 
 ### Controllers
 
 #### 1. Nominal PID Controller
-**Use:** Efficient control in calm conditions
+**Use:** Efficient control in calm conditions (wind ≤ 3 m/s)
 
 **Contract:**
 - Assumptions: Wind < 3 m/s, GPS available, Position error < 3m, Disturbance < 3
 - Guarantees: Position error < 1.5m, Velocity error < 1.5 m/s
 
-#### 2. Wind-Robust H-infinity Controller
-**Use:** Robust control under disturbances
+#### 2. Model Predictive Controller (MPC)
+**Use:** Optimal control in moderate wind (wind ≤ 8 m/s)
 
 **Contract:**
-- Assumptions: Wind < 10 m/s, GPS available
-- Guarantees: Position error < 3m, Stabilization < 10s
+- Assumptions: Wind < 8 m/s, GPS available, Computation time < 50 ms
+- Guarantees: Tracking error < 2m (tighter than PID due to horizon optimization)
+- Implementation: Condensed QP with N=15 horizon, ~0.26 ms solve time
 
-**Key:** Minimal assumptions - always available safety net
+#### 3. Wind-Robust H-infinity Controller
+**Use:** Robust stabilization under strong disturbances (wind ≤ 25 m/s)
+
+**Contract:**
+- Assumptions: Wind < 25 m/s, GPS available
+- Guarantees: Tracking error < 3m, integral wind rejection via anti-windup
+
+**Key:** Graduated degradation — PID handles calm flight efficiently; MPC optimizes moderate conditions; H-inf is always available as the safety net.
 
 ### Flight Mode Supervisor
 
@@ -337,23 +379,28 @@ The supervisor manages mission-level modes (not control laws):
 
 ## 🗓️ Development Roadmap
 
-### Current Status (February 2025)
+### Current Status (February 2026)
 
 **✅ Completed:**
-- Hierarchical contract framework
-- PID and H-infinity controllers with formal contracts
+- Hierarchical contract framework with theory-grounded constants
+- Three-tier controller cascade: PID → MPC → H-infinity with formal contracts
+  - MPC: condensed QP, N=15 horizon, ~0.26 ms solve time, warm-start
 - Flight Mode Supervisor (TRACK, HOVER, LAND, EMERGENCY)
 - Contract-aware EKF with 3 fusion modes
 - CBF safety filter with 4 barrier functions
 - Horizon-based Pacti planner (N-step cascade, safety margins, re-planning)
-- Multi-waypoint mission demo with wind disturbance
-- **Sensor degradation testing** (NEW)
+- Multi-waypoint mission demo with three-tier wind switching
+- Sensor degradation testing
   - 10 fault types: GPS satellite loss, HDOP increase, position drift, complete loss, intermittent; IMU noise, temperature drift, bias accumulation, calibration loss, spikes
   - 7-phase degradation schedule validating contract-driven graceful degradation
   - Mission completion (4/4 waypoints) despite sensor faults
+- Pygame 3D live flight visualizer (orbital camera, controller-coloured trail)
+- **Live 2×2 racing speed panels** (NEW) — plasma heatmap trail + speedometer gauge
+- **Racing benchmark** (NEW) — 10-waypoint figure-8 course, 4 controller comparison
+  - 8-panel plot: 3D/XY trajectory, altitude, speed, tracking error, per-waypoint times, performance scores (unified 0–100 scale), performance radar
 - Runtime monitoring at 50 Hz
-- Bidirectional controller switching (PID ↔ H-inf)
-- Python simulation (3,300+ lines)
+- Bidirectional controller switching (contract-violation triggered)
+- Python simulation (3,500+ lines)
 
 ### Upcoming
 
@@ -431,4 +478,4 @@ aswatth@umich.edu
 
 ---
 
-**Status:** Active Development | **Updated:** February 2026 | **Version:** 1.2.0
+**Status:** Active Development | **Updated:** February 2026 | **Version:** 1.3.0

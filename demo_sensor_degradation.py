@@ -65,7 +65,7 @@ class DroneSimulation:
             0.0
         ])
         self.velocity[0:2] += horizontal_accel[0:2] * self.dt
-        self.velocity[0:2] += self.wind[0:2] * 0.1 * self.dt
+        self.velocity[0:2] += self.wind[0:2] * 0.06 * self.dt
 
         max_vel = 3.0
         vel_magnitude = np.linalg.norm(self.velocity[0:2])
@@ -80,8 +80,8 @@ class DroneSimulation:
             self.velocity[2] = min(self.velocity[2], 0.0)
 
         self.attitude = 0.95 * self.attitude + 0.05 * desired_att
-        self.velocity *= 0.92
-        self.rates *= 0.8
+        self.velocity *= 0.97
+        self.rates *= 0.85
 
     def get_sensor_data(self):
         noise_pos = np.random.randn(3) * 0.01

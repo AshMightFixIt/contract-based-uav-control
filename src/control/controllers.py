@@ -65,7 +65,7 @@ class PIDController(BaseController):
 
         # Position PID gains (outer loop) - tuned for stability in simplified simulation
         # MUCH lower gains to prevent overshoot
-        self.kp_pos = np.array([0.2, 0.2, 0.8])  # [x, y, z] - very gentle
+        self.kp_pos = np.array([0.35, 0.35, 0.8])  # [x, y, z]
         self.ki_pos = np.array([0.005, 0.005, 0.05])  # minimal integral
         self.kd_pos = np.array([0.5, 0.5, 0.6])  # strong velocity damping
 
@@ -78,7 +78,7 @@ class PIDController(BaseController):
         self.kp_rate = np.array([0.08, 0.08, 0.06])  # [p, q, r]
 
         # Limits
-        self.max_tilt = 0.15  # ~9 degrees max tilt - very gentle
+        self.max_tilt = 0.22  # ~13 degrees max tilt
         self.max_rate = 1.0  # rad/s
         self.max_thrust = 1.0
         self.min_thrust = 0.0
@@ -212,11 +212,20 @@ class HInfinityController(BaseController):
         self.k_altitude = 0.05     # Altitude hold gain (conservative to avoid overshoot)
         self.k_altitude_rate = 0.15  # Altitude rate damping (helps slow descent)
 
+        # Position tracking gains (robust but active wind rejection)
+        self.k_pos = np.array([0.35, 0.35, 0.0])  # lateral position tracking
+        self.k_vel = np.array([0.7, 0.7, 0.0])     # velocity damping (fight wind drift)
+        self.k_int = np.array([0.10, 0.10, 0.0])   # integral for wind rejection
+        self.int_limit = 8.0  # anti-windup clamp
+        self.pos_integral = np.zeros(3)
+        self.max_tilt = 0.22  # ~13° — enough tilt to reject strong wind
+
         # Hover thrust (normalized) - this counteracts gravity
         self.hover_thrust = 0.5
 
     def reset(self):
         """Reset controller state"""
+        self.pos_integral = np.zeros(3)
         logger.info(f"{self.name} reset")
     
     def compute_control(self,
@@ -238,12 +247,27 @@ class HInfinityController(BaseController):
 
         target_pos = setpoint.get('position', position)
 
+        # === POSITION TRACKING (with integral wind rejection) ===
+        pos_error = target_pos - position
+        vel_error = -velocity  # want zero velocity (fight drift)
+
+        # Integrate position error for sustained wind rejection
+        self.pos_integral += pos_error * self.dt
+        self.pos_integral = np.clip(self.pos_integral, -self.int_limit, self.int_limit)
+
+        desired_accel = (self.k_pos * pos_error +
+                         self.k_vel * vel_error +
+                         self.k_int * self.pos_integral)
+
+        # Map lateral acceleration to desired tilt (conservative limits)
+        desired_pitch = np.clip(-desired_accel[0] / 9.81, -self.max_tilt, self.max_tilt)
+        desired_roll = np.clip(desired_accel[1] / 9.81, -self.max_tilt, self.max_tilt)
+        target_attitude = np.array([desired_roll, desired_pitch, attitude[2]])
+
         # === RATE DAMPING (Highest Priority) ===
         rate_damping_torque = -self.k_rate_damping * rates
 
         # === ATTITUDE STABILIZATION ===
-        # Force roll and pitch to zero (level flight), keep current yaw
-        target_attitude = np.array([0.0, 0.0, attitude[2]])
         att_error = target_attitude - attitude
         att_error[2] = np.arctan2(np.sin(att_error[2]), np.cos(att_error[2]))
 

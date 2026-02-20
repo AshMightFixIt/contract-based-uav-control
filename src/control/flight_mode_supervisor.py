@@ -131,13 +131,16 @@ class FlightModeSupervisor:
 
         old_mode = self.mode
 
-        # EMERGENCY takes priority: severe wind or disturbance
+        # EMERGENCY takes priority: only for truly dangerous conditions
+        # H-inf handles wind up to 25 m/s in TRACK mode; emergency is for
+        # extreme disturbances or loss of controllability
         if self.mode != FlightMode.EMERGENCY:
             wind = conditions.get('wind_speed', 0.0)
             disturbance = conditions.get('disturbance', 0.0)
-            if wind > 8.0 or disturbance > 5.0:
+            if wind > 15.0 or disturbance > 5.0:
                 self.mode = FlightMode.EMERGENCY
                 self.emergency_altitude = min(state['position'][2] - 2.0, -5.0)
+                self.emergency_position = state['position'].copy()
 
         # GPS loss during TRACK -> capture position and HOVER
         if self.mode == FlightMode.TRACK and not gps_available:
@@ -259,11 +262,12 @@ class FlightModeSupervisor:
         }
 
     def _setpoint_emergency(self, state) -> Dict:
-        """Hold safe altitude, level attitude, zero velocity."""
+        """Hold captured position at safe altitude, level attitude, zero velocity."""
+        hold_pos = getattr(self, 'emergency_position', state['position'])
         return {
             'position': np.array([
-                state['position'][0],
-                state['position'][1],
+                hold_pos[0],
+                hold_pos[1],
                 self.emergency_altitude
             ]),
             'velocity': np.zeros(3),
