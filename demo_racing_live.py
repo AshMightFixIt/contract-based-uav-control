@@ -15,6 +15,13 @@ Each panel:
   • Waypoint progress     (top-right)
   • Elapsed time          (bottom-right)
 
+Wind profile (same for all drones — fair comparison):
+   0–25 s  calm   0.5→2.5 m/s  PID territory
+  25–55 s  moderate 2.5→7 m/s  MPC territory
+  55–80 s  strong  7→11 m/s    H-inf territory
+  80–100 s recovery 11→1.5 m/s back to PID/MPC
+Adaptive panel switches controller automatically; forced panels show the cost of mismatch.
+
 Controls:  close the window or press Esc to exit.
 """
 
@@ -32,8 +39,9 @@ import numpy as np
 # run first, then switch to an interactive backend before creating any figure.
 from adaptive_control_system import AdaptiveDroneController
 from benchmark_racing import (
-    RacingDroneSimulation, WAYPOINTS, CONSTANT_WIND,
+    RacingDroneSimulation, WAYPOINTS,
     INITIAL_CONDITIONS, DT, MAX_STEPS,
+    get_wind_at_time,
 )
 
 import matplotlib
@@ -259,7 +267,7 @@ def _advance():
             continue
         drone = drones[m]
         ctrl  = controllers[m]
-        drone.set_wind(CONSTANT_WIND)
+        drone.set_wind(get_wind_at_time(t))
         sensors          = drone.get_sensor_data()
         control, telemetry = ctrl.control_step(sensors)
         drone.update(control)

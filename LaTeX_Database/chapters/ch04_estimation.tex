@@ -1,0 +1,367 @@
+% ============================================================================
+% CHAPTER 4: STATE ESTIMATION
+% ============================================================================
+
+\chapter{State Estimation}
+\label{ch:estimation}
+
+This chapter presents the contract-aware Extended Kalman Filter (EKF) that provides state estimation with formal guarantees on estimation quality.
+
+\section{Extended Kalman Filter Overview}
+
+The EKF provides fused state estimates from multiple sensors while maintaining estimation quality metrics that interface with the contract framework.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.9,
+        block/.style={
+            draw,
+            rounded corners=3pt,
+            minimum width=2.5cm,
+            minimum height=1.2cm,
+            align=center,
+            font=\small
+        },
+        arrow/.style={-{Stealth}, thick}
+    ]
+        % Inputs
+        \node[block, fill=sensorblue!30] (gps) at (0,2) {GPS\\Sensor};
+        \node[block, fill=sensorblue!30] (imu) at (0,0) {IMU\\Sensor};
+        \node[block, fill=sensorblue!30] (baro) at (0,-2) {Barometer};
+
+        % EKF core
+        \node[block, fill=ekfgreen!30, minimum width=4cm, minimum height=4cm] (ekf) at (5,0) {
+            \textbf{Extended}\\
+            \textbf{Kalman Filter}\\[6pt]
+            Predict $\rightarrow$ Update
+        };
+
+        % Outputs
+        \node[block, fill=contractpurple!20] (state) at (10,1) {State\\Estimate $\hat{\mathbf{x}}$};
+        \node[block, fill=contractpurple!20] (cov) at (10,-1) {Covariance\\$\mathbf{P}$};
+
+        % Arrows
+        \draw[arrow] (gps) -- (ekf);
+        \draw[arrow] (imu) -- (ekf);
+        \draw[arrow] (baro) -- (ekf);
+        \draw[arrow] (ekf) -- (state);
+        \draw[arrow] (ekf) -- (cov);
+
+        % Contract annotation
+        \node[draw, dashed, rounded corners, fill=contractpurple!10, font=\scriptsize]
+            at (5,-3) {$\mathcal{C}_{\text{estimator}}$: If sensors valid $\Rightarrow$ bounded estimation error};
+    \end{tikzpicture}
+    \caption{EKF sensor fusion architecture with contract interface}
+    \label{fig:ekf_architecture}
+\end{figure}
+
+\section{State Space Model}
+
+\subsection{Process Model}
+
+The quadrotor dynamics are modeled as a 12-state nonlinear system:
+
+\begin{equation}
+    \dot{\mathbf{x}} = f(\mathbf{x}, \mathbf{u}) + \mathbf{w}
+\end{equation}
+
+where $\mathbf{w} \sim \mathcal{N}(0, \mathbf{Q})$ is process noise.
+
+The state vector components evolve according to:
+
+\begin{align}
+    \dot{x} &= v_x \\
+    \dot{y} &= v_y \\
+    \dot{z} &= v_z \\
+    \dot{v}_x &= (T/m)(\cos\phi\sin\theta\cos\psi + \sin\phi\sin\psi) \\
+    \dot{v}_y &= (T/m)(\cos\phi\sin\theta\sin\psi - \sin\phi\cos\psi) \\
+    \dot{v}_z &= (T/m)\cos\phi\cos\theta - g \\
+    \dot{\phi} &= p + q\sin\phi\tan\theta + r\cos\phi\tan\theta \\
+    \dot{\theta} &= q\cos\phi - r\sin\phi \\
+    \dot{\psi} &= (q\sin\phi + r\cos\phi)/\cos\theta \\
+    \dot{p} &= \tau_\phi / I_{xx} \\
+    \dot{q} &= \tau_\theta / I_{yy} \\
+    \dot{r} &= \tau_\psi / I_{zz}
+\end{align}
+
+\subsection{Measurement Model}
+
+The measurement vector combines GPS and IMU observations:
+
+\begin{equation}
+    \mathbf{z} = h(\mathbf{x}) + \mathbf{v}
+\end{equation}
+
+where $\mathbf{v} \sim \mathcal{N}(0, \mathbf{R})$ is measurement noise.
+
+\begin{equation}
+    \mathbf{z} = \begin{bmatrix}
+        x_{\text{GPS}} \\
+        y_{\text{GPS}} \\
+        z_{\text{GPS}} \\
+        v_{x,\text{GPS}} \\
+        v_{y,\text{GPS}} \\
+        v_{z,\text{GPS}} \\
+        \phi_{\text{IMU}} \\
+        \theta_{\text{IMU}} \\
+        \psi_{\text{IMU}} \\
+        p_{\text{IMU}} \\
+        q_{\text{IMU}} \\
+        r_{\text{IMU}}
+    \end{bmatrix}
+\end{equation}
+
+\section{EKF Algorithm}
+
+\subsection{Predict Step}
+
+\importantbox{
+\textbf{Critical:} The predict step must be called \textit{before} the update step every cycle. Missing the predict step causes state drift where the EKF estimate diverges from the true state.
+}
+
+\begin{algorithm}[H]
+\caption{EKF Predict Step}
+\begin{algorithmic}[1]
+    \State \textbf{Input:} Previous state $\hat{\mathbf{x}}_{k-1}$, covariance $\mathbf{P}_{k-1}$, control $\mathbf{u}_k$, timestep $\Delta t$
+    \State Compute state Jacobian $\mathbf{F}_k = \frac{\partial f}{\partial \mathbf{x}}\bigg|_{\hat{\mathbf{x}}_{k-1}}$
+    \State Propagate state: $\hat{\mathbf{x}}_k^- = \hat{\mathbf{x}}_{k-1} + f(\hat{\mathbf{x}}_{k-1}, \mathbf{u}_k) \cdot \Delta t$
+    \State Propagate covariance: $\mathbf{P}_k^- = \mathbf{F}_k \mathbf{P}_{k-1} \mathbf{F}_k^\top + \mathbf{Q}$
+    \State \textbf{Output:} Prior estimate $\hat{\mathbf{x}}_k^-$, prior covariance $\mathbf{P}_k^-$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Update Step}
+
+\begin{algorithm}[H]
+\caption{EKF Update Step}
+\begin{algorithmic}[1]
+    \State \textbf{Input:} Prior $\hat{\mathbf{x}}_k^-$, $\mathbf{P}_k^-$, measurement $\mathbf{z}_k$
+    \State Compute measurement Jacobian $\mathbf{H}_k = \frac{\partial h}{\partial \mathbf{x}}\bigg|_{\hat{\mathbf{x}}_k^-}$
+    \State Innovation: $\mathbf{y}_k = \mathbf{z}_k - h(\hat{\mathbf{x}}_k^-)$
+    \State Innovation covariance: $\mathbf{S}_k = \mathbf{H}_k \mathbf{P}_k^- \mathbf{H}_k^\top + \mathbf{R}$
+    \State Kalman gain: $\mathbf{K}_k = \mathbf{P}_k^- \mathbf{H}_k^\top \mathbf{S}_k^{-1}$
+    \State Update state: $\hat{\mathbf{x}}_k = \hat{\mathbf{x}}_k^- + \mathbf{K}_k \mathbf{y}_k$
+    \State Update covariance: $\mathbf{P}_k = (\mathbf{I} - \mathbf{K}_k \mathbf{H}_k) \mathbf{P}_k^-$
+    \State \textbf{Output:} Posterior estimate $\hat{\mathbf{x}}_k$, posterior covariance $\mathbf{P}_k$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Noise Covariance Matrices}
+
+\subsection{Process Noise $\mathbf{Q}$}
+
+\begin{equation}
+    \mathbf{Q} = \text{diag}\left(
+        \underbrace{\sigma_p^2, \sigma_p^2, \sigma_p^2}_{\text{position}},
+        \underbrace{\sigma_v^2, \sigma_v^2, \sigma_v^2}_{\text{velocity}},
+        \underbrace{\sigma_\theta^2, \sigma_\theta^2, \sigma_\theta^2}_{\text{attitude}},
+        \underbrace{\sigma_\omega^2, \sigma_\omega^2, \sigma_\omega^2}_{\text{angular rate}}
+    \right)
+\end{equation}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Process noise parameters}
+    \label{tab:process_noise}
+    \begin{tabular}{@{}lll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Value} & \textbf{Description} \\
+        \midrule
+        $\sigma_p$ & \SI{0.01}{\meter} & Position uncertainty growth \\
+        $\sigma_v$ & \SI{0.1}{\meter\per\second} & Velocity uncertainty growth \\
+        $\sigma_\theta$ & \SI{0.001}{\radian} & Attitude uncertainty growth \\
+        $\sigma_\omega$ & \SI{0.01}{\radian\per\second} & Angular rate uncertainty growth \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Measurement Noise $\mathbf{R}$}
+
+The measurement noise covariance adapts based on sensor quality:
+
+\begin{equation}
+    \mathbf{R}_{\text{GPS}} = \text{HDOP}^2 \cdot \text{diag}(\sigma_{x,\text{GPS}}^2, \sigma_{y,\text{GPS}}^2, \sigma_{z,\text{GPS}}^2, ...)
+\end{equation}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Measurement noise parameters}
+    \label{tab:measurement_noise}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Sensor} & \textbf{State} & \textbf{Base $\sigma$} & \textbf{Scaling} \\
+        \midrule
+        GPS & Position & \SI{1.0}{\meter} & $\times$ HDOP \\
+        GPS & Velocity & \SI{0.5}{\meter\per\second} & $\times$ HDOP \\
+        IMU & Attitude & \SI{0.01}{\radian} & Fixed \\
+        IMU & Angular rate & \SI{0.05}{\radian\per\second} & Fixed \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Sensor Contract Verification}
+
+The EKF monitors sensor contracts to determine estimation validity:
+
+\begin{lstlisting}[caption={Sensor contract checking}]
+def check_sensor_contracts(self, sensors):
+    """Verify sensor contracts are satisfied."""
+    results = {
+        'gps_valid': False,
+        'imu_valid': False,
+        'estimation_reliable': False
+    }
+
+    # GPS contract: satellites >= 4 AND hdop < 5.0
+    gps = sensors.get('gps', {})
+    if gps.get('valid', False):
+        satellites = gps.get('satellites', 0)
+        hdop = gps.get('hdop', 99.0)
+        results['gps_valid'] = (satellites >= 4) and (hdop < 5.0)
+
+    # IMU contract: valid AND calibrated
+    imu = sensors.get('imu', {})
+    results['imu_valid'] = (
+        imu.get('valid', False) and
+        imu.get('calibrated', False)
+    )
+
+    # Overall estimation reliability
+    results['estimation_reliable'] = (
+        results['imu_valid'] and  # IMU always required
+        (results['gps_valid'] or self.has_recent_gps())
+    )
+
+    return results
+\end{lstlisting}
+
+\section{Estimation Quality Metrics}
+
+The EKF provides quality metrics for downstream components:
+
+\subsection{Position Uncertainty}
+
+\begin{equation}
+    \sigma_{\text{pos}} = \sqrt{\mathbf{P}_{11} + \mathbf{P}_{22} + \mathbf{P}_{33}}
+\end{equation}
+
+\subsection{Velocity Uncertainty}
+
+\begin{equation}
+    \sigma_{\text{vel}} = \sqrt{\mathbf{P}_{44} + \mathbf{P}_{55} + \mathbf{P}_{66}}
+\end{equation}
+
+\subsection{Innovation-Based Health Check}
+
+The normalized innovation squared (NIS) statistic detects filter divergence:
+
+\begin{equation}
+    \text{NIS}_k = \mathbf{y}_k^\top \mathbf{S}_k^{-1} \mathbf{y}_k
+\end{equation}
+
+Under consistent estimation, $\text{NIS}_k \sim \chi^2(n_z)$ where $n_z$ is the measurement dimension.
+
+\warningbox{
+If $\text{NIS}_k > \chi^2_{0.99}(n_z)$ for multiple consecutive updates, the filter may be diverging. The system should switch to a more robust controller (H-$\infty$) and potentially reset the EKF covariance.
+}
+
+\section{GPS-Denied Operation}
+
+When GPS becomes unavailable, the EKF transitions to IMU-only propagation:
+
+\begin{enumerate}
+    \item \textbf{Detection:} GPS marked invalid OR satellites $< 4$ OR HDOP $> 5$
+    \item \textbf{Transition:} Stop GPS measurement updates, increase position process noise
+    \item \textbf{Propagation:} Continue predict step with IMU-derived accelerations
+    \item \textbf{Covariance Growth:} Position uncertainty grows unbounded without GPS
+\end{enumerate}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=12cm, height=6cm,
+            xlabel={Time (s)},
+            ylabel={Position Uncertainty (m)},
+            xmin=0, xmax=20,
+            ymin=0, ymax=10,
+            grid=major,
+            legend pos=north west
+        ]
+            % GPS available
+            \addplot[thick, pidblue, domain=0:10] {0.5};
+
+            % GPS lost - uncertainty grows
+            \addplot[thick, cbforange, domain=10:20] {0.5 + 0.3*(x-10)^1.5};
+
+            % GPS loss marker
+            \draw[dashed, thick, red] (axis cs:10,0) -- (axis cs:10,10);
+            \node[font=\footnotesize] at (axis cs:10,8) {GPS Lost};
+
+            \legend{With GPS, IMU-only}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Position uncertainty growth during GPS-denied operation}
+    \label{fig:gps_denied}
+\end{figure}
+
+\section{EKF Contract Specification}
+
+\begin{contractbox}[Estimator Contract $\mathcal{C}_{\text{estimator}}$]
+\textbf{Assumptions:}
+\begin{itemize}
+    \item IMU valid and calibrated
+    \item GPS valid with $\geq 4$ satellites, HDOP $< 5$ (when available)
+    \item Sensor update rate $\geq$ 10 Hz
+    \item True state within sensor measurement range
+\end{itemize}
+
+\textbf{Guarantees:}
+\begin{itemize}
+    \item Position estimate error $< 3\sigma_{\text{pos}}$ (99.7\% of time)
+    \item Velocity estimate error $< 3\sigma_{\text{vel}}$ (99.7\% of time)
+    \item Attitude estimate error $< 0.1$ rad
+    \item Estimate covariance is positive definite
+    \item Contract violation flagged within 2 update cycles
+\end{itemize}
+\end{contractbox}
+
+\section{Implementation Details}
+
+\begin{lstlisting}[caption={ContractEKF class structure}]
+class ContractEKF:
+    def __init__(self, dt=0.02):
+        self.dt = dt
+        self.state = np.zeros(12)  # [x,y,z,vx,vy,vz,phi,theta,psi,p,q,r]
+        self.P = np.eye(12) * 0.1   # Initial covariance
+        self.Q = self._build_process_noise()
+        self.R_base = self._build_measurement_noise()
+
+    def predict(self, dt=None):
+        """Propagate state and covariance forward."""
+        dt = dt or self.dt
+        F = self._compute_jacobian()
+        self.state = self.state + self._dynamics(self.state) * dt
+        self.P = F @ self.P @ F.T + self.Q * dt
+
+    def update(self, measurements, raw_sensors, time):
+        """Incorporate measurements and return state."""
+        # Check sensor contracts
+        contracts = self.check_sensor_contracts(raw_sensors)
+
+        # Build measurement vector and noise
+        z, R = self._build_measurement(measurements, raw_sensors)
+
+        # Standard EKF update
+        H = self._measurement_jacobian()
+        y = z - H @ self.state
+        S = H @ self.P @ H.T + R
+        K = self.P @ H.T @ np.linalg.inv(S)
+
+        self.state = self.state + K @ y
+        self.P = (np.eye(12) - K @ H) @ self.P
+
+        return self.state.copy(), contracts['estimation_reliable']
+\end{lstlisting}
+

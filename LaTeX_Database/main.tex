@@ -1,0 +1,292 @@
+% ============================================================================
+% Contract-Based Adaptive UAV Control System
+% Comprehensive Technical Documentation
+% ============================================================================
+
+\documentclass[12pt,a4paper,twoside]{report}
+
+% ============================================================================
+% PACKAGES
+% ============================================================================
+
+% Page layout
+\usepackage[margin=1in,inner=1.2in,outer=1in]{geometry}
+\usepackage{fancyhdr}
+
+% Fonts and encoding
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% Mathematics
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+
+% Graphics and figures
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{float}
+\usepackage{subcaption}
+
+% TikZ libraries
+\usetikzlibrary{
+    shapes.geometric,
+    arrows.meta,
+    positioning,
+    fit,
+    backgrounds,
+    calc,
+    decorations.pathreplacing,
+    patterns,
+    shadows,
+    matrix,
+    chains
+}
+\pgfplotsset{compat=1.18}
+
+% Tables
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{colortbl}
+
+% Lists and enumerations
+\usepackage{enumitem}
+
+% Colors
+\usepackage{xcolor}
+
+% Code listings
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% References and links
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+% Bibliography
+\usepackage[numbers,sort&compress]{natbib}
+
+% Miscellaneous
+\usepackage{lipsum}
+\usepackage{siunitx}
+\usepackage{nomencl}
+\usepackage{glossaries}
+\usepackage{pifont}  % For checkmarks
+
+% Checkmark commands
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% ============================================================================
+% COLOR DEFINITIONS
+% ============================================================================
+
+\definecolor{pidblue}{RGB}{66,133,244}
+\definecolor{hinfgreen}{RGB}{52,168,83}
+\definecolor{cbforange}{RGB}{251,188,5}
+\definecolor{contractpurple}{RGB}{103,58,183}
+\definecolor{safetyred}{RGB}{234,67,53}
+\definecolor{sensorblue}{RGB}{33,150,243}
+\definecolor{ekfgreen}{RGB}{76,175,80}
+\definecolor{supervisororange}{RGB}{255,152,0}
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codeframe}{RGB}{200,200,200}
+\definecolor{chapcolor}{RGB}{63,81,181}
+
+% ============================================================================
+% THEOREM ENVIRONMENTS
+% ============================================================================
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[chapter]
+\newtheorem{contract}{Contract}[chapter]
+\newtheorem{assumption}{Assumption}[chapter]
+\newtheorem{guarantee}{Guarantee}[chapter]
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[chapter]
+\newtheorem{example}{Example}[chapter]
+
+% ============================================================================
+% CODE LISTING STYLE
+% ============================================================================
+
+\lstdefinestyle{pythonstyle}{
+    language=Python,
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    breakatwhitespace=true,
+    commentstyle=\color{green!50!black}\itshape,
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{red!70!black},
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    numbersep=8pt,
+    frame=single,
+    framerule=0.5pt,
+    rulecolor=\color{codeframe},
+    showstringspaces=false,
+    tabsize=4,
+    captionpos=b,
+    morekeywords={self,True,False,None,np,array},
+}
+
+\lstdefinestyle{pseudocode}{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\bfseries\color{blue},
+    commentstyle=\itshape\color{green!50!black},
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+}
+
+\lstset{style=pythonstyle}
+
+% ============================================================================
+% HEADER AND FOOTER
+% ============================================================================
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\leftmark}
+\fancyhead[RO]{\rightmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ============================================================================
+% CHAPTER FORMATTING
+% ============================================================================
+
+\usepackage{titlesec}
+
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{chapcolor}}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{-20pt}{40pt}
+
+% ============================================================================
+% HYPERREF SETUP
+% ============================================================================
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=contractpurple,
+    citecolor=hinfgreen,
+    urlcolor=pidblue,
+    pdftitle={Contract-Based Adaptive UAV Control System},
+    pdfauthor={UAV Research Team},
+    pdfsubject={Formal Methods in Autonomous Systems},
+    pdfkeywords={UAV, Contracts, Adaptive Control, Safety, Pacti}
+}
+
+% ============================================================================
+% CUSTOM COMMANDS
+% ============================================================================
+
+% Math operators
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\trace}{tr}
+
+% State vectors
+\newcommand{\state}{\mathbf{x}}
+\newcommand{\stateest}{\hat{\mathbf{x}}}
+\newcommand{\control}{\mathbf{u}}
+\newcommand{\measurement}{\mathbf{z}}
+\newcommand{\noise}{\mathbf{w}}
+\newcommand{\covariance}{\mathbf{P}}
+
+% Contract notation
+\newcommand{\contract}[2]{\mathcal{C}(#1, #2)}
+\newcommand{\assumption}{\mathcal{A}}
+\newcommand{\guarantee}{\mathcal{G}}
+\newcommand{\compose}{\otimes}
+
+% Boxes for important content
+\newcommand{\importantbox}[1]{%
+    \begin{center}
+    \fcolorbox{contractpurple}{contractpurple!10}{%
+        \parbox{0.9\textwidth}{#1}%
+    }
+    \end{center}
+}
+
+\newcommand{\warningbox}[1]{%
+    \begin{center}
+    \fcolorbox{safetyred}{safetyred!10}{%
+        \parbox{0.9\textwidth}{\textcolor{safetyred}{\textbf{Warning:}} #1}%
+    }
+    \end{center}
+}
+
+% Contract box environment
+\newenvironment{contractbox}[1][]{%
+    \begin{center}
+    \begin{tikzpicture}
+    \node[draw=contractpurple, rounded corners=5pt, fill=contractpurple!5,
+          inner sep=10pt, text width=0.88\textwidth, align=left] (box) \bgroup
+    \textbf{\textcolor{contractpurple}{#1}}\\[6pt]
+}{%
+    \egroup;
+    \end{tikzpicture}
+    \end{center}
+}
+
+% ============================================================================
+% DOCUMENT BEGIN
+% ============================================================================
+
+\begin{document}
+
+% Title page
+\input{chapters/titlepage}
+
+% Front matter
+\frontmatter
+\tableofcontents
+\listoffigures
+\listoftables
+\input{chapters/nomenclature}
+
+% Main matter
+\mainmatter
+\input{chapters/ch01_introduction}
+\input{chapters/ch02_architecture}
+\input{chapters/ch03_contracts}
+\input{chapters/ch04_estimation}
+\input{chapters/ch05_control}
+\input{chapters/ch06_planning}
+\input{chapters/ch07_safety}
+\input{chapters/ch08_integration}
+\input{chapters/ch09_results}
+\input{chapters/ch10_performance}
+\input{chapters/ch10_market}
+\input{chapters/ch11_conclusion}
+
+% Appendices
+\appendix
+\input{appendices/appendix_code}
+\input{appendices/appendix_math}
+\input{appendices/appendix_parameters}
+
+% Bibliography
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

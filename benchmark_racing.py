@@ -120,7 +120,27 @@ WAYPOINTS = [
     np.array([0.0,   0.0,  -5.0]),    # WP10: Return to start
 ]
 
-CONSTANT_WIND = np.array([0.5, 0.3, 0.0])  # Mild constant wind
+# Wind profile sweeps through all three controller tiers during the race:
+#   0–25 s  : calm  (0.5→2.5 m/s)  — PID territory    (wind < 3)
+#  25–55 s  : moderate (3→7 m/s)   — MPC territory     (3 ≤ wind < 8)
+#  55–80 s  : strong  (8→11 m/s)   — H-inf territory   (wind ≥ 8)
+#  80–100 s : recovery (11→1.5 m/s)— back to PID/MPC
+# Direction is constant NE (~60°) so the profile is a scalar ramp.
+WIND_DIRECTION = np.array([0.857, 0.515, 0.0])   # unit vector, NE
+
+def get_wind_at_time(t: float) -> np.ndarray:
+    """Return wind vector for elapsed race time t (seconds)."""
+    if t < 25.0:
+        mag = 0.5 + t * 0.08           # 0.5 → 2.5 m/s
+    elif t < 55.0:
+        mag = 2.5 + (t - 25.0) * 0.15  # 2.5 → 7.0 m/s
+    elif t < 80.0:
+        mag = 7.0 + (t - 55.0) * 0.16  # 7.0 → 11.0 m/s
+    elif t < 100.0:
+        mag = 11.0 - (t - 80.0) * 0.475  # 11.0 → 1.5 m/s
+    else:
+        mag = 1.5
+    return WIND_DIRECTION * mag
 
 INITIAL_CONDITIONS = {
     'gps_satellites': 12.0,
@@ -181,7 +201,7 @@ def run_scenario(mode: str):
         t = step * DT
         times.append(t)
 
-        drone.set_wind(CONSTANT_WIND)
+        drone.set_wind(get_wind_at_time(t))
         sensors = drone.get_sensor_data()
         control, telemetry = controller.control_step(sensors)
         drone.update(control)
@@ -587,7 +607,7 @@ def main():
 
     print(f"\nRacing Course: {len(WAYPOINTS)} waypoints (figure-8 with altitude changes)")
     print("  Faster physics: max_vel=5.0, max_accel=4.0, vert_clip=±3.0, damping=0.98")
-    print(f"  Wind: Mild constant [{CONSTANT_WIND[0]}, {CONSTANT_WIND[1]}, {CONSTANT_WIND[2]}] m/s")
+    print("  Wind: time-varying profile (0->2.5->7->11->1.5 m/s, sweeps PID/MPC/H-inf tiers)")
     print(f"  Max duration: {MAX_STEPS * DT:.0f}s\n")
 
     print("  Waypoints:")

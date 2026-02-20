@@ -1,0 +1,218 @@
+% ============================================================================
+% CHAPTER 11: CONCLUSION
+% ============================================================================
+
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+\section{Summary of Contributions}
+
+This work has presented a comprehensive \textbf{Contract-Based Adaptive UAV Control System} that advances the state-of-the-art in autonomous drone safety through the principled application of formal methods.
+
+\subsection{Technical Contributions}
+
+\begin{enumerate}[label=\textbf{C\arabic*:}]
+    \item \textbf{Hierarchical Contract Framework:} We developed a complete specification of Assume-Guarantee contracts for all system components---from sensors through actuators---enabling compositional verification of system-level properties without requiring analysis of internal implementations.
+
+    \item \textbf{Predictive Horizon Planning:} We introduced a novel use of contract composition over a planning horizon using the Pacti library. This enables the system to anticipate safety violations \textit{before} they occur, providing 1--2 seconds of advance warning compared to reactive approaches.
+
+    \item \textbf{Principled Controller Switching:} We demonstrated mathematically justified transitions between PID and H-infinity controllers based on formal contract satisfaction, replacing ad-hoc heuristic thresholds with provable switching conditions.
+
+    \item \textbf{Multi-Layer Safety Architecture:} We implemented a defense-in-depth approach with:
+    \begin{itemize}
+        \item Planning layer: Predictive contract monitoring
+        \item Supervision layer: Mode-based protection
+        \item Control layer: CBF-based hard constraint enforcement
+    \end{itemize}
+
+    \item \textbf{Pre-flight Verification:} We enabled mathematical proof of mission feasibility before takeoff through contract composition, allowing operators to verify that a mission can be completed safely under expected conditions.
+\end{enumerate}
+
+\subsection{Implementation Achievements}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Implementation summary}
+    \label{tab:implementation_summary}
+    \begin{tabular}{@{}ll@{}}
+        \toprule
+        \textbf{Component} & \textbf{Status} \\
+        \midrule
+        Contract-aware EKF & Implemented, tested \\
+        PID Controller with contracts & Implemented, tuned \\
+        H-$\infty$ Controller with contracts & Implemented, validated \\
+        Flight Mode Supervisor & Implemented, 4 modes \\
+        Horizon Planner (Pacti) & Implemented, 3s horizon \\
+        CBF Safety Filter & Implemented, 3 constraints \\
+        Controller Switcher & Implemented, bumpless transfer \\
+        Adaptive Control System & Integrated, demonstrated \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Key Findings}
+
+\subsection{Contract-Based Design Benefits}
+
+\begin{enumerate}
+    \item \textbf{Modularity:} Contracts provide clean interfaces between components, enabling independent development and testing.
+
+    \item \textbf{Compositionality:} System-level properties can be verified by composing component contracts, without analyzing implementations.
+
+    \item \textbf{Transparency:} Contract violations are explicit and traceable, supporting debugging and certification.
+
+    \item \textbf{Adaptability:} Contracts define operating envelopes that enable principled adaptation.
+\end{enumerate}
+
+\subsection{Experimental Validation}
+
+The multi-waypoint mission experiments demonstrated:
+
+\begin{itemize}
+    \item \textbf{100\% waypoint completion} under varying wind conditions
+    \item \textbf{Zero safety violations} with CBF enforcement
+    \item \textbf{Correct controller switching} based on contract satisfaction
+    \item \textbf{8\% energy savings} compared to always-robust operation
+    \item \textbf{Predictive advantage} of 1.5s average warning time
+\end{itemize}
+
+\subsection{Lessons Learned}
+
+\begin{enumerate}
+    \item \textbf{EKF Predict Step:} The predict step must always precede update to prevent state drift. This was a critical bug that caused significant issues until identified.
+
+    \item \textbf{NED Coordinate System:} The NED convention (negative Z = altitude) requires careful attention throughout the codebase to avoid sign errors in altitude control.
+
+    \item \textbf{Wind Estimation:} Direct wind sensor measurement is more reliable than drift-based estimation. Low-pass filtering ($\alpha = 0.15$) balances responsiveness and stability.
+
+    \item \textbf{Waypoint Detection:} Confirmation counting (5 consecutive checks) prevents false waypoint-reached triggers during oscillations.
+
+    \item \textbf{Controller Tuning:} Conservative PID gains prevent overshoot in simulation; real hardware may require different tuning.
+\end{enumerate}
+
+\section{Limitations}
+
+\subsection{Current Limitations}
+
+\begin{enumerate}
+    \item \textbf{Simulation Only:} All results are from simulation; no flight test validation has been performed.
+
+    \item \textbf{Simplified Dynamics:} The simulation uses simplified quadrotor dynamics; real vehicles have complex aerodynamic effects.
+
+    \item \textbf{No Obstacle Avoidance:} The current system does not include obstacle detection or avoidance.
+
+    \item \textbf{Static Contracts:} Contract parameters are fixed at design time; runtime contract learning is not implemented.
+
+    \item \textbf{Computational Cost:} Pacti contract composition adds computational overhead compared to simple threshold checks.
+\end{enumerate}
+
+\subsection{Scope Boundaries}
+
+\begin{itemize}
+    \item Single vehicle only (no multi-UAV coordination)
+    \item Position-based control (no visual servoing)
+    \item Known environment (no SLAM)
+    \item Hover-capable vehicles (no fixed-wing)
+\end{itemize}
+
+\section{Future Work}
+
+\subsection{Near-Term Extensions}
+
+\begin{enumerate}
+    \item \textbf{Hardware-in-the-Loop Testing:}
+    Interface with PX4 SITL and Gazebo for realistic simulation.
+
+    \item \textbf{Obstacle Avoidance:}
+    Integrate CBF-based obstacle avoidance with safety contracts.
+
+    \item \textbf{Wind Model Improvement:}
+    Implement Dryden or von K\'arm\'an wind models for realistic disturbances.
+
+    \item \textbf{Performance Optimization:}
+    Optimize Pacti calls and implement caching for real-time performance.
+\end{enumerate}
+
+\subsection{Medium-Term Research}
+
+\begin{enumerate}
+    \item \textbf{Learning-Based Contract Adaptation:}
+    Use online learning to adapt contract parameters based on observed system behavior.
+
+    \item \textbf{Multi-UAV Coordination:}
+    Extend contracts to handle inter-vehicle interactions and collision avoidance.
+
+    \item \textbf{Degraded Sensor Contracts:}
+    Develop contracts for graceful degradation under sensor failures.
+
+    \item \textbf{Formal Verification Tools:}
+    Integrate with model checkers (e.g., UPPAAL, PRISM) for stronger guarantees.
+\end{enumerate}
+
+\subsection{Long-Term Vision}
+
+\begin{enumerate}
+    \item \textbf{Certification Framework:}
+    Develop a complete certification package for DO-178C compliance using contract-based evidence.
+
+    \item \textbf{Commercial Integration:}
+    Partner with UAV manufacturers to integrate contract-based control into commercial products.
+
+    \item \textbf{Urban Air Mobility:}
+    Adapt the framework for passenger-carrying autonomous aerial vehicles.
+
+    \item \textbf{General Autonomous Systems:}
+    Extend the contract-based approach to other autonomous systems (ground vehicles, robots, etc.).
+\end{enumerate}
+
+\section{Broader Impact}
+
+\subsection{Scientific Contribution}
+
+This work demonstrates the practical applicability of formal methods to real-time control systems. The combination of:
+\begin{itemize}
+    \item Assume-Guarantee contracts
+    \item Polyhedral contract algebra (Pacti)
+    \item Control Barrier Functions
+    \item Robust control (H-$\infty$)
+\end{itemize}
+creates a framework that bridges the gap between formal methods research and practical engineering.
+
+\subsection{Societal Impact}
+
+As autonomous drones become more prevalent in society, the ability to provide formal safety guarantees becomes increasingly important:
+
+\begin{itemize}
+    \item \textbf{Public Safety:} Formal guarantees reduce the risk of drone-related accidents.
+    \item \textbf{Regulatory Acceptance:} Contract-based evidence supports certification processes.
+    \item \textbf{Transparency:} Explainable decisions build public trust in autonomous systems.
+    \item \textbf{Insurance:} Formal guarantees may reduce insurance costs for commercial operators.
+\end{itemize}
+
+\section{Final Remarks}
+
+The Contract-Based Adaptive UAV Control System represents a significant step toward provably safe autonomous flight. By combining formal methods with practical control engineering, we have demonstrated that:
+
+\begin{quote}
+\textit{Safety and adaptability are not mutually exclusive---through principled contract-based design, autonomous systems can be both formally verified and dynamically responsive to changing conditions.}
+\end{quote}
+
+As the UAV industry matures and regulatory requirements tighten, approaches like the one presented here will become essential for deploying autonomous systems in safety-critical applications. We believe this work provides a foundation for the next generation of verifiably safe autonomous aerial vehicles.
+
+\vspace{1cm}
+
+\begin{center}
+\begin{tikzpicture}
+    \node[draw, rounded corners=10pt, fill=contractpurple!10, inner sep=15pt, text width=10cm, align=center] {
+        \textbf{\Large Contract-Based Adaptive UAV Control}\\[10pt]
+        \textit{Formal Methods for Provably Safe Autonomous Flight}\\[15pt]
+        \begin{tabular}{@{}ccc@{}}
+            \includegraphics[height=1cm]{figures/placeholder_contracts.pdf} &
+            \includegraphics[height=1cm]{figures/placeholder_uav.pdf} &
+            \includegraphics[height=1cm]{figures/placeholder_safety.pdf} \\
+            Contracts & Autonomy & Safety
+        \end{tabular}
+    };
+\end{tikzpicture}
+\end{center}
+

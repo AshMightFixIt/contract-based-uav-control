@@ -1,0 +1,247 @@
+% ============================================================================
+% CHAPTER 1: INTRODUCTION
+% ============================================================================
+
+\chapter{Introduction}
+\label{ch:introduction}
+
+\section{Motivation}
+
+The proliferation of Unmanned Aerial Vehicles (UAVs) in safety-critical applications---from urban air mobility to medical delivery, infrastructure inspection to search and rescue---demands control systems that can provide \textbf{mathematically verifiable safety guarantees}. Traditional approaches to drone control rely on heuristic safety mechanisms or ``black-box'' AI systems that cannot provide formal assurances about their behavior.
+
+This document presents a fundamentally different approach: a \textbf{Contract-Based Adaptive UAV Control System} that leverages formal methods from computer science to provide provable safety properties while maintaining the adaptability required for real-world operation.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.9,
+        approach/.style={
+            draw,
+            rounded corners,
+            minimum width=4cm,
+            minimum height=2.5cm,
+            align=center,
+            font=\small
+        }
+    ]
+        % Traditional approach
+        \node[approach, fill=red!20] (trad) at (0,0) {
+            \textbf{Traditional}\\[3pt]
+            Heuristic safety\\
+            No formal guarantees\\
+            Reactive adaptation
+        };
+
+        % AI approach
+        \node[approach, fill=orange!20] (ai) at (5.5,0) {
+            \textbf{AI-Based}\\[3pt]
+            Learned behavior\\
+            Black-box decisions\\
+            Opaque reasoning
+        };
+
+        % Our approach
+        \node[approach, fill=green!20, line width=2pt, draw=contractpurple] (ours) at (11,0) {
+            \textbf{Contract-Based}\\[3pt]
+            Formal verification\\
+            Provable guarantees\\
+            Predictive adaptation
+        };
+
+        % Labels
+        \node[above=0.5cm of trad, font=\footnotesize\itshape] {PX4, ArduPilot};
+        \node[above=0.5cm of ai, font=\footnotesize\itshape] {Skydio, DJI};
+        \node[above=0.5cm of ours, font=\footnotesize\itshape\color{contractpurple}] {This Work};
+
+        % Progress arrow
+        \draw[-{Stealth}, very thick, gray] (-2,-1.8) -- (13,-1.8)
+            node[midway, below, font=\small] {Increasing Safety Assurance};
+    \end{tikzpicture}
+    \caption{Evolution of UAV control approaches: from heuristic to formal methods}
+    \label{fig:approaches}
+\end{figure}
+
+\section{The Contract-Based Approach}
+
+At the heart of our system lies the concept of \textbf{Assume-Guarantee (A/G) contracts}. Every component in the system operates under a formal contract that specifies:
+
+\begin{definition}[Assume-Guarantee Contract]
+An Assume-Guarantee contract $\mathcal{C} = (\mathcal{A}, \mathcal{G})$ consists of:
+\begin{itemize}
+    \item \textbf{Assumptions} $\mathcal{A}$: Conditions the environment must satisfy
+    \item \textbf{Guarantees} $\mathcal{G}$: Properties the component will ensure
+\end{itemize}
+The contract semantics are: if $\mathcal{A}$ holds, then $\mathcal{G}$ is guaranteed.
+\end{definition}
+
+\importantbox{
+\textbf{Key Insight:} Contracts enable \textit{compositional reasoning}---we can verify system-level properties by analyzing component contracts, without needing to understand internal implementations.
+}
+
+\section{System Overview}
+
+The complete control system follows a hierarchical pipeline architecture:
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.2cm and 0.8cm,
+        block/.style={
+            draw,
+            rounded corners=4pt,
+            minimum width=2.2cm,
+            minimum height=1.4cm,
+            align=center,
+            font=\small,
+            drop shadow={shadow xshift=1pt, shadow yshift=-1pt}
+        },
+        contract/.style={
+            draw,
+            dashed,
+            rounded corners=2pt,
+            fill=contractpurple!10,
+            minimum height=0.6cm,
+            font=\scriptsize,
+            inner sep=3pt
+        },
+        arrow/.style={-{Stealth}, thick},
+        dataarrow/.style={-{Stealth}, thick, blue!60}
+    ]
+        % Main pipeline blocks
+        \node[block, fill=sensorblue!30] (sensors) {
+            \textbf{Sensors}\\
+            \scriptsize GPS, IMU
+        };
+
+        \node[block, fill=ekfgreen!30, right=of sensors] (ekf) {
+            \textbf{EKF}\\
+            \scriptsize State Est.
+        };
+
+        \node[block, fill=contractpurple!30, right=of ekf] (planner) {
+            \textbf{Horizon}\\
+            \textbf{Planner}\\
+            \scriptsize Pacti
+        };
+
+        \node[block, fill=supervisororange!30, right=of planner] (supervisor) {
+            \textbf{Flight Mode}\\
+            \textbf{Supervisor}
+        };
+
+        \node[block, fill=pidblue!30, below right=1cm and -0.5cm of supervisor] (pid) {
+            \textbf{PID}\\
+            \scriptsize Efficient
+        };
+
+        \node[block, fill=hinfgreen!30, below left=1cm and -0.5cm of supervisor] (hinf) {
+            \textbf{H-$\infty$}\\
+            \scriptsize Robust
+        };
+
+        \node[block, fill=cbforange!30, below=2.5cm of supervisor] (cbf) {
+            \textbf{CBF Filter}\\
+            \scriptsize Safety
+        };
+
+        \node[block, fill=gray!30, below=of cbf] (actuators) {
+            \textbf{Actuators}\\
+            \scriptsize Motors
+        };
+
+        % Contract labels
+        \node[contract, above=0.3cm of sensors] {$\mathcal{C}_{\text{sensor}}$};
+        \node[contract, above=0.3cm of ekf] {$\mathcal{C}_{\text{estimator}}$};
+        \node[contract, above=0.3cm of planner] {$\mathcal{C}_{\text{planner}}$};
+        \node[contract, above=0.3cm of supervisor] {$\mathcal{C}_{\text{supervisor}}$};
+        \node[contract, right=0.2cm of pid] {$\mathcal{C}_{\text{PID}}$};
+        \node[contract, left=0.2cm of hinf] {$\mathcal{C}_{\text{H}\infty}$};
+        \node[contract, right=0.3cm of cbf] {$\mathcal{C}_{\text{safety}}$};
+
+        % Main flow arrows
+        \draw[arrow] (sensors) -- (ekf);
+        \draw[arrow] (ekf) -- (planner);
+        \draw[arrow] (planner) -- (supervisor);
+
+        % Controller selection
+        \draw[arrow] (supervisor) -- (pid);
+        \draw[arrow] (supervisor) -- (hinf);
+        \draw[arrow] (pid) -- (cbf);
+        \draw[arrow] (hinf) -- (cbf);
+        \draw[arrow] (cbf) -- (actuators);
+
+        % Feedback
+        \draw[arrow, dashed, gray]
+            (actuators.west) -- ++(-5,0) |- (sensors.west);
+
+        % Selection indicator
+        \node[font=\scriptsize, text=contractpurple] at ($(supervisor)!0.5!(pid) + (0.8,0)$) {select};
+        \node[font=\scriptsize, text=contractpurple] at ($(supervisor)!0.5!(hinf) + (-0.8,0)$) {or};
+
+    \end{tikzpicture}
+    \caption{Complete system architecture with contract interfaces at each component boundary}
+    \label{fig:system_architecture}
+\end{figure}
+
+\section{Key Contributions}
+
+This work makes the following contributions to the field of autonomous UAV control:
+
+\begin{enumerate}[label=\textbf{C\arabic*:}, leftmargin=*]
+    \item \textbf{Hierarchical Contract Framework:} A complete specification of A/G contracts for all system components, enabling compositional verification from sensors to actuators.
+
+    \item \textbf{Predictive Horizon Planning:} A novel use of contract composition over a planning horizon to anticipate safety violations \textit{before} they occur, enabling preemptive adaptation.
+
+    \item \textbf{Principled Controller Switching:} Mathematically justified transitions between PID and H-infinity controllers based on contract satisfaction, not heuristics.
+
+    \item \textbf{Multi-Layer Safety Architecture:} Defense-in-depth with contracts at the planning level, mode switching at the supervisor level, and CBF enforcement at the control level.
+
+    \item \textbf{Pre-flight Verification:} The ability to mathematically prove mission feasibility before takeoff through contract composition.
+\end{enumerate}
+
+\section{Document Organization}
+
+The remainder of this document is organized as follows:
+
+\begin{description}[leftmargin=1.5cm, style=nextline]
+    \item[Chapter 2:] \textbf{System Architecture} --- Detailed description of the control pipeline, data flow, and coordinate systems.
+
+    \item[Chapter 3:] \textbf{Contract Framework} --- Comprehensive specification of A/G contracts, the Pacti library, and contract composition.
+
+    \item[Chapter 4:] \textbf{State Estimation} --- The contract-aware Extended Kalman Filter with sensor fusion strategies.
+
+    \item[Chapter 5:] \textbf{Control Systems} --- PID and H-infinity controllers, their contracts, and switching logic.
+
+    \item[Chapter 6:] \textbf{Horizon Planning} --- Predictive planning using contract cascade over planning horizons.
+
+    \item[Chapter 7:] \textbf{Safety Layer} --- Control Barrier Functions and runtime safety enforcement.
+
+    \item[Chapter 8:] \textbf{System Integration} --- Complete adaptive control system implementation.
+
+    \item[Chapter 9:] \textbf{Experimental Results} --- Multi-waypoint mission demonstrations and performance analysis.
+
+    \item[Chapter 10:] \textbf{Market Analysis} --- Comparison with commercial and open-source alternatives.
+
+    \item[Chapter 11:] \textbf{Conclusion} --- Summary and future directions.
+\end{description}
+
+\section{Target Applications}
+
+The contract-based approach is particularly suited for safety-critical UAV applications:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Target applications and their safety requirements}
+    \label{tab:applications}
+    \begin{tabular}{@{}lll@{}}
+        \toprule
+        \textbf{Application} & \textbf{Safety Requirement} & \textbf{Contract Benefit} \\
+        \midrule
+        Urban Air Mobility & Passenger safety certification & Formal verification \\
+        Medical Delivery & Guaranteed delivery reliability & Pre-flight verification \\
+        Infrastructure Inspection & Predictable near-structure behavior & Bounded tracking error \\
+        Search \& Rescue & Operation in degraded conditions & Graceful degradation \\
+        Military/Defense & Certified autonomous behavior & Transparent decisions \\
+        \bottomrule
+    \end{tabular}
+\end{table}

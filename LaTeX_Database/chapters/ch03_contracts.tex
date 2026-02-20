@@ -1,0 +1,356 @@
+% ============================================================================
+% CHAPTER 3: CONTRACT FRAMEWORK
+% ============================================================================
+
+\chapter{The Contract Framework}
+\label{ch:contracts}
+
+\importantbox{
+\textbf{Contracts are the cornerstone of this system's safety guarantees.} Every component operates under formally specified Assume-Guarantee (A/G) contracts that enable compositional verification and principled adaptive behavior.
+}
+
+\section{Foundations of Assume-Guarantee Contracts}
+
+\subsection{Formal Definition}
+
+\begin{definition}[Assume-Guarantee Contract]
+\label{def:ag_contract}
+An Assume-Guarantee (A/G) contract is a tuple $\mathcal{C} = (\mathcal{V}, \mathcal{A}, \mathcal{G})$ where:
+\begin{itemize}
+    \item $\mathcal{V}$ is a set of variables (inputs and outputs)
+    \item $\mathcal{A}$ is a set of \textbf{assumptions} over input variables
+    \item $\mathcal{G}$ is a set of \textbf{guarantees} over output variables
+\end{itemize}
+\end{definition}
+
+The semantics of a contract are captured by the implication:
+\begin{equation}
+\boxed{\mathcal{A} \implies \mathcal{G}}
+\label{eq:contract_semantics}
+\end{equation}
+
+\begin{theorem}[Contract Satisfaction]
+A component $M$ \textbf{satisfies} contract $\mathcal{C} = (\mathcal{A}, \mathcal{G})$, written $M \models \mathcal{C}$, if and only if:
+\begin{equation}
+\forall \text{ inputs satisfying } \mathcal{A}: \text{ outputs of } M \text{ satisfy } \mathcal{G}
+\end{equation}
+\end{theorem}
+
+\subsection{Why Contracts Matter for Safety}
+
+Traditional safety approaches suffer from several limitations:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Comparison of safety approaches}
+    \label{tab:safety_comparison}
+    \begin{tabular}{@{}lcc@{}}
+        \toprule
+        \textbf{Aspect} & \textbf{Heuristic Safety} & \textbf{Contract-Based} \\
+        \midrule
+        Formal verification & \textcolor{red}{\ding{55}} No & \textcolor{green}{\ding{51}} Yes \\
+        Compositional & \textcolor{red}{\ding{55}} No & \textcolor{green}{\ding{51}} Yes \\
+        Transparent reasoning & \textcolor{red}{\ding{55}} Limited & \textcolor{green}{\ding{51}} Full \\
+        Graceful degradation & \textcolor{red}{\ding{55}} Ad-hoc & \textcolor{green}{\ding{51}} Principled \\
+        Pre-flight verification & \textcolor{red}{\ding{55}} No & \textcolor{green}{\ding{51}} Yes \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Contract Composition with Pacti}
+
+\subsection{The Pacti Library}
+
+We use the \textbf{Pacti library}\footnote{\url{https://pacti.readthedocs.io/}} for polyhedral contract manipulation. Pacti represents contracts as systems of linear inequalities, enabling:
+
+\begin{itemize}
+    \item \textbf{Contract composition}: Combining component contracts
+    \item \textbf{Contract quotient}: Deriving required component contracts
+    \item \textbf{Contract merging}: Combining multiple viewpoints
+    \item \textbf{Refinement checking}: Verifying contract relationships
+\end{itemize}
+
+\subsection{Polyhedral Contracts}
+
+\begin{definition}[Polyhedral Contract]
+A polyhedral contract represents assumptions and guarantees as polyhedra defined by linear inequalities:
+\begin{align}
+    \mathcal{A} &: \mathbf{A}_a \mathbf{v} \leq \mathbf{b}_a \\
+    \mathcal{G} &: \mathbf{A}_g \mathbf{v} \leq \mathbf{b}_g
+\end{align}
+where $\mathbf{v}$ is the vector of contract variables.
+\end{definition}
+
+\begin{example}[PID Controller Contract in Polyhedral Form]
+The PID controller contract can be expressed as:
+\begin{align}
+    \mathcal{A}_{\text{PID}}: \quad & \text{wind\_speed} \leq 3.0 \\
+    & \text{position\_error} \leq 2.0 \\
+    & \text{disturbance} \leq 1.0 \\[6pt]
+    \mathcal{G}_{\text{PID}}: \quad & \text{settling\_time} \leq 5.0 \\
+    & \text{overshoot} \leq 0.3 \\
+    & \text{steady\_state\_error} \leq 0.5
+\end{align}
+\end{example}
+
+\subsection{Contract Composition}
+
+When two components are connected in series, their contracts compose:
+
+\begin{theorem}[Contract Composition]
+\label{thm:composition}
+Given contracts $\mathcal{C}_1 = (\mathcal{A}_1, \mathcal{G}_1)$ and $\mathcal{C}_2 = (\mathcal{A}_2, \mathcal{G}_2)$ where outputs of $\mathcal{C}_1$ feed inputs of $\mathcal{C}_2$, the composed contract $\mathcal{C}_1 \otimes \mathcal{C}_2$ is:
+\begin{equation}
+\mathcal{C}_1 \otimes \mathcal{C}_2 = \left( \mathcal{A}_1 \cup (\mathcal{A}_2 \setminus \mathcal{G}_1), \; \mathcal{G}_1 \cap \mathcal{G}_2 \right)
+\label{eq:composition}
+\end{equation}
+\end{theorem}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        contract/.style={
+            draw,
+            rounded corners,
+            minimum width=3cm,
+            minimum height=2cm,
+            align=center
+        }
+    ]
+        % Contract 1
+        \node[contract, fill=pidblue!20] (c1) at (0,0) {
+            $\mathcal{C}_1$\\[3pt]
+            $(\mathcal{A}_1, \mathcal{G}_1)$
+        };
+
+        % Contract 2
+        \node[contract, fill=hinfgreen!20] (c2) at (5,0) {
+            $\mathcal{C}_2$\\[3pt]
+            $(\mathcal{A}_2, \mathcal{G}_2)$
+        };
+
+        % Composed contract
+        \node[contract, fill=contractpurple!20, minimum width=4cm] (comp) at (2.5,-3.5) {
+            $\mathcal{C}_1 \otimes \mathcal{C}_2$\\[3pt]
+            $(\mathcal{A}_1 \cup (\mathcal{A}_2 \setminus \mathcal{G}_1), \mathcal{G}_1 \cap \mathcal{G}_2)$
+        };
+
+        % Arrows
+        \draw[-{Stealth}, thick] (c1) -- (c2) node[midway, above] {$\mathcal{G}_1 \to \mathcal{A}_2$};
+        \draw[-{Stealth}, thick, dashed] (c1.south) -- (comp.north west);
+        \draw[-{Stealth}, thick, dashed] (c2.south) -- (comp.north east);
+        \node at (2.5,-1.5) {compose};
+    \end{tikzpicture}
+    \caption{Contract composition: outputs of $\mathcal{C}_1$ satisfy inputs of $\mathcal{C}_2$}
+    \label{fig:composition}
+\end{figure}
+
+\section{System Contract Hierarchy}
+
+\subsection{Sensor Contracts}
+
+\begin{contract}[GPS Sensor Contract]
+\label{contract:gps}
+\begin{align*}
+    \mathcal{A}_{\text{GPS}}: \quad & \text{satellites} \geq 6 \\
+    & \text{hdop} \leq 2.0 \\
+    & \text{sky\_visibility} > 0.5 \\[6pt]
+    \mathcal{G}_{\text{GPS}}: \quad & \text{position\_error} \leq 2.0 \text{ m} \\
+    & \text{velocity\_error} \leq 0.5 \text{ m/s} \\
+    & \text{update\_rate} \geq 10 \text{ Hz}
+\end{align*}
+\end{contract}
+
+\begin{contract}[IMU Sensor Contract]
+\label{contract:imu}
+\begin{align*}
+    \mathcal{A}_{\text{IMU}}: \quad & \text{calibrated} = \text{true} \\
+    & |\text{temperature} - 25| \leq 10 \text{ °C} \\[6pt]
+    \mathcal{G}_{\text{IMU}}: \quad & \text{attitude\_error} \leq 0.1 \text{ rad} \\
+    & \text{rate\_error} \leq 0.05 \text{ rad/s} \\
+    & \text{update\_rate} \geq 200 \text{ Hz}
+\end{align*}
+\end{contract}
+
+\subsection{Estimator Contract}
+
+\begin{contract}[EKF Estimator Contract]
+\label{contract:ekf}
+\begin{align*}
+    \mathcal{A}_{\text{EKF}}: \quad & \mathcal{G}_{\text{GPS}} \lor \mathcal{G}_{\text{IMU}} \text{ (at least one sensor)} \\
+    & \text{computation\_time} \leq 10 \text{ ms} \\[6pt]
+    \mathcal{G}_{\text{EKF}}: \quad & \text{state\_estimate\_valid} = \text{true} \\
+    & \text{covariance\_bounded} = \text{true} \\
+    & \text{position\_uncertainty} \leq 5.0 \text{ m (degraded mode)}
+\end{align*}
+\end{contract}
+
+\subsection{Controller Contracts}
+
+\begin{contract}[PID Controller Contract]
+\label{contract:pid}
+The PID controller operates efficiently under nominal conditions:
+\begin{align*}
+    \mathcal{A}_{\text{PID}}: \quad & \text{wind\_speed} \leq 3.0 \text{ m/s} \\
+    & \text{position\_error} \leq 2.0 \text{ m} \\
+    & \text{velocity\_error} \leq 1.0 \text{ m/s} \\
+    & \text{disturbance} \leq 1.0 \\
+    & \text{state\_estimate\_valid} = \text{true} \\[6pt]
+    \mathcal{G}_{\text{PID}}: \quad & \text{settling\_time} \leq 5.0 \text{ s} \\
+    & \text{overshoot} \leq 30\% \\
+    & \text{steady\_state\_error} \leq 0.5 \text{ m} \\
+    & \text{control\_effort} \leq \text{nominal}
+\end{align*}
+\end{contract}
+
+\begin{contract}[H-infinity Controller Contract]
+\label{contract:hinf}
+The H-infinity controller provides robust stabilization with minimal assumptions:
+\begin{align*}
+    \mathcal{A}_{\text{H}\infty}: \quad & \text{wind\_speed} \leq 8.0 \text{ m/s} \\
+    & \text{(no position error assumption)} \\
+    & \text{(no disturbance assumption)} \\[6pt]
+    \mathcal{G}_{\text{H}\infty}: \quad & \text{settling\_time} \leq 10.0 \text{ s} \\
+    & \text{stability} = \text{guaranteed} \\
+    & \text{altitude\_maintained} = \text{true} \\
+    & \text{attitude\_leveled} = \text{true}
+\end{align*}
+\end{contract}
+
+\importantbox{
+\textbf{Key Observation:} The H-infinity contract has \textit{weaker assumptions} (accepts higher wind, no position error requirement) but provides \textit{weaker guarantees} (slower settling, no overshoot bound). This tradeoff enables principled controller switching.
+}
+
+\subsection{Safety Contract}
+
+\begin{contract}[CBF Safety Contract]
+\label{contract:cbf}
+The CBF filter enforces hard constraints with \textbf{no assumptions}:
+\begin{align*}
+    \mathcal{A}_{\text{CBF}}: \quad & \text{(none --- always active)} \\[6pt]
+    \mathcal{G}_{\text{CBF}}: \quad & z \in [-50, -2] \text{ m (altitude bounds)} \\
+    & \|\mathbf{v}\| \leq 15 \text{ m/s (velocity limit)} \\
+    & |\phi|, |\theta| \leq 30° \text{ (tilt limit)} \\
+    & \|[\,p, q, r\,]\| \leq 3 \text{ rad/s (rate limit)}
+\end{align*}
+\end{contract}
+
+\section{Contract-Based Controller Selection}
+
+The contract framework enables \textbf{principled} controller selection based on assumption satisfaction:
+
+\begin{algorithm}[htbp]
+\caption{Contract-Based Controller Selection}
+\label{alg:selection}
+\begin{algorithmic}[1]
+    \Require Current system conditions $\mathbf{c}$
+    \Ensure Selected controller name
+    \State $\text{pid\_assumptions} \gets$ CheckAssumptions($\mathcal{C}_{\text{PID}}$, $\mathbf{c}$)
+    \State $\text{hinf\_assumptions} \gets$ CheckAssumptions($\mathcal{C}_{\text{H}\infty}$, $\mathbf{c}$)
+    \If{$\text{pid\_assumptions} = \text{satisfied}$}
+        \State \Return ``PID'' \Comment{Use efficient controller}
+    \ElsIf{$\text{hinf\_assumptions} = \text{satisfied}$}
+        \State \Return ``H-infinity'' \Comment{Use robust controller}
+    \Else
+        \State \Return ``H-infinity'' + TriggerEmergency()
+    \EndIf
+\end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.5cm,
+        decision/.style={
+            diamond,
+            draw,
+            fill=contractpurple!20,
+            text width=2.8cm,
+            align=center,
+            inner sep=2pt
+        },
+        block/.style={
+            rectangle,
+            draw,
+            rounded corners,
+            fill=white,
+            minimum width=2.5cm,
+            minimum height=1cm,
+            align=center
+        },
+        arrow/.style={-{Stealth}, thick}
+    ]
+        % Nodes
+        \node[block, fill=gray!20] (start) {System\\Conditions};
+        \node[decision, below=of start] (pid_check) {PID\\assumptions\\satisfied?};
+        \node[block, fill=pidblue!30, below left=1.5cm and 1.5cm of pid_check] (pid) {Use PID\\(Efficient)};
+        \node[decision, below right=1.5cm and 1.5cm of pid_check] (hinf_check) {H-$\infty$\\assumptions\\satisfied?};
+        \node[block, fill=hinfgreen!30, below left=1.5cm and 0cm of hinf_check] (hinf) {Use H-$\infty$\\(Robust)};
+        \node[block, fill=safetyred!30, below right=1.5cm and 0cm of hinf_check] (emergency) {Emergency\\Mode};
+
+        % Arrows
+        \draw[arrow] (start) -- (pid_check);
+        \draw[arrow] (pid_check) -- node[left] {Yes} (pid);
+        \draw[arrow] (pid_check) -- node[right] {No} (hinf_check);
+        \draw[arrow] (hinf_check) -- node[left] {Yes} (hinf);
+        \draw[arrow] (hinf_check) -- node[right] {No} (emergency);
+    \end{tikzpicture}
+    \caption{Contract-based controller selection decision tree}
+    \label{fig:selection}
+\end{figure}
+
+\section{Runtime Contract Monitoring}
+
+During flight, contracts are continuously monitored:
+
+\begin{lstlisting}[caption={Runtime contract monitoring}]
+def monitor_contracts(self, conditions, timestamp):
+    """Monitor all contracts and log violations"""
+
+    # Check PID assumptions
+    pid_contract = self.contracts['PID']
+    pid_satisfied, pid_msg = pid_contract.check_assumptions(conditions)
+
+    # Check H-infinity assumptions
+    hinf_contract = self.contracts['Hinf']
+    hinf_satisfied, hinf_msg = hinf_contract.check_assumptions(conditions)
+
+    # Log status
+    metrics = ContractMetrics(
+        timestamp=timestamp,
+        assumptions_met=pid_satisfied or hinf_satisfied,
+        active_contract='PID' if pid_satisfied else 'Hinf'
+    )
+
+    return metrics
+\end{lstlisting}
+
+\section{Pre-flight Contract Verification}
+
+Before takeoff, the system composes contracts to verify mission feasibility:
+
+\begin{theorem}[Mission Feasibility]
+A mission $\mathcal{M}$ with initial conditions $\mathbf{c}_0$ is feasible if:
+\begin{equation}
+\exists \mathcal{C} \in \{\mathcal{C}_{\text{PID}}, \mathcal{C}_{\text{H}\infty}\}: \mathbf{c}_0 \models \mathcal{A}_{\mathcal{C}}
+\end{equation}
+That is, at least one controller's assumptions are satisfied by initial conditions.
+\end{theorem}
+
+\begin{lstlisting}[caption={Pre-flight contract verification}]
+def pre_flight_check(self, conditions, mission):
+    """Verify mission feasibility before takeoff"""
+
+    # Try PID first (most efficient)
+    feasible_pid = self.verify_mission_feasibility('PID', conditions)
+    if feasible_pid:
+        return True, "Mission feasible with PID"
+
+    # Try H-infinity (always works if wind < 8 m/s)
+    feasible_hinf = self.verify_mission_feasibility('Hinf', conditions)
+    if feasible_hinf:
+        return True, "Mission feasible with H-infinity"
+
+    # Neither controller can handle conditions
+    return False, "Mission infeasible - conditions too extreme"
+\end{lstlisting}

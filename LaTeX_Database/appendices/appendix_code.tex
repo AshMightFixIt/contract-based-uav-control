@@ -1,0 +1,477 @@
+% ============================================================================
+% APPENDIX A: CODE LISTINGS
+% ============================================================================
+
+\chapter{Code Listings}
+\label{app:code}
+
+This appendix provides complete code listings for key system components.
+
+\section{Contract Framework}
+
+\begin{lstlisting}[caption={Base contract class (contract\_framework.py)}, label=lst:base_contract]
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Dict, Any, List, Optional
+import numpy as np
+
+@dataclass
+class ContractResult:
+    """Result of contract evaluation."""
+    satisfied: bool
+    margin: float  # How far from violation (negative = violated)
+    violations: List[str]  # List of violated assumptions/guarantees
+    details: Dict[str, Any]  # Additional diagnostic info
+
+class Contract(ABC):
+    """Base class for Assume-Guarantee contracts."""
+
+    def __init__(self, name: str):
+        self.name = name
+        self.last_result: Optional[ContractResult] = None
+
+    @abstractmethod
+    def check_assumptions(self, inputs: Dict[str, Any]) -> ContractResult:
+        """Check if contract assumptions are satisfied."""
+        pass
+
+    @abstractmethod
+    def check_guarantees(self, outputs: Dict[str, Any]) -> ContractResult:
+        """Check if contract guarantees are satisfied."""
+        pass
+
+    def evaluate(self, inputs: Dict, outputs: Dict) -> ContractResult:
+        """Full contract evaluation."""
+        assumptions = self.check_assumptions(inputs)
+        if not assumptions.satisfied:
+            # Assumptions violated - guarantees not required
+            self.last_result = ContractResult(
+                satisfied=False,
+                margin=assumptions.margin,
+                violations=assumptions.violations,
+                details={'assumptions_violated': True}
+            )
+            return self.last_result
+
+        guarantees = self.check_guarantees(outputs)
+        self.last_result = ContractResult(
+            satisfied=guarantees.satisfied,
+            margin=guarantees.margin,
+            violations=guarantees.violations,
+            details={'assumptions_violated': False}
+        )
+        return self.last_result
+\end{lstlisting}
+
+\section{PID Controller Contract}
+
+\begin{lstlisting}[caption={PID controller contract implementation}, label=lst:pid_contract]
+class PIDContract(Contract):
+    """Assume-Guarantee contract for PID controller."""
+
+    def __init__(self):
+        super().__init__("PID")
+        # Assumption thresholds
+        self.max_wind = 3.0  # m/s
+        self.max_tracking_error = 2.0  # m
+        self.max_uncertainty = 1.0  # m
+        self.max_angular_rate = 0.5  # rad/s
+
+        # Guarantee thresholds
+        self.guaranteed_tracking = 0.5  # m
+        self.guaranteed_settling = 10.0  # s
+
+    def check_assumptions(self, inputs: Dict[str, Any]) -> ContractResult:
+        """Check PID operating conditions."""
+        violations = []
+        margins = []
+
+        # Wind assumption
+        wind = inputs.get('wind_speed', 0)
+        wind_margin = (self.max_wind - wind) / self.max_wind
+        margins.append(wind_margin)
+        if wind > self.max_wind:
+            violations.append(f"wind_speed={wind:.2f} > {self.max_wind}")
+
+        # Tracking error assumption
+        error = inputs.get('tracking_error', 0)
+        error_margin = (self.max_tracking_error - error) / self.max_tracking_error
+        margins.append(error_margin)
+        if error > self.max_tracking_error:
+            violations.append(f"tracking_error={error:.2f} > {self.max_tracking_error}")
+
+        # Uncertainty assumption
+        unc = inputs.get('estimation_uncertainty', 0)
+        unc_margin = (self.max_uncertainty - unc) / self.max_uncertainty
+        margins.append(unc_margin)
+        if unc > self.max_uncertainty:
+            violations.append(f"uncertainty={unc:.2f} > {self.max_uncertainty}")
+
+        # Angular rate assumption
+        rate = inputs.get('angular_rates', 0)
+        rate_margin = (self.max_angular_rate - rate) / self.max_angular_rate
+        margins.append(rate_margin)
+        if rate > self.max_angular_rate:
+            violations.append(f"angular_rates={rate:.2f} > {self.max_angular_rate}")
+
+        # GPS assumption
+        gps_ok = inputs.get('gps_available', False)
+        if not gps_ok:
+            violations.append("gps_available=False")
+            margins.append(-1.0)
+
+        return ContractResult(
+            satisfied=len(violations) == 0,
+            margin=min(margins) if margins else 0,
+            violations=violations,
+            details={'individual_margins': dict(zip(
+                ['wind', 'error', 'uncertainty', 'rate'],
+                margins[:4]
+            ))}
+        )
+
+    def check_guarantees(self, outputs: Dict[str, Any]) -> ContractResult:
+        """Check PID guarantees."""
+        violations = []
+
+        tracking = outputs.get('tracking_error', 0)
+        if tracking > self.guaranteed_tracking:
+            violations.append(f"tracking={tracking:.2f} > {self.guaranteed_tracking}")
+
+        return ContractResult(
+            satisfied=len(violations) == 0,
+            margin=(self.guaranteed_tracking - tracking) / self.guaranteed_tracking,
+            violations=violations,
+            details={}
+        )
+\end{lstlisting}
+
+\section{Flight Mode Supervisor}
+
+\begin{lstlisting}[caption={Flight mode supervisor (flight\_mode\_supervisor.py)}, label=lst:supervisor]
+from enum import Enum, auto
+from typing import Dict, Tuple, List, Optional
+import numpy as np
+
+class FlightMode(Enum):
+    """Flight operating modes."""
+    TRACK = auto()    # Following waypoints
+    HOVER = auto()    # Holding position
+    LAND = auto()     # Landing sequence
+    EMERGENCY = auto() # Emergency hold
+
+class FlightModeSupervisor:
+    """Manages flight modes and generates setpoints."""
+
+    def __init__(self, dt: float = 0.02):
+        self.dt = dt
+        self.current_mode = FlightMode.HOVER
+        self.previous_mode = FlightMode.HOVER
+
+        # Waypoint management
+        self.waypoints: List[np.ndarray] = []
+        self.current_waypoint_idx = 0
+        self.waypoint_tolerance = 1.0  # meters
+
+        # Waypoint confirmation
+        self.waypoint_confirm_count = 0
+        self.waypoint_confirm_threshold = 5
+        self.last_distance = float('inf')
+
+        # Mode transition cooldown
+        self.last_transition_time = 0.0
+        self.transition_cooldown = 1.0  # seconds
+
+        # Current setpoint
+        self.hover_position = np.array([0.0, 0.0, -10.0])
+        self.hover_yaw = 0.0
+
+        # Landing parameters
+        self.landing_rate = 0.5  # m/s descent
+        self.ground_altitude = -0.5  # NED
+
+    def update(self, state: np.ndarray, conditions: Dict,
+               pid_violated: bool, gps_available: bool,
+               time: float) -> Tuple[Dict, str]:
+        """Update supervisor and return setpoint + controller."""
+
+        # Check for automatic mode transitions
+        self._check_mode_transitions(state, conditions, gps_available, time)
+
+        # Generate setpoint based on mode
+        setpoint = self._generate_setpoint(state, time)
+
+        # Select controller
+        controller = self._select_controller(pid_violated, gps_available)
+
+        return setpoint, controller
+
+    def _check_mode_transitions(self, state, conditions, gps_ok, time):
+        """Check and execute automatic mode transitions."""
+        if time - self.last_transition_time < self.transition_cooldown:
+            return
+
+        # Emergency triggers
+        wind = conditions.get('wind_speed', 0)
+        rates = conditions.get('angular_rates', 0)
+
+        if wind > 8.0 or rates > 1.5:
+            self._transition_to(FlightMode.EMERGENCY, time)
+            return
+
+        # GPS loss during tracking
+        if self.current_mode == FlightMode.TRACK and not gps_ok:
+            self.hover_position = state[:3].copy()
+            self._transition_to(FlightMode.HOVER, time)
+            return
+
+        # Recovery from emergency
+        if self.current_mode == FlightMode.EMERGENCY:
+            if wind < 5.0 and rates < 0.5:
+                self._transition_to(FlightMode.HOVER, time)
+
+    def _generate_setpoint(self, state, time) -> Dict:
+        """Generate setpoint based on current mode."""
+        if self.current_mode == FlightMode.TRACK:
+            return self._track_setpoint(state)
+        elif self.current_mode == FlightMode.HOVER:
+            return self._hover_setpoint()
+        elif self.current_mode == FlightMode.LAND:
+            return self._land_setpoint(state, time)
+        else:  # EMERGENCY
+            return self._emergency_setpoint(state)
+
+    def _track_setpoint(self, state) -> Dict:
+        """Generate waypoint tracking setpoint."""
+        if not self.waypoints:
+            return self._hover_setpoint()
+
+        target = self.waypoints[self.current_waypoint_idx]
+        position = state[:3]
+        distance = np.linalg.norm(target - position)
+
+        # Waypoint confirmation logic
+        if distance < self.waypoint_tolerance and distance < self.last_distance:
+            self.waypoint_confirm_count += 1
+            if self.waypoint_confirm_count >= self.waypoint_confirm_threshold:
+                # Waypoint reached, advance
+                if self.current_waypoint_idx < len(self.waypoints) - 1:
+                    self.current_waypoint_idx += 1
+                    self.waypoint_confirm_count = 0
+                    self.last_distance = float('inf')
+                else:
+                    # Mission complete
+                    self.hover_position = target.copy()
+                    self.current_mode = FlightMode.HOVER
+        else:
+            self.waypoint_confirm_count = 0
+
+        self.last_distance = distance
+
+        return {
+            'position': target,
+            'velocity': np.zeros(3),
+            'yaw': self.hover_yaw
+        }
+
+    def _select_controller(self, pid_violated, gps_ok) -> str:
+        """Select appropriate controller."""
+        # Always H-inf for emergency/land
+        if self.current_mode in [FlightMode.EMERGENCY, FlightMode.LAND]:
+            return 'Hinf'
+
+        # H-inf if PID contract violated or no GPS
+        if pid_violated or not gps_ok:
+            return 'Hinf'
+
+        # Otherwise use efficient PID
+        return 'PID'
+\end{lstlisting}
+
+\section{CBF Safety Filter}
+
+\begin{lstlisting}[caption={CBF safety filter (cbf\_filter.py)}, label=lst:cbf]
+import numpy as np
+from typing import Dict, Tuple
+
+class CBFSafetyFilter:
+    """Control Barrier Function safety filter."""
+
+    def __init__(self):
+        # Altitude constraints (NED: negative = above ground)
+        self.z_min = -50.0  # Max altitude
+        self.z_max = -2.0   # Min altitude
+
+        # Velocity constraint
+        self.max_velocity = 15.0
+
+        # Attitude constraint
+        self.max_tilt = 0.52  # 30 degrees
+
+        # CBF parameter
+        self.alpha = 1.0
+
+        # Tracking
+        self.intervention_count = 0
+        self.last_intervened = False
+
+    def filter_control(self, state: np.ndarray,
+                       nominal_control: Dict,
+                       time: float) -> Tuple[Dict, bool]:
+        """Filter control to ensure safety."""
+        safe_control = nominal_control.copy()
+        intervened = False
+
+        # Altitude barrier
+        safe_control, alt_int = self._altitude_barrier(state, safe_control)
+
+        # Velocity barrier
+        safe_control, vel_int = self._velocity_barrier(state, safe_control)
+
+        # Attitude barrier
+        safe_control, tilt_int = self._tilt_barrier(state, safe_control)
+
+        intervened = alt_int or vel_int or tilt_int
+        self.last_intervened = intervened
+
+        if intervened:
+            self.intervention_count += 1
+
+        return safe_control, intervened
+
+    def _altitude_barrier(self, state, control) -> Tuple[Dict, bool]:
+        """Enforce altitude constraints."""
+        z = state[2]
+        vz = state[5]
+        intervened = False
+
+        # Emergency ground collision prevention
+        if z > -0.5:  # Below 0.5m or underground
+            control['thrust'] = 0.95
+            control['torques'] = np.array([
+                -state[6] * 5.0,
+                -state[7] * 5.0,
+                0.0
+            ])
+            return control, True
+
+        # Upper altitude limit (too high)
+        if z < self.z_min + 2.0 and vz < 0:
+            # Reduce upward velocity
+            h = z - self.z_min
+            h_dot = vz
+            if h_dot + self.alpha * h < 0:
+                control['thrust'] = min(control['thrust'], 0.4)
+                intervened = True
+
+        # Lower altitude limit (too low)
+        if z > self.z_max - 2.0 and vz > 0:
+            # Reduce downward velocity
+            h = self.z_max - z
+            h_dot = -vz
+            if h_dot + self.alpha * h < 0:
+                control['thrust'] = max(control['thrust'], 0.6)
+                intervened = True
+
+        return control, intervened
+
+    def _velocity_barrier(self, state, control) -> Tuple[Dict, bool]:
+        """Enforce velocity constraint."""
+        velocity = state[3:6]
+        speed = np.linalg.norm(velocity)
+        intervened = False
+
+        if speed > self.max_velocity * 0.9:
+            scale = self.max_velocity * 0.85 / speed
+            # Would need to adjust control to reduce velocity
+            # Simplified: reduce thrust
+            control['thrust'] = control['thrust'] * 0.8
+            intervened = True
+
+        return control, intervened
+
+    def _tilt_barrier(self, state, control) -> Tuple[Dict, bool]:
+        """Enforce attitude constraint."""
+        phi, theta = state[6], state[7]
+        tilt = np.sqrt(phi**2 + theta**2)
+        intervened = False
+
+        if tilt > self.max_tilt * 0.9:
+            # Reduce desired tilt
+            if 'desired_attitude' in control:
+                scale = self.max_tilt * 0.8 / tilt
+                control['desired_attitude'][:2] *= scale
+            intervened = True
+
+        return control, intervened
+\end{lstlisting}
+
+\section{Horizon Planner (Pacti Integration)}
+
+\begin{lstlisting}[caption={Pacti contract integration (pacti\_contracts.py)}, label=lst:pacti]
+try:
+    from pacti.contracts import PolyhedralIoContract
+    PACTI_AVAILABLE = True
+except ImportError:
+    PACTI_AVAILABLE = False
+    print("Warning: Pacti not available, using fallback")
+
+class PactiContractBuilder:
+    """Build Pacti contracts for horizon planning."""
+
+    @staticmethod
+    def build_pid_contract():
+        """Build PID controller contract in Pacti format."""
+        if not PACTI_AVAILABLE:
+            return None
+
+        return PolyhedralIoContract.from_strings(
+            input_vars=['wind_speed', 'tracking_error',
+                       'estimation_uncertainty', 'angular_rates'],
+            output_vars=['controller_ok', 'energy_efficiency'],
+            assumptions=[
+                'wind_speed <= 3.0',
+                'tracking_error <= 2.0',
+                'estimation_uncertainty <= 1.0',
+                'angular_rates <= 0.5'
+            ],
+            guarantees=[
+                'controller_ok >= 1',
+                'energy_efficiency >= 0.8'
+            ]
+        )
+
+    @staticmethod
+    def build_hinf_contract():
+        """Build H-infinity controller contract."""
+        if not PACTI_AVAILABLE:
+            return None
+
+        return PolyhedralIoContract.from_strings(
+            input_vars=['wind_speed', 'tracking_error',
+                       'estimation_uncertainty', 'angular_rates'],
+            output_vars=['controller_ok', 'energy_efficiency'],
+            assumptions=[
+                'wind_speed <= 10.0',
+                'tracking_error <= 5.0',
+                'estimation_uncertainty <= 3.0',
+                'angular_rates <= 1.5'
+            ],
+            guarantees=[
+                'controller_ok >= 1',
+                'energy_efficiency >= 0.5'
+            ]
+        )
+
+    @staticmethod
+    def compose_horizon(contracts):
+        """Compose contracts over horizon."""
+        if not PACTI_AVAILABLE or not contracts:
+            return None
+
+        composed = contracts[0]
+        for c in contracts[1:]:
+            composed = composed.compose(c)
+        return composed
+\end{lstlisting}
+

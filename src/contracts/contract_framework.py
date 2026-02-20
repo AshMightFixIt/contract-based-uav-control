@@ -413,9 +413,17 @@ class HierarchicalContractMonitor:
         OMEGA_N = 0.447         # rad/s, natural frequency = √(kp)
         ZETA = 0.559            # damping ratio = kd/(2ωn)
         T_SETTLE_BASE = 4.0 / (ZETA * OMEGA_N)  # ≈ 16.0s (2% settling)
-        KP_EFF = 0.2            # effective position loop gain
+        KP_EFF = 0.2            # effective position loop gain (proportional only)
         TILT_LIMIT = 0.15       # rad, max tilt (hardware saturation)
         E_FLOOR_PID = 0.2       # m, irreducible error (discretization + delay)
+        # Wind sensitivity for PID WITH integral action.
+        # Pure-proportional bound: e_wind = wind / kp_pos ≈ wind / 0.35 ≈ 2.86×wind.
+        # Integral action reduces steady-state wind error toward zero; the transient
+        # bound depends on the integral time constant T_i ≈ kp/ki.
+        # Simulation: wind coupling = 0.06 m/s² per m/s; kp_pos = 0.35.
+        # With integral: e_wind_ss → 0; transient peak ≈ (0.06/0.35)×wind ≈ 0.17×wind.
+        # Conservative estimate with settling transient included: γ ≈ 0.5×wind.
+        GAMMA_WIND_PID = 0.5    # wind → tracking error bound (PID+integral, sim-matched)
 
         # H-infinity: Robust control ‖T_zw‖∞ ≤ γ
         # γ = worst-case disturbance amplification factor
@@ -569,10 +577,12 @@ class HierarchicalContractMonitor:
             },
             guarantees=[
                 # --- Tracking error ---
-                # Theory: e_ss = est_error + wind/(kp × plant) + floor
-                # 1/kp_eff ≈ 5.0, but wind coupling is partial → coefficient ~1/kp × coupling
+                # Theory: e = est_error + GAMMA_WIND_PID × wind + floor
+                # GAMMA_WIND_PID = 0.5 reflects PID+integral: integral action eliminates
+                # steady-state wind error; the bound covers the transient peak only.
+                # (Pure-proportional bound would be 1/KP_EFF = 5.0 — far too pessimistic.)
                 LinearConstraint("tracking_error",
-                                 {"position_error": 1.0, "wind_speed": 1.0 / KP_EFF},
+                                 {"position_error": 1.0, "wind_speed": GAMMA_WIND_PID},
                                  E_FLOOR_PID),
                 LinearConstraint("tracking_error", {}, 0.0, is_upper_bound=False),
 
@@ -665,7 +675,7 @@ class HierarchicalContractMonitor:
         #   Tracking bound: ‖e‖ ≤ √(V*(x₀) / λ_min(Q))
         #   Recursive feasibility: feasible at t → feasible at t+1
         #
-        # Intermediate envelope: wind ≤ 8 m/s (between PID 3 and H-inf 25)
+        # Intermediate envelope: wind ≤ 15 m/s (between PID 3 and H-inf emergency >15)
         # Best tracking: optimization contracts error (α < 1)
         #
         # Specialist verification:
@@ -682,7 +692,7 @@ class HierarchicalContractMonitor:
             assumptions={
                 "position_error": (0.0, 5.0),     # wider than PID (model handles more)
                 "velocity_error": (0.0, 2.0),
-                "wind_speed": (0.0, 8.0),          # intermediate envelope
+                "wind_speed": (0.0, 15.0),         # extends to H-inf threshold (emergency-only above 15)
                 "computation_time": (0.0, COMPUTE_TIME_MAX),  # real-time constraint
             },
             guarantees=[

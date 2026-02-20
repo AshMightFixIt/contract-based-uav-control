@@ -1,0 +1,135 @@
+% ============================================================================
+% NOMENCLATURE
+% ============================================================================
+
+\chapter*{Nomenclature}
+\addcontentsline{toc}{chapter}{Nomenclature}
+
+\section*{Coordinate Systems}
+
+\begin{longtable}{@{}p{3cm}p{10cm}@{}}
+    \textbf{NED} & North-East-Down coordinate frame \\
+    \textbf{Body Frame} & Aircraft-fixed coordinate frame \\
+    \textbf{Inertial Frame} & Earth-fixed reference frame \\
+\end{longtable}
+
+\section*{State Variables}
+
+\begin{longtable}{@{}p{3cm}p{8cm}p{3cm}@{}}
+    \toprule
+    \textbf{Symbol} & \textbf{Description} & \textbf{Unit} \\
+    \midrule
+    \endhead
+    $x, y, z$ & Position in NED frame & \si{\meter} \\
+    $v_x, v_y, v_z$ & Velocity components & \si{\meter\per\second} \\
+    $\phi$ & Roll angle & \si{\radian} \\
+    $\theta$ & Pitch angle & \si{\radian} \\
+    $\psi$ & Yaw angle & \si{\radian} \\
+    $p, q, r$ & Angular rates (body frame) & \si{\radian\per\second} \\
+    $\mathbf{x}$ & Full state vector & -- \\
+    $\hat{\mathbf{x}}$ & Estimated state vector & -- \\
+    \bottomrule
+\end{longtable}
+
+\section*{Control Variables}
+
+\begin{longtable}{@{}p{3cm}p{8cm}p{3cm}@{}}
+    \toprule
+    \textbf{Symbol} & \textbf{Description} & \textbf{Unit} \\
+    \midrule
+    \endhead
+    $T$ & Normalized thrust command & $[0, 1]$ \\
+    $\tau_\phi$ & Roll torque & \si{\newton\meter} \\
+    $\tau_\theta$ & Pitch torque & \si{\newton\meter} \\
+    $\tau_\psi$ & Yaw torque & \si{\newton\meter} \\
+    $\mathbf{u}$ & Control input vector & -- \\
+    $T_{\text{hover}}$ & Hover thrust (gravity compensation) & $0.5$ \\
+    \bottomrule
+\end{longtable}
+
+\section*{Contract Notation}
+
+\begin{longtable}{@{}p{3cm}p{10cm}@{}}
+    \toprule
+    \textbf{Symbol} & \textbf{Description} \\
+    \midrule
+    \endhead
+    $\mathcal{C}$ & Contract \\
+    $\mathcal{A}$ & Assumptions (contract inputs) \\
+    $\mathcal{G}$ & Guarantees (contract outputs) \\
+    $\mathcal{C}_1 \otimes \mathcal{C}_2$ & Contract composition \\
+    $\mathcal{C}_1 \wedge \mathcal{C}_2$ & Contract conjunction \\
+    $\models$ & Satisfaction relation \\
+    \bottomrule
+\end{longtable}
+
+\section*{Estimation Variables}
+
+\begin{longtable}{@{}p{3cm}p{8cm}p{3cm}@{}}
+    \toprule
+    \textbf{Symbol} & \textbf{Description} & \textbf{Unit} \\
+    \midrule
+    \endhead
+    $\mathbf{P}$ & State covariance matrix & varies \\
+    $\mathbf{Q}$ & Process noise covariance & varies \\
+    $\mathbf{R}$ & Measurement noise covariance & varies \\
+    $\mathbf{K}$ & Kalman gain matrix & -- \\
+    $\mathbf{F}$ & State transition matrix & -- \\
+    $\mathbf{H}$ & Measurement matrix & -- \\
+    \bottomrule
+\end{longtable}
+
+\section*{Controller Parameters}
+
+\begin{longtable}{@{}p{3cm}p{8cm}p{3cm}@{}}
+    \toprule
+    \textbf{Symbol} & \textbf{Description} & \textbf{Value} \\
+    \midrule
+    \endhead
+    $K_p^{\text{pos}}$ & Position proportional gain & $[0.2, 0.2, 0.8]$ \\
+    $K_i^{\text{pos}}$ & Position integral gain & $[0.005, 0.005, 0.05]$ \\
+    $K_d^{\text{pos}}$ & Position derivative gain & $[0.5, 0.5, 0.6]$ \\
+    $K_p^{\text{att}}$ & Attitude proportional gain & $[1.5, 1.5, 1.0]$ \\
+    $\theta_{\max}$ & Maximum tilt angle & \SI{0.15}{\radian} \\
+    $\omega_{\max}$ & Maximum angular rate & \SI{1.0}{\radian\per\second} \\
+    \bottomrule
+\end{longtable}
+
+\section*{Safety Parameters}
+
+\begin{longtable}{@{}p{3cm}p{8cm}p{3cm}@{}}
+    \toprule
+    \textbf{Symbol} & \textbf{Description} & \textbf{Value} \\
+    \midrule
+    \endhead
+    $z_{\min}$ & Minimum altitude (NED) & \SI{-50}{\meter} \\
+    $z_{\max}$ & Maximum altitude (NED) & \SI{-2}{\meter} \\
+    $v_{\max}$ & Maximum velocity & \SI{15}{\meter\per\second} \\
+    $\phi_{\max}, \theta_{\max}$ & Maximum tilt & \SI{30}{\degree} \\
+    $h(\mathbf{x})$ & Barrier function & -- \\
+    $\alpha$ & CBF class-$\mathcal{K}$ parameter & $1.0$ \\
+    \bottomrule
+\end{longtable}
+
+\section*{Abbreviations}
+
+\begin{longtable}{@{}p{3cm}p{10cm}@{}}
+    \toprule
+    \textbf{Abbreviation} & \textbf{Full Form} \\
+    \midrule
+    \endhead
+    A/G & Assume-Guarantee \\
+    CBF & Control Barrier Function \\
+    CLF & Control Lyapunov Function \\
+    EKF & Extended Kalman Filter \\
+    GPS & Global Positioning System \\
+    HDOP & Horizontal Dilution of Precision \\
+    IMU & Inertial Measurement Unit \\
+    NED & North-East-Down \\
+    PID & Proportional-Integral-Derivative \\
+    UAV & Unmanned Aerial Vehicle \\
+    UAM & Urban Air Mobility \\
+    \bottomrule
+\end{longtable}
+
+\newpage

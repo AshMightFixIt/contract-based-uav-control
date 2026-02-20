@@ -1,0 +1,311 @@
+% ============================================================================
+% CHAPTER 2: SYSTEM ARCHITECTURE
+% ============================================================================
+
+\chapter{System Architecture}
+\label{ch:architecture}
+
+This chapter provides a detailed description of the system architecture, including the control pipeline, data flow between modules, coordinate systems, and units of measurement.
+
+\section{Control Pipeline Overview}
+
+The system implements a hierarchical control architecture where each layer operates at a different level of abstraction:
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.85,
+        transform shape,
+        layer/.style={
+            draw,
+            rounded corners=5pt,
+            minimum width=14cm,
+            minimum height=1.8cm,
+            align=center
+        }
+    ]
+        % Layers
+        \node[layer, fill=contractpurple!20] (planning) at (0,6) {
+            \textbf{Planning Layer}\\
+            \small Horizon Planner $\bullet$ Mission Management $\bullet$ Contract Verification
+        };
+
+        \node[layer, fill=supervisororange!20] (supervision) at (0,4) {
+            \textbf{Supervision Layer}\\
+            \small Flight Mode Management $\bullet$ Controller Selection $\bullet$ Setpoint Generation
+        };
+
+        \node[layer, fill=pidblue!20] (control) at (0,2) {
+            \textbf{Control Layer}\\
+            \small PID Controller $\bullet$ H-$\infty$ Controller $\bullet$ Attitude/Rate Control
+        };
+
+        \node[layer, fill=cbforange!20] (safety) at (0,0) {
+            \textbf{Safety Layer}\\
+            \small CBF Filter $\bullet$ Hard Constraints $\bullet$ Emergency Intervention
+        };
+
+        \node[layer, fill=gray!20] (physical) at (0,-2) {
+            \textbf{Physical Layer}\\
+            \small Actuators $\bullet$ Sensors $\bullet$ Dynamics
+        };
+
+        % Arrows between layers
+        \draw[-{Stealth}, thick] (planning.south) -- (supervision.north)
+            node[midway, right, font=\small] {controller recommendation};
+        \draw[-{Stealth}, thick] (supervision.south) -- (control.north)
+            node[midway, right, font=\small] {setpoints};
+        \draw[-{Stealth}, thick] (control.south) -- (safety.north)
+            node[midway, right, font=\small] {nominal control};
+        \draw[-{Stealth}, thick] (safety.south) -- (physical.north)
+            node[midway, right, font=\small] {safe control};
+
+        % Feedback
+        \draw[-{Stealth}, thick, dashed]
+            (physical.west) -- ++(-1,0) |- (planning.west)
+            node[pos=0.25, left, font=\small] {state feedback};
+
+        % Time scales
+        \node[right=1cm of planning, font=\footnotesize] {$\sim$0.5s update};
+        \node[right=1cm of supervision, font=\footnotesize] {$\sim$0.1s update};
+        \node[right=1cm of control, font=\footnotesize] {50 Hz (20ms)};
+        \node[right=1cm of safety, font=\footnotesize] {50 Hz (20ms)};
+    \end{tikzpicture}
+    \caption{Hierarchical control architecture with different time scales}
+    \label{fig:layers}
+\end{figure}
+
+\section{Coordinate System: NED Frame}
+
+The system uses the \textbf{North-East-Down (NED)} coordinate frame, which is the standard for aerospace applications.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[scale=1.2]
+        % Ground plane
+        \fill[brown!20] (-3,-0.5) -- (3,-0.5) -- (4,1) -- (-2,1) -- cycle;
+        \draw[brown!50, thick] (-3,-0.5) -- (3,-0.5) -- (4,1) -- (-2,1) -- cycle;
+
+        % Drone body
+        \node[circle, fill=gray!50, minimum size=0.8cm] (drone) at (0,2) {};
+
+        % Coordinate axes
+        \draw[-{Stealth}, very thick, red] (drone.center) -- ++(2,0)
+            node[right, font=\bfseries] {X (North)};
+        \draw[-{Stealth}, very thick, green!60!black] (drone.center) -- ++(1.5,-1)
+            node[below right, font=\bfseries] {Y (East)};
+        \draw[-{Stealth}, very thick, blue] (drone.center) -- ++(0,-1.5)
+            node[below, font=\bfseries] {Z (Down)};
+
+        % Altitude annotations
+        \draw[<->, thick] (-2.5,-0.5) -- (-2.5,2)
+            node[midway, left, font=\small] {altitude};
+
+        % Ground level
+        \node[font=\footnotesize] at (3.5,0.2) {Ground ($z=0$)};
+
+        % Key points
+        \node[font=\footnotesize, text=blue] at (1.5,0.5) {$z > 0$: below ground};
+        \node[font=\footnotesize, text=blue] at (1.5,3) {$z < 0$: above ground};
+    \end{tikzpicture}
+    \caption{NED coordinate frame definition}
+    \label{fig:ned}
+\end{figure}
+
+\warningbox{
+In the NED frame, \textbf{negative} $z$ values represent altitude above ground. For example:
+\begin{itemize}
+    \item $z = -5.0$ m means 5 meters \textbf{above} ground
+    \item $z = 0$ means at ground level
+    \item $z > 0$ means \textbf{below} ground (collision!)
+\end{itemize}
+This convention is critical for correct altitude control and safety constraints.
+}
+
+\section{Complete State Vector}
+
+The system maintains a 12-dimensional state vector:
+
+\begin{equation}
+    \mathbf{x} = \begin{bmatrix}
+        x \\ y \\ z \\ v_x \\ v_y \\ v_z \\ \phi \\ \theta \\ \psi \\ p \\ q \\ r
+    \end{bmatrix} \in \mathbb{R}^{12}
+\end{equation}
+
+\begin{table}[htbp]
+    \centering
+    \caption{State vector components with units and typical ranges}
+    \label{tab:state_vector}
+    \begin{tabular}{@{}clllc@{}}
+        \toprule
+        \textbf{Index} & \textbf{Symbol} & \textbf{Description} & \textbf{Unit} & \textbf{Range} \\
+        \midrule
+        1--3 & $x, y, z$ & Position (NED) & \si{\meter} & $\pm 100$ \\
+        4--6 & $v_x, v_y, v_z$ & Velocity (NED) & \si{\meter\per\second} & $\pm 15$ \\
+        7 & $\phi$ & Roll angle & \si{\radian} & $\pm\pi$ \\
+        8 & $\theta$ & Pitch angle & \si{\radian} & $\pm\pi/2$ \\
+        9 & $\psi$ & Yaw angle & \si{\radian} & $\pm\pi$ \\
+        10--12 & $p, q, r$ & Angular rates (body) & \si{\radian\per\second} & $\pm 3$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Data Flow Specification}
+
+The following table specifies the exact data flowing between each module:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Inter-module data flow specification}
+    \label{tab:dataflow}
+    \small
+    \begin{tabularx}{\textwidth}{@{}llXl@{}}
+        \toprule
+        \textbf{Source} & \textbf{Destination} & \textbf{Data} & \textbf{Rate} \\
+        \midrule
+        GPS Sensor & EKF & Position $[x,y,z]$, Velocity $[v_x,v_y,v_z]$, satellites, HDOP & 10 Hz \\
+        IMU Sensor & EKF & Attitude $[\phi,\theta,\psi]$, Angular rates $[p,q,r]$ & 200 Hz \\
+        Wind Sensor & Planner & Wind speed, direction & 10 Hz \\
+        Battery & Monitor & Voltage, current & 1 Hz \\
+        \midrule
+        EKF & Planner & State estimate $\hat{\mathbf{x}}$, covariance $\mathbf{P}$ & 50 Hz \\
+        EKF & Supervisor & State estimate $\hat{\mathbf{x}}$, GPS validity & 50 Hz \\
+        \midrule
+        Planner & Supervisor & Recommended controller, safety margin, plan status & 2 Hz \\
+        Supervisor & Controller & Setpoint (position, velocity, yaw) & 50 Hz \\
+        Supervisor & Controller & Controller selection (PID/H-$\infty$) & As needed \\
+        \midrule
+        Controller & CBF & Thrust $T$, torques $[\tau_\phi, \tau_\theta, \tau_\psi]$ & 50 Hz \\
+        Controller & CBF & Desired attitude $[\phi_d, \theta_d, \psi_d]$ & 50 Hz \\
+        \midrule
+        CBF & Actuators & Safe thrust, safe torques & 50 Hz \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Module Interfaces}
+
+Each module exposes a well-defined interface with typed inputs and outputs:
+
+\subsection{Sensor Interface}
+
+\begin{lstlisting}[caption={Sensor data structure}]
+sensors = {
+    'gps': {
+        'position': np.array([x, y, z]),      # meters (NED)
+        'velocity': np.array([vx, vy, vz]),   # m/s (NED)
+        'valid': bool,                         # True if GPS lock
+        'satellites': int,                     # Number of satellites
+        'hdop': float                          # Horizontal DOP
+    },
+    'imu': {
+        'attitude': np.array([phi, theta, psi]),  # radians
+        'rates': np.array([p, q, r]),             # rad/s
+        'valid': bool,
+        'calibrated': bool,
+        'temperature': float                       # Celsius
+    },
+    'wind': {
+        'speed': float,     # m/s
+        'direction': float  # radians
+    },
+    'battery': {
+        'voltage': float    # Volts
+    }
+}
+\end{lstlisting}
+
+\subsection{Control Interface}
+
+\begin{lstlisting}[caption={Control command structure}]
+control = {
+    'thrust': float,                    # Normalized [0, 1]
+    'torques': np.array([tx, ty, tz]),  # Nm
+    'desired_attitude': np.array([...]), # radians
+    'desired_rates': np.array([...])     # rad/s
+}
+\end{lstlisting}
+
+\subsection{Setpoint Interface}
+
+\begin{lstlisting}[caption={Setpoint structure from supervisor}]
+setpoint = {
+    'position': np.array([x, y, z]),    # meters (NED)
+    'velocity': np.array([vx, vy, vz]), # m/s
+    'yaw': float                         # radians
+}
+\end{lstlisting}
+
+\section{Timing and Synchronization}
+
+The system operates with the following timing constraints:
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[scale=0.8]
+        % Timeline
+        \draw[-{Stealth}, thick] (0,0) -- (14,0) node[right] {Time (ms)};
+
+        % Tick marks
+        \foreach \x in {0,2,4,6,8,10,12} {
+            \draw (\x,0.1) -- (\x,-0.1) node[below, font=\footnotesize] {\x0};
+        }
+
+        % Control loop
+        \foreach \x in {0,2,4,6,8,10,12} {
+            \fill[pidblue] (\x,1) rectangle (\x+0.3,1.5);
+        }
+        \node[right, font=\small] at (13,1.25) {Control (20ms)};
+
+        % Planner updates
+        \foreach \x in {0,10} {
+            \fill[contractpurple] (\x,2) rectangle (\x+1,2.5);
+        }
+        \node[right, font=\small] at (13,2.25) {Planner (500ms)};
+
+        % Sensor reads
+        \foreach \x in {0,1,2,3,4,5,6,7,8,9,10,11,12} {
+            \fill[sensorblue] (\x,3) rectangle (\x+0.15,3.5);
+        }
+        \node[right, font=\small] at (13,3.25) {IMU (100Hz)};
+
+        \foreach \x in {0,2,4,6,8,10,12} {
+            \fill[ekfgreen] (\x,4) rectangle (\x+0.2,4.5);
+        }
+        \node[right, font=\small] at (13,4.25) {GPS (50Hz)};
+    \end{tikzpicture}
+    \caption{Timing diagram showing multi-rate operation}
+    \label{fig:timing}
+\end{figure}
+
+\section{File Organization}
+
+The implementation follows a modular file structure:
+
+\begin{lstlisting}[language=bash, caption={Project directory structure}]
+contract-based-uav-control/
+|-- src/
+|   |-- adaptive_control_system.py     # Main integration
+|   |
+|   |-- contracts/
+|   |   |-- contract_framework.py      # A/G contract definitions
+|   |
+|   |-- estimation/
+|   |   |-- contract_ekf.py            # Contract-aware EKF
+|   |
+|   |-- control/
+|   |   |-- controllers.py             # PID, H-infinity
+|   |   |-- flight_mode_supervisor.py  # Mode management
+|   |
+|   |-- planning/
+|   |   |-- horizon_planner.py         # Pacti-based planner
+|   |   |-- integrated_planner.py      # Control integration
+|   |   |-- pacti_contracts.py         # Pacti interface
+|   |
+|   |-- safety/
+|       |-- cbf_filter.py              # CBF safety filter
+|
+|-- demo_waypoint_mission.py           # Demo script
+|-- tests/                             # Unit tests
+|-- docs/                              # Documentation
+\end{lstlisting}

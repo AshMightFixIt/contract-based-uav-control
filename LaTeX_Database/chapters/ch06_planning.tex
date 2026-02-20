@@ -1,0 +1,398 @@
+% ============================================================================
+% CHAPTER 6: HORIZON PLANNING
+% ============================================================================
+
+\chapter{Horizon Planning}
+\label{ch:planning}
+
+This chapter presents the predictive horizon planner that uses contract composition to anticipate safety violations and enable preemptive controller adaptation.
+
+\section{Predictive Planning Concept}
+
+Traditional reactive control waits for contract violations before adapting. Our horizon-based approach projects current conditions forward in time to predict violations \textit{before they occur}:
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.9,
+        transform shape
+    ]
+        % Timeline
+        \draw[-{Stealth}, very thick] (0,0) -- (14,0) node[right] {Time};
+
+        % Current time marker
+        \fill[contractpurple] (2,0) circle (0.15);
+        \node[below, font=\small] at (2,-0.3) {$t_{\text{now}}$};
+
+        % Prediction horizon
+        \fill[contractpurple!30] (2,0.5) rectangle (10,2);
+        \node[font=\small] at (6,1.25) {Prediction Horizon};
+
+        % Contract satisfaction curve
+        \draw[thick, pidblue] (0,3) -- (2,3) -- (4,2.8) -- (6,2.2) -- (8,1.5);
+        \draw[thick, pidblue, dashed] (8,1.5) -- (10,0.8) -- (12,0.5);
+
+        % Threshold line
+        \draw[thick, red, dashed] (0,1.5) -- (14,1.5);
+        \node[left, font=\small, red] at (0,1.5) {Contract Threshold};
+
+        % Predicted violation
+        \fill[red] (8,1.5) circle (0.15);
+        \node[above right, font=\small, red] at (8,1.6) {Predicted Violation};
+
+        % Labels
+        \node[above, font=\small, pidblue] at (1,3) {Contract Margin};
+
+        % Reactive vs Predictive
+        \draw[thick, ->, cbforange] (8,-0.5) -- (8,-1.2);
+        \node[below, font=\footnotesize, cbforange] at (8,-1.3) {Reactive: Switch here};
+
+        \draw[thick, ->, hinfgreen] (5,-0.5) -- (5,-1.2);
+        \node[below, font=\footnotesize, hinfgreen] at (5,-1.3) {Predictive: Switch early};
+    \end{tikzpicture}
+    \caption{Predictive vs. reactive controller switching: predictive approach switches before violation}
+    \label{fig:predictive_vs_reactive}
+\end{figure}
+
+\section{Pacti Library Integration}
+
+The horizon planner leverages the \textbf{Pacti library} for formal contract algebra operations.
+
+\subsection{Pacti Overview}
+
+Pacti is a Python library for assume-guarantee contract reasoning that supports:
+\begin{itemize}
+    \item Polyhedral constraints (linear inequalities)
+    \item Contract composition ($\otimes$)
+    \item Contract conjunction ($\wedge$)
+    \item Refinement checking ($\preceq$)
+    \item Quotient computation ($/$)
+\end{itemize}
+
+\subsection{Contract Representation in Pacti}
+
+Contracts are represented as polyhedral sets defined by linear constraints:
+
+\begin{lstlisting}[caption={Pacti contract definition}]
+from pacti.contracts import PolyhedralIoContract
+from pacti.iocontract import Var
+
+# Define variables
+wind_speed = Var('wind_speed')
+tracking_error = Var('tracking_error')
+controller_ok = Var('controller_ok')
+
+# PID contract in Pacti
+pid_contract = PolyhedralIoContract.from_strings(
+    input_vars=['wind_speed', 'tracking_error', 'estimation_uncertainty'],
+    output_vars=['controller_ok', 'energy_efficiency'],
+    assumptions=[
+        'wind_speed <= 3.0',
+        'tracking_error <= 2.0',
+        'estimation_uncertainty <= 1.0'
+    ],
+    guarantees=[
+        'controller_ok >= 1',
+        'energy_efficiency >= 0.8'
+    ]
+)
+\end{lstlisting}
+
+\section{Horizon Contract Cascade}
+
+The planner composes contracts over discrete time steps in the prediction horizon:
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.8,
+        transform shape,
+        contract/.style={
+            draw,
+            rounded corners=3pt,
+            minimum width=2cm,
+            minimum height=1.5cm,
+            fill=contractpurple!20,
+            align=center,
+            font=\small
+        }
+    ]
+        % Time steps
+        \node[contract] (c0) at (0,0) {$\mathcal{C}(t)$\\Step 0};
+        \node[contract] (c1) at (4,0) {$\mathcal{C}(t+\Delta)$\\Step 1};
+        \node[contract] (c2) at (8,0) {$\mathcal{C}(t+2\Delta)$\\Step 2};
+        \node[contract] (c3) at (12,0) {$\mathcal{C}(t+3\Delta)$\\Step 3};
+
+        % Composition arrows
+        \draw[-{Stealth}, thick] (c0) -- (c1) node[midway, above, font=\scriptsize] {$\otimes$};
+        \draw[-{Stealth}, thick] (c1) -- (c2) node[midway, above, font=\scriptsize] {$\otimes$};
+        \draw[-{Stealth}, thick] (c2) -- (c3) node[midway, above, font=\scriptsize] {$\otimes$};
+
+        % Result
+        \node[draw, rounded corners=5pt, fill=hinfgreen!20, minimum width=12cm, minimum height=1cm]
+            at (6,-2.5) {Composed Contract: $\mathcal{C}_{\text{horizon}} = \mathcal{C}(t) \otimes \mathcal{C}(t+\Delta) \otimes \mathcal{C}(t+2\Delta) \otimes \mathcal{C}(t+3\Delta)$};
+    \end{tikzpicture}
+    \caption{Contract cascade over prediction horizon}
+    \label{fig:contract_cascade}
+\end{figure}
+
+\subsection{Composition Algorithm}
+
+\begin{algorithm}[H]
+\caption{Horizon Contract Composition}
+\begin{algorithmic}[1]
+    \State \textbf{Input:} Current state $\mathbf{x}$, conditions, horizon length $N$, step $\Delta t$
+    \State \textbf{Output:} Composed contract, safety margin, recommended controller
+    \State
+    \State $\mathcal{C}_{\text{composed}} \gets \mathcal{C}_{\text{initial}}$
+    \State predictions $\gets []$
+    \For{$k = 0$ to $N-1$}
+        \State $\mathbf{x}_k \gets$ propagate\_state($\mathbf{x}$, $k \cdot \Delta t$)
+        \State conditions$_k \gets$ predict\_conditions($\mathbf{x}_k$, wind\_model)
+        \State $\mathcal{C}_k \gets$ build\_step\_contract(conditions$_k$)
+        \State $\mathcal{C}_{\text{composed}} \gets \mathcal{C}_{\text{composed}} \otimes \mathcal{C}_k$
+        \State predictions.append($\mathcal{C}_k$)
+    \EndFor
+    \State
+    \State safety\_margin $\gets$ evaluate\_margin($\mathcal{C}_{\text{composed}}$)
+    \State controller $\gets$ select\_controller(predictions, safety\_margin)
+    \State \Return $\mathcal{C}_{\text{composed}}$, safety\_margin, controller
+\end{algorithmic}
+\end{algorithm}
+
+\section{State Prediction Model}
+
+The planner uses a simplified prediction model for trajectory forecasting:
+
+\subsection{Position Prediction}
+
+\begin{equation}
+    \mathbf{p}(t + \tau) = \mathbf{p}(t) + \mathbf{v}(t) \cdot \tau + \frac{1}{2}\mathbf{a}(t) \cdot \tau^2
+\end{equation}
+
+\subsection{Wind Effect Prediction}
+
+Assuming constant wind over the horizon:
+\begin{equation}
+    \mathbf{v}_{\text{eff}}(t + \tau) = \mathbf{v}(t) + \mathbf{v}_{\text{wind}}
+\end{equation}
+
+\subsection{Tracking Error Prediction}
+
+\begin{equation}
+    e_{\text{track}}(t + \tau) = \|\mathbf{p}_d - \mathbf{p}(t + \tau)\| + \lambda_{\text{dist}} \cdot \max(0, d - d_{\text{threshold}})
+\end{equation}
+
+where $\lambda_{\text{dist}}$ penalizes deviation beyond a reasonable distance.
+
+\section{Safety Margin Computation}
+
+The safety margin quantifies how far current conditions are from contract violation:
+
+\begin{equation}
+    m_{\text{safety}} = \min_{i} \left( \frac{a_i^{\text{threshold}} - a_i^{\text{actual}}}{a_i^{\text{threshold}}} \right)
+\end{equation}
+
+where $a_i$ are the contract assumption variables.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=10cm, height=6cm,
+            xlabel={Time in Horizon (s)},
+            ylabel={Safety Margin},
+            xmin=0, xmax=3,
+            ymin=0, ymax=1,
+            grid=major,
+            legend pos=south west
+        ]
+            % Good margin trajectory
+            \addplot[thick, hinfgreen, mark=*] coordinates {
+                (0, 0.8) (0.5, 0.75) (1.0, 0.7) (1.5, 0.65) (2.0, 0.6) (2.5, 0.55) (3.0, 0.5)
+            };
+
+            % Degrading margin trajectory
+            \addplot[thick, cbforange, mark=square*] coordinates {
+                (0, 0.6) (0.5, 0.5) (1.0, 0.35) (1.5, 0.2) (2.0, 0.1) (2.5, 0.05) (3.0, 0.0)
+            };
+
+            % Threshold
+            \draw[thick, red, dashed] (axis cs:0,0.2) -- (axis cs:3,0.2);
+            \node[font=\footnotesize, red, right] at (axis cs:3,0.2) {Switch Threshold};
+
+            \legend{Nominal, Degraded}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Safety margin evolution over prediction horizon}
+    \label{fig:safety_margin}
+\end{figure}
+
+\section{Controller Recommendation Logic}
+
+Based on horizon predictions, the planner recommends a controller:
+
+\begin{lstlisting}[caption={Controller recommendation algorithm}]
+def recommend_controller(self, predictions, current_conditions):
+    """Recommend controller based on horizon analysis."""
+
+    # Check if any step violates PID assumptions
+    pid_viable = True
+    for step in predictions:
+        if (step['wind_speed'] > 3.0 or
+            step['tracking_error'] > 2.0 or
+            step['uncertainty'] > 1.0):
+            pid_viable = False
+            break
+
+    # Check safety-critical conditions
+    safety_critical = self._is_safety_critical(predictions)
+
+    if safety_critical:
+        return 'Hinf', 0.0  # Force H-inf, zero margin
+
+    if not pid_viable:
+        return 'Hinf', self._compute_margin(predictions)
+
+    return 'PID', self._compute_margin(predictions)
+\end{lstlisting}
+
+\section{Wind Estimation for Planning}
+
+Accurate wind estimation is critical for meaningful predictions.
+
+\subsection{Low-Pass Filtered Wind Sensor}
+
+\begin{equation}
+    \hat{w}(t) = \alpha \cdot w_{\text{sensor}}(t) + (1 - \alpha) \cdot \hat{w}(t - \Delta t)
+\end{equation}
+
+where $\alpha = 0.15$ balances responsiveness and stability.
+
+\subsection{Drift-Based Wind Estimation}
+
+When wind sensors are unavailable:
+\begin{equation}
+    \hat{\mathbf{w}} = \frac{\mathbf{p}_{\text{actual}} - \mathbf{p}_{\text{predicted}}}{\Delta t}
+\end{equation}
+
+\importantbox{
+The wind filter parameter $\alpha = 0.15$ was tuned empirically. Too high causes oscillation from sensor noise; too low delays response to actual wind changes.
+}
+
+\section{Planning Update Cycle}
+
+The horizon planner operates at a slower rate than the control loop:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Planner timing parameters}
+    \label{tab:planner_timing}
+    \begin{tabular}{@{}lll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Value} & \textbf{Description} \\
+        \midrule
+        Update rate & 2 Hz & Planner recalculation frequency \\
+        Horizon length & 3.0 s & Lookahead window \\
+        Horizon steps & 6 & Discrete steps in horizon \\
+        Step size & 0.5 s & Time between horizon steps \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Integrated Planner Architecture}
+
+\begin{lstlisting}[caption={IntegratedHorizonPlanner class structure}]
+class IntegratedHorizonPlanner:
+    def __init__(self, dt=0.02):
+        self.dt = dt
+        self.horizon_length = 3.0
+        self.horizon_steps = 6
+        self.update_interval = 0.5  # 2 Hz
+
+        # Wind estimation
+        self.wind_filter_alpha = 0.15
+        self.filtered_wind = 0.0
+
+        # Last planning results
+        self.last_recommendation = 'PID'
+        self.last_safety_margin = 1.0
+
+    def update(self, state, conditions, time):
+        """Run horizon planning update."""
+        if time - self.last_update_time < self.update_interval:
+            return self.last_recommendation, self.last_safety_margin
+
+        # Update wind estimate
+        self._update_wind_estimate(conditions)
+
+        # Build horizon predictions
+        predictions = self._build_horizon_predictions(state, conditions)
+
+        # Compose contracts
+        composed_contract = self._compose_contracts(predictions)
+
+        # Compute safety margin
+        safety_margin = self._evaluate_safety_margin(composed_contract)
+
+        # Generate recommendation
+        recommendation = self._recommend_controller(predictions, safety_margin)
+
+        self.last_update_time = time
+        self.last_recommendation = recommendation
+        self.last_safety_margin = safety_margin
+
+        return recommendation, safety_margin
+\end{lstlisting}
+
+\section{Planner Contract Specification}
+
+\begin{contractbox}[Horizon Planner Contract $\mathcal{C}_{\text{planner}}$]
+\textbf{Assumptions:}
+\begin{itemize}
+    \item Valid state estimate from EKF
+    \item Wind sensor available or drift estimation possible
+    \item Sufficient computation time (< 100ms per update)
+    \item Previous controller performance data available
+\end{itemize}
+
+\textbf{Guarantees:}
+\begin{itemize}
+    \item Controller recommendation every 0.5s
+    \item Safety margin computed for full horizon
+    \item Early warning of contract violations (> 1s advance)
+    \item Consistent recommendations (no oscillation)
+    \item Recommendation valid for current conditions
+\end{itemize}
+\end{contractbox}
+
+\section{Pre-Flight Mission Verification}
+
+Before takeoff, the planner can verify mission feasibility:
+
+\begin{algorithm}[H]
+\caption{Pre-Flight Mission Verification}
+\begin{algorithmic}[1]
+    \State \textbf{Input:} Waypoints, expected conditions, vehicle capabilities
+    \State \textbf{Output:} Mission feasibility, risk assessment
+    \State
+    \For{each waypoint segment}
+        \State Compose segment contracts
+        \State Check against vehicle capability contracts
+        \State Compute worst-case safety margin
+        \If{margin $<$ 0}
+            \State \Return INFEASIBLE, segment details
+        \EndIf
+    \EndFor
+    \State
+    \State overall\_margin $\gets \min$(segment margins)
+    \If{overall\_margin $>$ 0.3}
+        \State \Return FEASIBLE, HIGH confidence
+    \ElsIf{overall\_margin $>$ 0.1}
+        \State \Return FEASIBLE, MODERATE confidence
+    \Else
+        \State \Return FEASIBLE, LOW confidence (requires H-$\infty$)
+    \EndIf
+\end{algorithmic}
+\end{algorithm}
+

@@ -1,0 +1,289 @@
+% ============================================================================
+% APPENDIX B: MATHEMATICAL DERIVATIONS
+% ============================================================================
+
+\chapter{Mathematical Derivations}
+\label{app:math}
+
+This appendix provides detailed mathematical derivations for key algorithms in the system.
+
+\section{Quadrotor Dynamics}
+
+\subsection{Coordinate Frames}
+
+The system uses two primary coordinate frames:
+\begin{itemize}
+    \item \textbf{Inertial Frame (NED):} Fixed to Earth, with X pointing North, Y pointing East, Z pointing Down.
+    \item \textbf{Body Frame:} Fixed to the vehicle, with X pointing forward, Y pointing right, Z pointing down.
+\end{itemize}
+
+\subsection{Rotation Matrix}
+
+The rotation from body frame to inertial frame uses the ZYX Euler angle convention:
+
+\begin{equation}
+    \mathbf{R}_{b}^{i} = \mathbf{R}_z(\psi) \mathbf{R}_y(\theta) \mathbf{R}_x(\phi)
+\end{equation}
+
+where:
+\begin{align}
+    \mathbf{R}_x(\phi) &= \begin{bmatrix}
+        1 & 0 & 0 \\
+        0 & \cos\phi & -\sin\phi \\
+        0 & \sin\phi & \cos\phi
+    \end{bmatrix} \\[10pt]
+    \mathbf{R}_y(\theta) &= \begin{bmatrix}
+        \cos\theta & 0 & \sin\theta \\
+        0 & 1 & 0 \\
+        -\sin\theta & 0 & \cos\theta
+    \end{bmatrix} \\[10pt]
+    \mathbf{R}_z(\psi) &= \begin{bmatrix}
+        \cos\psi & -\sin\psi & 0 \\
+        \sin\psi & \cos\psi & 0 \\
+        0 & 0 & 1
+    \end{bmatrix}
+\end{align}
+
+The full rotation matrix is:
+\begin{equation}
+    \mathbf{R}_{b}^{i} = \begin{bmatrix}
+        c_\psi c_\theta & c_\psi s_\theta s_\phi - s_\psi c_\phi & c_\psi s_\theta c_\phi + s_\psi s_\phi \\
+        s_\psi c_\theta & s_\psi s_\theta s_\phi + c_\psi c_\phi & s_\psi s_\theta c_\phi - c_\psi s_\phi \\
+        -s_\theta & c_\theta s_\phi & c_\theta c_\phi
+    \end{bmatrix}
+\end{equation}
+
+where $c_x = \cos(x)$ and $s_x = \sin(x)$.
+
+\subsection{Translational Dynamics}
+
+The translational equations of motion in the inertial frame:
+
+\begin{equation}
+    m \ddot{\mathbf{p}} = \mathbf{R}_{b}^{i} \begin{bmatrix} 0 \\ 0 \\ -T \end{bmatrix} + \begin{bmatrix} 0 \\ 0 \\ mg \end{bmatrix} + \mathbf{F}_{\text{dist}}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $m$ is the vehicle mass
+    \item $T$ is the total thrust force
+    \item $g$ is gravitational acceleration
+    \item $\mathbf{F}_{\text{dist}}$ is the disturbance force (e.g., wind)
+\end{itemize}
+
+Expanding:
+\begin{align}
+    \ddot{x} &= \frac{T}{m}(\cos\phi\sin\theta\cos\psi + \sin\phi\sin\psi) + \frac{F_{d,x}}{m} \\
+    \ddot{y} &= \frac{T}{m}(\cos\phi\sin\theta\sin\psi - \sin\phi\cos\psi) + \frac{F_{d,y}}{m} \\
+    \ddot{z} &= \frac{T}{m}\cos\phi\cos\theta - g + \frac{F_{d,z}}{m}
+\end{align}
+
+\subsection{Rotational Dynamics}
+
+The angular velocity transformation from body rates to Euler rates:
+
+\begin{equation}
+    \begin{bmatrix} \dot{\phi} \\ \dot{\theta} \\ \dot{\psi} \end{bmatrix} =
+    \begin{bmatrix}
+        1 & \sin\phi\tan\theta & \cos\phi\tan\theta \\
+        0 & \cos\phi & -\sin\phi \\
+        0 & \sin\phi\sec\theta & \cos\phi\sec\theta
+    \end{bmatrix}
+    \begin{bmatrix} p \\ q \\ r \end{bmatrix}
+\end{equation}
+
+The rotational equations of motion in the body frame:
+
+\begin{align}
+    I_{xx}\dot{p} &= (I_{yy} - I_{zz})qr + \tau_\phi \\
+    I_{yy}\dot{q} &= (I_{zz} - I_{xx})pr + \tau_\theta \\
+    I_{zz}\dot{r} &= (I_{xx} - I_{yy})pq + \tau_\psi
+\end{align}
+
+\section{Extended Kalman Filter Derivation}
+
+\subsection{State Space Model}
+
+The continuous-time state space model:
+\begin{align}
+    \dot{\mathbf{x}} &= f(\mathbf{x}, \mathbf{u}) + \mathbf{w} \\
+    \mathbf{z} &= h(\mathbf{x}) + \mathbf{v}
+\end{align}
+
+where $\mathbf{w} \sim \mathcal{N}(0, \mathbf{Q}_c)$ and $\mathbf{v} \sim \mathcal{N}(0, \mathbf{R})$.
+
+\subsection{Discretization}
+
+For discrete-time implementation with timestep $\Delta t$:
+
+\begin{equation}
+    \mathbf{x}_{k+1} = \mathbf{x}_k + f(\mathbf{x}_k, \mathbf{u}_k) \Delta t + \mathbf{w}_k
+\end{equation}
+
+The discrete process noise covariance:
+\begin{equation}
+    \mathbf{Q}_d = \mathbf{Q}_c \Delta t
+\end{equation}
+
+\subsection{Jacobian Computation}
+
+The state transition Jacobian $\mathbf{F} = \frac{\partial f}{\partial \mathbf{x}}$:
+
+\begin{equation}
+    \mathbf{F} = \begin{bmatrix}
+        \mathbf{0}_{3\times3} & \mathbf{I}_{3\times3} & \mathbf{0}_{3\times3} & \mathbf{0}_{3\times3} \\
+        \mathbf{0}_{3\times3} & \mathbf{0}_{3\times3} & \frac{\partial \ddot{\mathbf{p}}}{\partial \boldsymbol{\Theta}} & \mathbf{0}_{3\times3} \\
+        \mathbf{0}_{3\times3} & \mathbf{0}_{3\times3} & \frac{\partial \dot{\boldsymbol{\Theta}}}{\partial \boldsymbol{\Theta}} & \frac{\partial \dot{\boldsymbol{\Theta}}}{\partial \boldsymbol{\omega}} \\
+        \mathbf{0}_{3\times3} & \mathbf{0}_{3\times3} & \mathbf{0}_{3\times3} & \frac{\partial \dot{\boldsymbol{\omega}}}{\partial \boldsymbol{\omega}}
+    \end{bmatrix}
+\end{equation}
+
+The discrete-time Jacobian:
+\begin{equation}
+    \mathbf{F}_d = \mathbf{I} + \mathbf{F} \Delta t
+\end{equation}
+
+\subsection{Kalman Gain Derivation}
+
+The Kalman gain minimizes the posterior covariance:
+
+\begin{equation}
+    \mathbf{K} = \arg\min_{\mathbf{K}} \text{tr}(\mathbf{P}^+)
+\end{equation}
+
+Taking the derivative and setting to zero:
+\begin{align}
+    \frac{\partial}{\partial \mathbf{K}} \text{tr}\left[(\mathbf{I} - \mathbf{K}\mathbf{H})\mathbf{P}^-(\mathbf{I} - \mathbf{K}\mathbf{H})^\top + \mathbf{K}\mathbf{R}\mathbf{K}^\top\right] &= 0 \\
+    -2\mathbf{P}^-\mathbf{H}^\top + 2\mathbf{K}(\mathbf{H}\mathbf{P}^-\mathbf{H}^\top + \mathbf{R}) &= 0 \\
+    \mathbf{K} &= \mathbf{P}^-\mathbf{H}^\top(\mathbf{H}\mathbf{P}^-\mathbf{H}^\top + \mathbf{R})^{-1}
+\end{align}
+
+\section{Control Barrier Function Theory}
+
+\subsection{Forward Invariance}
+
+\begin{theorem}[Nagumo's Theorem]
+A closed set $\mathcal{S}$ is forward invariant for $\dot{\mathbf{x}} = f(\mathbf{x})$ if and only if:
+\begin{equation}
+    f(\mathbf{x}) \in T_{\mathcal{S}}(\mathbf{x}), \quad \forall \mathbf{x} \in \partial\mathcal{S}
+\end{equation}
+where $T_{\mathcal{S}}(\mathbf{x})$ is the tangent cone to $\mathcal{S}$ at $\mathbf{x}$.
+\end{theorem}
+
+\subsection{CBF Condition Derivation}
+
+For a safe set $\mathcal{S} = \{\mathbf{x} : h(\mathbf{x}) \geq 0\}$, forward invariance requires:
+
+\begin{equation}
+    \dot{h}(\mathbf{x}) \geq 0 \quad \text{when } h(\mathbf{x}) = 0
+\end{equation}
+
+To ensure this with a margin, we require:
+\begin{equation}
+    \dot{h}(\mathbf{x}) \geq -\alpha(h(\mathbf{x}))
+\end{equation}
+
+where $\alpha$ is a class-$\mathcal{K}$ function.
+
+For control-affine systems $\dot{\mathbf{x}} = f(\mathbf{x}) + g(\mathbf{x})\mathbf{u}$:
+\begin{equation}
+    \dot{h} = \underbrace{\frac{\partial h}{\partial \mathbf{x}} f(\mathbf{x})}_{L_f h} + \underbrace{\frac{\partial h}{\partial \mathbf{x}} g(\mathbf{x})}_{L_g h} \mathbf{u}
+\end{equation}
+
+The CBF constraint becomes:
+\begin{equation}
+    L_f h(\mathbf{x}) + L_g h(\mathbf{x}) \mathbf{u} \geq -\alpha(h(\mathbf{x}))
+\end{equation}
+
+\subsection{CBF-QP Derivation}
+
+The optimization problem:
+\begin{align}
+    \min_{\mathbf{u}} \quad & \frac{1}{2}\|\mathbf{u} - \mathbf{u}_{\text{nom}}\|^2 \\
+    \text{s.t.} \quad & L_f h_i + L_g h_i \mathbf{u} \geq -\alpha_i h_i, \quad i = 1, \ldots, m
+\end{align}
+
+This is a convex QP with linear constraints, solvable in polynomial time.
+
+\subsection{Altitude Barrier Derivation}
+
+For the altitude constraint $z_{\min} \leq z \leq z_{\max}$:
+
+Upper bound barrier:
+\begin{equation}
+    h_1(z) = z - z_{\min}
+\end{equation}
+
+Derivative:
+\begin{equation}
+    \dot{h}_1 = \dot{z} = v_z
+\end{equation}
+
+CBF constraint:
+\begin{equation}
+    v_z \geq -\alpha_1(z - z_{\min})
+\end{equation}
+
+Lower bound barrier:
+\begin{equation}
+    h_2(z) = z_{\max} - z
+\end{equation}
+
+CBF constraint:
+\begin{equation}
+    -v_z \geq -\alpha_2(z_{\max} - z) \quad \Rightarrow \quad v_z \leq \alpha_2(z_{\max} - z)
+\end{equation}
+
+\section{H-Infinity Control Theory}
+
+\subsection{Problem Formulation}
+
+Given a generalized plant:
+\begin{align}
+    \dot{\mathbf{x}} &= \mathbf{A}\mathbf{x} + \mathbf{B}_1\mathbf{w} + \mathbf{B}_2\mathbf{u} \\
+    \mathbf{z} &= \mathbf{C}_1\mathbf{x} + \mathbf{D}_{11}\mathbf{w} + \mathbf{D}_{12}\mathbf{u} \\
+    \mathbf{y} &= \mathbf{C}_2\mathbf{x} + \mathbf{D}_{21}\mathbf{w} + \mathbf{D}_{22}\mathbf{u}
+\end{align}
+
+Find controller $\mathbf{K}$ such that:
+\begin{equation}
+    \|T_{zw}\|_\infty = \sup_\omega \bar{\sigma}(T_{zw}(j\omega)) < \gamma
+\end{equation}
+
+\subsection{Riccati Equation Solution}
+
+The H-$\infty$ controller exists if and only if the following Riccati equations have stabilizing solutions:
+
+\begin{align}
+    \mathbf{A}^\top\mathbf{X} + \mathbf{X}\mathbf{A} + \mathbf{C}_1^\top\mathbf{C}_1 +
+    \mathbf{X}(\gamma^{-2}\mathbf{B}_1\mathbf{B}_1^\top - \mathbf{B}_2\mathbf{B}_2^\top)\mathbf{X} &= 0 \\
+    \mathbf{A}\mathbf{Y} + \mathbf{Y}\mathbf{A}^\top + \mathbf{B}_1\mathbf{B}_1^\top +
+    \mathbf{Y}(\gamma^{-2}\mathbf{C}_1^\top\mathbf{C}_1 - \mathbf{C}_2^\top\mathbf{C}_2)\mathbf{Y} &= 0
+\end{align}
+
+with $\mathbf{X} \geq 0$, $\mathbf{Y} \geq 0$, and $\rho(\mathbf{X}\mathbf{Y}) < \gamma^2$.
+
+\section{Contract Algebra}
+
+\subsection{Contract Composition}
+
+Given contracts $\mathcal{C}_1 = (\mathcal{A}_1, \mathcal{G}_1)$ and $\mathcal{C}_2 = (\mathcal{A}_2, \mathcal{G}_2)$:
+
+\begin{equation}
+    \mathcal{C}_1 \otimes \mathcal{C}_2 = \left(
+        (\mathcal{A}_1 \cap \mathcal{A}_2) \cup (\overline{\mathcal{G}_1} \cap \mathcal{A}_2) \cup (\mathcal{A}_1 \cap \overline{\mathcal{G}_2}),
+        \mathcal{G}_1 \cap \mathcal{G}_2
+    \right)
+\end{equation}
+
+For polyhedral contracts (Pacti), this simplifies to constraint intersection and union operations.
+
+\subsection{Contract Refinement}
+
+Contract $\mathcal{C}_1$ refines $\mathcal{C}_2$ (written $\mathcal{C}_1 \preceq \mathcal{C}_2$) if:
+\begin{equation}
+    \mathcal{A}_2 \subseteq \mathcal{A}_1 \quad \text{and} \quad \mathcal{G}_1 \subseteq \mathcal{G}_2
+\end{equation}
+
+Interpretation: $\mathcal{C}_1$ has weaker assumptions and stronger guarantees.
+

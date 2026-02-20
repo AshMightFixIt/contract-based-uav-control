@@ -1,0 +1,459 @@
+% ============================================================================
+% CHAPTER 8: SYSTEM INTEGRATION
+% ============================================================================
+
+\chapter{System Integration}
+\label{ch:integration}
+
+This chapter describes how all components are integrated into the complete Adaptive Control System, including the main control loop, data flow, and module coordination.
+
+\section{Adaptive Control System Architecture}
+
+The \texttt{AdaptiveControlSystem} class serves as the central integration point:
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.75,
+        transform shape,
+        module/.style={
+            draw,
+            rounded corners=3pt,
+            minimum width=3cm,
+            minimum height=1.5cm,
+            align=center,
+            font=\small
+        },
+        arrow/.style={-{Stealth}, thick}
+    ]
+        % Central system
+        \node[module, fill=contractpurple!30, minimum width=5cm, minimum height=8cm]
+            (system) at (0,0) {};
+        \node[above, font=\large\bfseries] at (0,3.5) {AdaptiveControlSystem};
+
+        % Internal modules
+        \node[module, fill=ekfgreen!30] (ekf) at (0,2) {EKF\\Estimator};
+        \node[module, fill=contractpurple!20] (planner) at (0,0) {Horizon\\Planner};
+        \node[module, fill=supervisororange!30] (supervisor) at (0,-2) {Flight Mode\\Supervisor};
+
+        % External inputs
+        \node[module, fill=sensorblue!30] (sensors) at (-6,2) {Sensors};
+        \node[module, fill=gray!20] (mission) at (-6,0) {Mission\\Commands};
+
+        % External outputs
+        \node[module, fill=pidblue!30] (controller) at (6,1) {Controller\\Switcher};
+        \node[module, fill=cbforange!30] (cbf) at (6,-1) {CBF Filter};
+        \node[module, fill=gray!30] (actuators) at (6,-3) {Actuators};
+
+        % Connections
+        \draw[arrow] (sensors) -- (ekf);
+        \draw[arrow] (mission) -- (supervisor);
+        \draw[arrow] (ekf) -- (planner);
+        \draw[arrow] (planner) -- (supervisor);
+        \draw[arrow] (supervisor) -- (controller);
+        \draw[arrow] (controller) -- (cbf);
+        \draw[arrow] (cbf) -- (actuators);
+
+        % Feedback
+        \draw[arrow, dashed] (actuators.south) -- ++(0,-0.5) -| (sensors.south);
+    \end{tikzpicture}
+    \caption{AdaptiveControlSystem component integration}
+    \label{fig:integration_architecture}
+\end{figure}
+
+\section{Main Control Loop}
+
+The control loop executes at 50 Hz (20ms period):
+
+\begin{algorithm}[H]
+\caption{Main Control Loop}
+\begin{algorithmic}[1]
+    \State \textbf{Input:} Raw sensor data, mission commands
+    \State \textbf{Output:} Safe actuator commands
+    \Procedure{ControlStep}{sensors, time}
+        \State \Comment{1. Sensor Processing}
+        \State measurements, raw\_sensors $\gets$ process\_sensors(sensors)
+        \State
+        \State \Comment{2. State Estimation (PREDICT then UPDATE)}
+        \State ekf.predict(dt)
+        \State state, estimation\_ok $\gets$ ekf.update(measurements, raw\_sensors, time)
+        \State
+        \State \Comment{3. Condition Estimation}
+        \State conditions $\gets$ estimate\_conditions(state, raw\_sensors)
+        \State gps\_ok $\gets$ ekf.check\_sensor\_contracts()['gps\_valid']
+        \State
+        \State \Comment{4. Horizon Planning (at 2 Hz)}
+        \State controller\_rec, margin $\gets$ planner.update(state, conditions, time)
+        \State
+        \State \Comment{5. Supervision --- Mode and Setpoint}
+        \State setpoint, ctrl\_name $\gets$ supervisor.update(state, conditions, gps\_ok, time)
+        \State
+        \State \Comment{6. Controller Switching}
+        \If{ctrl\_name $\neq$ current\_controller}
+            \State controller\_switcher.switch\_to(ctrl\_name)
+        \EndIf
+        \State
+        \State \Comment{7. Control Computation}
+        \State nominal\_control $\gets$ controller\_switcher.compute(state, setpoint)
+        \State
+        \State \Comment{8. Safety Filtering}
+        \State safe\_control, intervened $\gets$ cbf\_filter.filter(state, nominal\_control, time)
+        \State
+        \State \Comment{9. Logging and Monitoring}
+        \State log\_telemetry(state, control, conditions, time)
+        \State
+        \State \Return safe\_control
+    \EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\section{Module Instantiation}
+
+\begin{lstlisting}[caption={AdaptiveControlSystem initialization}]
+class AdaptiveControlSystem:
+    def __init__(self, dt=0.02):
+        self.dt = dt
+        self.time = 0.0
+
+        # Core modules
+        self.ekf = ContractEKF(dt)
+        self.planner = IntegratedHorizonPlanner(dt)
+        self.supervisor = FlightModeSupervisor(dt)
+        self.controller_switcher = ControllerSwitcher(dt)
+        self.cbf_filter = CBFSafetyFilter()
+        self.runtime_monitor = RuntimeMonitor()
+
+        # Contract framework
+        self.contract_manager = ContractManager()
+        self._initialize_contracts()
+
+        # State tracking
+        self.current_state = None
+        self.current_conditions = None
+        self.telemetry_log = []
+
+        # Wind estimation
+        self.wind_filter_alpha = 0.15
+        self.filtered_wind = 0.0
+        self.last_wind_sensor = 0.0
+
+    def _initialize_contracts(self):
+        """Register all component contracts."""
+        self.contract_manager.register('sensor', SensorContract())
+        self.contract_manager.register('estimator', EstimatorContract())
+        self.contract_manager.register('pid', PIDContract())
+        self.contract_manager.register('hinf', HInfContract())
+        self.contract_manager.register('planner', PlannerContract())
+        self.contract_manager.register('safety', SafetyContract())
+\end{lstlisting}
+
+\section{Condition Estimation}
+
+The system estimates environmental and tracking conditions:
+
+\begin{lstlisting}[caption={Condition estimation method}]
+def estimate_system_conditions(self, state, raw_sensors, setpoint):
+    """Estimate current operating conditions."""
+    conditions = {}
+
+    # Wind estimation (low-pass filtered)
+    if 'wind' in raw_sensors:
+        wind_sensor = raw_sensors['wind'].get('speed', 0.0)
+        self.filtered_wind = (
+            self.wind_filter_alpha * wind_sensor +
+            (1 - self.wind_filter_alpha) * self.filtered_wind
+        )
+    conditions['wind_speed'] = self.filtered_wind
+
+    # Tracking error
+    position = state[:3]
+    target = setpoint['position']
+    tracking_error = np.linalg.norm(target - position)
+
+    # Add distance penalty for large errors
+    max_reasonable = 5.0
+    if tracking_error > max_reasonable:
+        tracking_error += (tracking_error - max_reasonable) * 0.3
+
+    conditions['tracking_error'] = tracking_error
+
+    # Estimation uncertainty (from EKF covariance)
+    P = self.ekf.P
+    conditions['estimation_uncertainty'] = np.sqrt(P[0,0] + P[1,1] + P[2,2])
+
+    # Dynamic conditions
+    conditions['angular_rates'] = np.linalg.norm(state[9:12])
+    conditions['velocity'] = np.linalg.norm(state[3:6])
+    conditions['altitude'] = -state[2]  # Convert NED to positive altitude
+
+    return conditions
+\end{lstlisting}
+
+\section{Flight Mode Supervisor Integration}
+
+The supervisor manages high-level flight modes and setpoint generation:
+
+\begin{lstlisting}[caption={Flight mode supervisor update}]
+def _supervisor_update(self, state, conditions, gps_ok, time):
+    """Update supervisor and get setpoint/controller."""
+
+    # Check PID contract assumptions
+    pid_assumptions_ok = (
+        conditions['wind_speed'] < 3.0 and
+        conditions['tracking_error'] < 2.0 and
+        conditions['estimation_uncertainty'] < 1.0 and
+        conditions['angular_rates'] < 0.5 and
+        gps_ok
+    )
+
+    # Update supervisor
+    setpoint, controller_name = self.supervisor.update(
+        state=state,
+        conditions=conditions,
+        pid_violated=not pid_assumptions_ok,
+        gps_available=gps_ok,
+        time=time
+    )
+
+    return setpoint, controller_name
+\end{lstlisting}
+
+\section{Mission Interface}
+
+The system provides convenient methods for mission control:
+
+\begin{lstlisting}[caption={Mission control interface}]
+class AdaptiveControlSystem:
+    # ... (previous code)
+
+    def set_waypoint_mission(self, waypoints):
+        """Set multi-waypoint mission."""
+        self.supervisor.set_waypoints(waypoints)
+        self.supervisor.command_track()
+
+    def command_hover(self, position=None):
+        """Command hover at position (or current if None)."""
+        if position is None:
+            position = self.current_state[:3].copy()
+        self.supervisor.command_hover(position)
+
+    def command_land(self):
+        """Command landing sequence."""
+        self.supervisor.command_land()
+
+    def command_emergency(self):
+        """Trigger emergency mode."""
+        self.supervisor.command_emergency()
+
+    def pre_flight_check(self, target):
+        """Verify mission feasibility before takeoff."""
+        # Check sensor contracts
+        sensor_ok = self.contract_manager.check('sensor')
+
+        # Verify target reachability
+        mission_ok = self.planner.verify_mission([target])
+
+        # Check vehicle state
+        vehicle_ok = self._check_vehicle_ready()
+
+        return {
+            'sensors': sensor_ok,
+            'mission': mission_ok,
+            'vehicle': vehicle_ok,
+            'ready': sensor_ok and mission_ok and vehicle_ok
+        }
+\end{lstlisting}
+
+\section{Telemetry Logging}
+
+Comprehensive telemetry is logged for analysis:
+
+\begin{lstlisting}[caption={Telemetry logging structure}]
+def _log_telemetry(self, state, control, conditions, time):
+    """Log telemetry for analysis."""
+    entry = {
+        'time': time,
+        'state': {
+            'position': state[:3].tolist(),
+            'velocity': state[3:6].tolist(),
+            'attitude': state[6:9].tolist(),
+            'rates': state[9:12].tolist()
+        },
+        'control': {
+            'thrust': control['thrust'],
+            'torques': control['torques'].tolist(),
+            'controller': control.get('controller', 'unknown')
+        },
+        'conditions': conditions.copy(),
+        'contracts': {
+            'pid_satisfied': self._check_pid_contract(),
+            'safety_margin': self.planner.last_safety_margin
+        },
+        'mode': self.supervisor.current_mode.name,
+        'cbf_intervened': self.cbf_filter.last_intervened
+    }
+
+    self.telemetry_log.append(entry)
+\end{lstlisting}
+
+\section{Complete Control Step Implementation}
+
+\begin{lstlisting}[caption={Complete control step method}]
+def control_step(self, sensors, time=None):
+    """Execute one control cycle."""
+    if time is not None:
+        self.time = time
+    else:
+        self.time += self.dt
+
+    # 1. Process sensors
+    measurements, raw_sensors = self._process_sensors(sensors)
+
+    # 2. State estimation (CRITICAL: predict before update)
+    self.ekf.predict(self.dt)
+    state, estimation_ok = self.ekf.update(
+        measurements, raw_sensors, self.time
+    )
+    self.current_state = state
+
+    # Capture wind sensor
+    if 'wind' in raw_sensors:
+        self.last_wind_sensor = raw_sensors['wind'].get('speed', 0.0)
+
+    # 3. Get current setpoint for condition estimation
+    current_setpoint = self.supervisor.get_current_setpoint()
+
+    # 4. Estimate conditions
+    conditions = self.estimate_system_conditions(
+        state, raw_sensors, current_setpoint
+    )
+    self.current_conditions = conditions
+
+    # 5. Check GPS status
+    sensor_contracts = self.ekf.check_sensor_contracts(raw_sensors)
+    gps_ok = sensor_contracts['gps_valid']
+
+    # 6. Horizon planning update (at 2 Hz)
+    controller_rec, safety_margin = self.planner.update(
+        state, conditions, self.time
+    )
+
+    # 7. Supervisor update
+    setpoint, controller_name = self._supervisor_update(
+        state, conditions, gps_ok, self.time
+    )
+
+    # 8. Controller switching
+    if controller_name != self.controller_switcher.current_controller:
+        self.controller_switcher.switch_to(controller_name)
+
+    # 9. Compute nominal control
+    nominal_control = self.controller_switcher.compute_control(
+        state, setpoint
+    )
+
+    # 10. CBF safety filtering
+    safe_control, cbf_intervened = self.cbf_filter.filter_control(
+        state, nominal_control, self.time
+    )
+
+    # 11. Runtime monitoring
+    self.runtime_monitor.update(
+        state, safe_control, self.time, cbf_intervened
+    )
+
+    # 12. Telemetry logging
+    self._log_telemetry(state, safe_control, conditions, self.time)
+
+    return safe_control
+\end{lstlisting}
+
+\section{System Timing}
+
+\begin{table}[htbp]
+    \centering
+    \caption{System timing budget (20ms cycle)}
+    \label{tab:timing_budget}
+    \begin{tabular}{@{}lrl@{}}
+        \toprule
+        \textbf{Component} & \textbf{Time} & \textbf{Notes} \\
+        \midrule
+        Sensor processing & 1 ms & Data validation, unit conversion \\
+        EKF predict + update & 3 ms & Matrix operations \\
+        Condition estimation & 1 ms & Simple calculations \\
+        Horizon planner & 5 ms & Only when triggered (2 Hz) \\
+        Supervisor update & 1 ms & State machine logic \\
+        Controller compute & 2 ms & PID or H-$\infty$ \\
+        CBF filtering & 2 ms & QP solve (if needed) \\
+        Logging & 1 ms & Data structure updates \\
+        \midrule
+        \textbf{Total} & \textbf{16 ms} & 4 ms margin \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Error Handling}
+
+The system implements graceful degradation:
+
+\begin{lstlisting}[caption={Error handling strategy}]
+def control_step_safe(self, sensors, time=None):
+    """Control step with error handling."""
+    try:
+        return self.control_step(sensors, time)
+    except EstimationError:
+        # EKF failure - use last known state
+        self.supervisor.command_emergency()
+        return self._emergency_control()
+    except SensorError:
+        # Sensor failure - switch to robust mode
+        self.controller_switcher.switch_to('Hinf')
+        return self._degraded_control()
+    except Exception as e:
+        # Unknown error - safe landing
+        logging.error(f"Control error: {e}")
+        self.supervisor.command_land()
+        return self._safe_landing_control()
+\end{lstlisting}
+
+\section{Contract Monitoring Dashboard}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.9,
+        indicator/.style={
+            draw,
+            rounded corners=3pt,
+            minimum width=4cm,
+            minimum height=1cm,
+            align=center,
+            font=\small
+        }
+    ]
+        % Title
+        \node[font=\large\bfseries] at (0,5) {Contract Status Dashboard};
+
+        % Indicators
+        \node[indicator, fill=green!30] at (-3,3.5) {Sensor: OK};
+        \node[indicator, fill=green!30] at (3,3.5) {Estimator: OK};
+
+        \node[indicator, fill=green!30] at (-3,2) {PID: Satisfied};
+        \node[indicator, fill=yellow!30] at (3,2) {H-$\infty$: Active};
+
+        \node[indicator, fill=green!30] at (-3,0.5) {Planner: OK};
+        \node[indicator, fill=green!30] at (3,0.5) {Safety: OK};
+
+        % Margins bar
+        \draw[thick] (-4,-1) rectangle (4,-0.5);
+        \fill[green!50] (-4,-1) rectangle (2,-0.5);
+        \node[font=\scriptsize] at (0,-0.75) {Safety Margin: 75\%};
+
+        % Mode indicator
+        \node[draw, rounded corners, fill=pidblue!30, minimum width=8cm] at (0,-2)
+            {Flight Mode: TRACK | Controller: H-$\infty$ | Waypoint: 2/4};
+    \end{tikzpicture}
+    \caption{Runtime contract monitoring dashboard concept}
+    \label{fig:dashboard}
+\end{figure}
+

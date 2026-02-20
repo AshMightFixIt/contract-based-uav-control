@@ -1,0 +1,425 @@
+% ============================================================================
+% CHAPTER 7: SAFETY LAYER
+% ============================================================================
+
+\chapter{Safety Layer}
+\label{ch:safety}
+
+This chapter presents the Control Barrier Function (CBF) safety layer that provides the last line of defense against constraint violations, regardless of controller behavior.
+
+\section{Defense-in-Depth Philosophy}
+
+The safety architecture implements multiple layers of protection:
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.9,
+        layer/.style={
+            draw,
+            rounded corners=5pt,
+            minimum width=10cm,
+            minimum height=1.5cm,
+            align=center,
+            font=\small
+        }
+    ]
+        % Layers (outer to inner)
+        \node[layer, fill=contractpurple!10] (planning) at (0,5) {
+            \textbf{Layer 1: Planning} --- Predictive contract monitoring\\
+            \scriptsize Switches controller before violations occur
+        };
+
+        \node[layer, fill=supervisororange!20] (supervisor) at (0,3) {
+            \textbf{Layer 2: Supervision} --- Mode-based protection\\
+            \scriptsize Emergency modes, safe setpoint generation
+        };
+
+        \node[layer, fill=cbforange!30] (cbf) at (0,1) {
+            \textbf{Layer 3: CBF Filter} --- Hard constraint enforcement\\
+            \scriptsize Modifies control to maintain safety invariants
+        };
+
+        % Arrows showing information flow
+        \draw[-{Stealth}, thick] (planning.south) -- (supervisor.north)
+            node[midway, right, font=\scriptsize] {recommendation};
+        \draw[-{Stealth}, thick] (supervisor.south) -- (cbf.north)
+            node[midway, right, font=\scriptsize] {nominal control};
+
+        % Side annotations
+        \node[right=0.5cm of planning, font=\footnotesize, text=contractpurple] {Anticipatory};
+        \node[right=0.5cm of supervisor, font=\footnotesize, text=supervisororange] {Reactive};
+        \node[right=0.5cm of cbf, font=\footnotesize, text=cbforange] {Enforcing};
+    \end{tikzpicture}
+    \caption{Defense-in-depth safety architecture}
+    \label{fig:defense_in_depth}
+\end{figure}
+
+\section{Control Barrier Functions}
+
+\subsection{CBF Definition}
+
+A Control Barrier Function (CBF) is a tool from nonlinear control theory that ensures forward invariance of a safe set.
+
+\begin{definition}[Control Barrier Function]
+Given a dynamical system $\dot{\mathbf{x}} = f(\mathbf{x}) + g(\mathbf{x})\mathbf{u}$ and a safe set $\mathcal{S} = \{\mathbf{x} : h(\mathbf{x}) \geq 0\}$, a function $h: \mathbb{R}^n \to \mathbb{R}$ is a \textbf{Control Barrier Function} if there exists a class-$\mathcal{K}$ function $\alpha$ such that:
+\begin{equation}
+    \sup_{\mathbf{u} \in \mathcal{U}} \left[ L_f h(\mathbf{x}) + L_g h(\mathbf{x}) \mathbf{u} + \alpha(h(\mathbf{x})) \right] \geq 0 \quad \forall \mathbf{x} \in \mathcal{S}
+\end{equation}
+where $L_f h$ and $L_g h$ are Lie derivatives.
+\end{definition}
+
+\importantbox{
+\textbf{Key Property:} If $h(\mathbf{x}(0)) \geq 0$ (system starts safe) and a CBF-compatible control exists, then $h(\mathbf{x}(t)) \geq 0$ for all $t \geq 0$ (system remains safe forever).
+}
+
+\subsection{CBF Constraint}
+
+For a control input to be safe, it must satisfy:
+\begin{equation}
+    \dot{h}(\mathbf{x}, \mathbf{u}) = \frac{\partial h}{\partial \mathbf{x}} \left( f(\mathbf{x}) + g(\mathbf{x})\mathbf{u} \right) \geq -\alpha(h(\mathbf{x}))
+\end{equation}
+
+This constraint ensures that the barrier function (and hence safety) does not decrease faster than the class-$\mathcal{K}$ function allows.
+
+\section{UAV Safety Constraints}
+
+\subsection{Altitude Constraint (NED Frame)}
+
+\warningbox{
+\textbf{Critical NED Convention:} In the NED frame, altitude is measured as negative $z$. Underground is positive $z$.
+\begin{itemize}
+    \item $z = -10$ means 10 meters above ground
+    \item $z = 0$ means at ground level
+    \item $z > 0$ means UNDERGROUND (collision!)
+\end{itemize}
+}
+
+\subsubsection{Upper Altitude Barrier (Minimum $z$)}
+
+Maximum altitude constraint ($z \geq z_{\min}$, where $z_{\min} = -50$ m):
+\begin{equation}
+    h_{\text{upper}}(z) = z - z_{\min}
+\end{equation}
+
+\subsubsection{Lower Altitude Barrier (Maximum $z$)}
+
+Minimum altitude constraint ($z \leq z_{\max}$, where $z_{\max} = -2$ m):
+\begin{equation}
+    h_{\text{lower}}(z) = z_{\max} - z
+\end{equation}
+
+\subsubsection{Combined Altitude Barrier}
+
+Using a product formulation:
+\begin{equation}
+    h_{\text{alt}}(z) = (z - z_{\min})(z_{\max} - z)
+\end{equation}
+
+This is positive when $z_{\min} < z < z_{\max}$ and zero at the boundaries.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=10cm, height=6cm,
+            xlabel={Altitude ($-z$ in meters above ground)},
+            ylabel={Barrier Value $h(z)$},
+            xmin=0, xmax=55,
+            ymin=-200, ymax=700,
+            grid=major,
+            xtick={0, 10, 20, 30, 40, 50},
+            legend pos=north east
+        ]
+            % Combined barrier function
+            \addplot[thick, cbforange, domain=2:50, samples=100]
+                {(x-2)*(50-x)};
+
+            % Zero line
+            \draw[thick, black, dashed] (axis cs:0,0) -- (axis cs:55,0);
+
+            % Boundary markers
+            \draw[thick, red, dashed] (axis cs:2,-200) -- (axis cs:2,700);
+            \draw[thick, red, dashed] (axis cs:50,-200) -- (axis cs:50,700);
+
+            % Annotations
+            \node[font=\footnotesize] at (axis cs:2,600) {Min alt};
+            \node[font=\footnotesize] at (axis cs:50,600) {Max alt};
+
+            % Safe region
+            \fill[green!20, opacity=0.3] (axis cs:2,0) rectangle (axis cs:50,700);
+            \node[font=\small, green!50!black] at (axis cs:26,500) {Safe Region};
+
+            \legend{$h(z) = (z-z_{\min})(z_{\max}-z)$}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Combined altitude barrier function}
+    \label{fig:altitude_barrier}
+\end{figure}
+
+\subsection{Velocity Constraint}
+
+Maximum velocity constraint:
+\begin{equation}
+    h_{\text{vel}}(\mathbf{v}) = v_{\max}^2 - \|\mathbf{v}\|^2
+\end{equation}
+
+where $v_{\max} = 15$ m/s.
+
+\subsection{Attitude Constraint}
+
+Maximum tilt constraint:
+\begin{equation}
+    h_{\text{tilt}}(\phi, \theta) = \theta_{\max}^2 - (\phi^2 + \theta^2)
+\end{equation}
+
+where $\theta_{\max} = 30°$ (0.52 rad).
+
+\section{CBF-QP Formulation}
+
+The CBF safety filter solves a Quadratic Program (QP) to find the safe control closest to the nominal (desired) control:
+
+\begin{equation}
+\begin{aligned}
+    \mathbf{u}^* = \arg\min_{\mathbf{u}} \quad & \frac{1}{2} \|\mathbf{u} - \mathbf{u}_{\text{nom}}\|^2 \\
+    \text{subject to} \quad & \dot{h}_i(\mathbf{x}, \mathbf{u}) \geq -\alpha_i h_i(\mathbf{x}), \quad \forall i \\
+    & \mathbf{u}_{\min} \leq \mathbf{u} \leq \mathbf{u}_{\max}
+\end{aligned}
+\end{equation}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[scale=1.2]
+        % Control space
+        \draw[-{Stealth}] (-2.5,0) -- (3,0) node[right] {$u_1$};
+        \draw[-{Stealth}] (0,-2) -- (0,2.5) node[above] {$u_2$};
+
+        % Feasible region (CBF constraint)
+        \fill[green!20] (-2,-1.5) -- (2.5,-1.5) -- (2.5,2) -- (-0.5,2) -- (-2,0.5) -- cycle;
+        \draw[thick, cbforange] (-2,0.5) -- (-0.5,2) -- (2.5,2);
+        \draw[thick, cbforange] (-2,0.5) -- (-2,-1.5);
+
+        % Nominal control
+        \fill[pidblue] (1.5,1.8) circle (0.1);
+        \node[above right, font=\small, pidblue] at (1.5,1.8) {$\mathbf{u}_{\text{nom}}$};
+
+        % Safe control (projection)
+        \fill[hinfgreen] (0.8,1.4) circle (0.1);
+        \node[below, font=\small, hinfgreen] at (0.8,1.4) {$\mathbf{u}^*$};
+
+        % Projection line
+        \draw[dashed, thick] (1.5,1.8) -- (0.8,1.4);
+
+        % CBF constraint line
+        \node[font=\footnotesize, cbforange] at (1.5,2.3) {CBF constraint};
+
+        % Feasible label
+        \node[font=\small, green!50!black] at (0.5,0) {Feasible};
+    \end{tikzpicture}
+    \caption{CBF-QP: finding closest safe control to nominal}
+    \label{fig:cbf_qp}
+\end{figure}
+
+\section{Emergency Interventions}
+
+For critical situations, the CBF filter implements direct interventions:
+
+\subsection{Ground Collision Prevention}
+
+\begin{lstlisting}[caption={Emergency ground collision prevention}]
+def _emergency_altitude_intervention(self, state, control):
+    """Emergency intervention when too close to ground."""
+    z = state[2]  # NED: positive = underground
+    vz = state[5]
+
+    if z > -0.5:  # Below 0.5m altitude or underground!
+        # Maximum upward thrust
+        control['thrust'] = 0.95
+
+        # Level the drone immediately
+        control['torques'] = np.array([
+            -state[6] * 5.0,   # Counter roll
+            -state[7] * 5.0,   # Counter pitch
+            0.0                 # Maintain yaw
+        ])
+
+        # Limit attitude
+        control['desired_attitude'] = np.array([0.0, 0.0, state[8]])
+
+        return control, True  # Intervention active
+
+    return control, False
+\end{lstlisting}
+
+\subsection{Velocity Limiting}
+
+\begin{lstlisting}[caption={Velocity limiting intervention}]
+def _velocity_intervention(self, state, control):
+    """Limit velocity when approaching maximum."""
+    velocity = state[3:6]
+    speed = np.linalg.norm(velocity)
+
+    if speed > self.max_velocity * 0.9:  # 90% of limit
+        # Scale back thrust in velocity direction
+        scale = self.max_velocity * 0.85 / speed
+        # Adjust control to reduce velocity
+        # ...
+        return control, True
+
+    return control, False
+\end{lstlisting}
+
+\section{CBF Filter Implementation}
+
+\begin{lstlisting}[caption={CBFSafetyFilter class structure}]
+class CBFSafetyFilter:
+    def __init__(self):
+        # Altitude constraints (NED frame)
+        self.z_min = -50.0   # Max altitude (50m above ground)
+        self.z_max = -2.0    # Min altitude (2m above ground)
+
+        # Velocity constraint
+        self.max_velocity = 15.0  # m/s
+
+        # Attitude constraints
+        self.max_tilt = 0.52  # 30 degrees
+
+        # CBF parameters
+        self.alpha = 1.0  # Class-K function parameter
+
+        # Intervention tracking
+        self.intervention_count = 0
+        self.last_intervention_time = 0
+
+    def filter_control(self, state, nominal_control, time):
+        """Filter nominal control to ensure safety."""
+        safe_control = nominal_control.copy()
+        intervened = False
+
+        # Check each barrier
+        safe_control, alt_int = self._altitude_barrier(state, safe_control)
+        safe_control, vel_int = self._velocity_barrier(state, safe_control)
+        safe_control, tilt_int = self._tilt_barrier(state, safe_control)
+
+        intervened = alt_int or vel_int or tilt_int
+
+        if intervened:
+            self.intervention_count += 1
+            self.last_intervention_time = time
+
+        return safe_control, intervened
+\end{lstlisting}
+
+\section{Runtime Monitoring}
+
+The RuntimeMonitor tracks safety metrics:
+
+\begin{lstlisting}[caption={RuntimeMonitor class}]
+class RuntimeMonitor:
+    def __init__(self):
+        self.safety_violations = []
+        self.cbf_interventions = []
+        self.constraint_margins = {}
+
+    def update(self, state, control, time, cbf_intervened):
+        """Update runtime safety monitoring."""
+        # Track barrier values
+        self.constraint_margins['altitude'] = self._altitude_margin(state)
+        self.constraint_margins['velocity'] = self._velocity_margin(state)
+        self.constraint_margins['tilt'] = self._tilt_margin(state)
+
+        # Record violations
+        for name, margin in self.constraint_margins.items():
+            if margin < 0:
+                self.safety_violations.append({
+                    'time': time,
+                    'constraint': name,
+                    'margin': margin
+                })
+
+        # Record interventions
+        if cbf_intervened:
+            self.cbf_interventions.append(time)
+
+    def get_safety_report(self):
+        """Generate safety summary report."""
+        return {
+            'total_violations': len(self.safety_violations),
+            'total_interventions': len(self.cbf_interventions),
+            'min_margins': {k: min(v) for k, v in self._margin_history.items()},
+            'violation_rate': len(self.safety_violations) / self.total_steps
+        }
+\end{lstlisting}
+
+\section{CBF Contract Specification}
+
+\begin{contractbox}[CBF Safety Filter Contract $\mathcal{C}_{\text{safety}}$]
+\textbf{Assumptions:}
+\begin{itemize}
+    \item Valid state estimate available
+    \item Nominal control within physical limits
+    \item Actuators responsive (< 20ms latency)
+    \item Initial state satisfies all constraints
+\end{itemize}
+
+\textbf{Guarantees:}
+\begin{itemize}
+    \item Altitude maintained: $z_{\min} \leq z \leq z_{\max}$
+    \item Velocity bounded: $\|\mathbf{v}\| \leq v_{\max}$
+    \item Attitude bounded: $|\phi|, |\theta| \leq \theta_{\max}$
+    \item Output control always feasible
+    \item Minimum modification to nominal control
+    \item Intervention logged for analysis
+\end{itemize}
+\end{contractbox}
+
+\section{Safety Guarantees}
+
+\begin{theorem}[Forward Invariance]
+If the initial state $\mathbf{x}(0) \in \mathcal{S}$ (safe set) and the CBF-QP is feasible at all times, then $\mathbf{x}(t) \in \mathcal{S}$ for all $t \geq 0$.
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+By the CBF constraint $\dot{h}(\mathbf{x}, \mathbf{u}) \geq -\alpha h(\mathbf{x})$, we have:
+\begin{equation}
+    \frac{d}{dt} h(\mathbf{x}(t)) \geq -\alpha h(\mathbf{x}(t))
+\end{equation}
+By comparison lemma: $h(\mathbf{x}(t)) \geq h(\mathbf{x}(0)) e^{-\alpha t}$. Since $h(\mathbf{x}(0)) \geq 0$ and $e^{-\alpha t} > 0$, we have $h(\mathbf{x}(t)) \geq 0$ for all $t$.
+\end{proof}
+
+\section{Integration with Control Pipeline}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.9,
+        block/.style={
+            draw,
+            rounded corners=3pt,
+            minimum width=2.5cm,
+            minimum height=1.2cm,
+            align=center,
+            font=\small
+        },
+        arrow/.style={-{Stealth}, thick}
+    ]
+        \node[block, fill=pidblue!30] (ctrl) at (0,0) {PID / H-$\infty$\\Controller};
+        \node[block, fill=cbforange!30] (cbf) at (5,0) {CBF\\Safety Filter};
+        \node[block, fill=gray!30] (act) at (10,0) {Actuators};
+
+        \draw[arrow] (ctrl) -- (cbf) node[midway, above, font=\scriptsize] {$\mathbf{u}_{\text{nom}}$};
+        \draw[arrow] (cbf) -- (act) node[midway, above, font=\scriptsize] {$\mathbf{u}^*$};
+
+        % State feedback
+        \node[block, fill=ekfgreen!20] (state) at (5,-2.5) {State\\Estimate};
+        \draw[arrow, dashed] (state) -- (cbf);
+        \draw[arrow, dashed] (state) -| (ctrl);
+
+        % Intervention signal
+        \draw[arrow, red, dashed] (cbf.south) -- ++(0,-0.8) -| ++(-3,0)
+            node[pos=0.3, below, font=\scriptsize, red] {intervention flag};
+    \end{tikzpicture}
+    \caption{CBF integration in control pipeline}
+    \label{fig:cbf_integration}
+\end{figure}
+

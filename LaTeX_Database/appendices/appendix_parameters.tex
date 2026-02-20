@@ -1,0 +1,318 @@
+% ============================================================================
+% APPENDIX C: SYSTEM PARAMETERS
+% ============================================================================
+
+\chapter{System Parameters}
+\label{app:parameters}
+
+This appendix provides a complete reference of all system parameters and their values.
+
+\section{Vehicle Parameters}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Quadrotor physical parameters}
+    \label{tab:vehicle_params}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Symbol} & \textbf{Value} & \textbf{Unit} \\
+        \midrule
+        Mass & $m$ & 1.5 & kg \\
+        Arm length & $L$ & 0.25 & m \\
+        Moment of inertia (roll) & $I_{xx}$ & 0.0147 & kg$\cdot$m$^2$ \\
+        Moment of inertia (pitch) & $I_{yy}$ & 0.0147 & kg$\cdot$m$^2$ \\
+        Moment of inertia (yaw) & $I_{zz}$ & 0.0294 & kg$\cdot$m$^2$ \\
+        Thrust coefficient & $k_T$ & $1.0 \times 10^{-5}$ & N/(rad/s)$^2$ \\
+        Torque coefficient & $k_\tau$ & $1.0 \times 10^{-7}$ & Nm/(rad/s)$^2$ \\
+        Max motor speed & $\omega_{\max}$ & 8000 & rad/s \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{PID Controller Parameters}
+
+\begin{table}[htbp]
+    \centering
+    \caption{PID position controller gains}
+    \label{tab:pid_pos_gains}
+    \begin{tabular}{@{}lllll@{}}
+        \toprule
+        \textbf{Gain} & \textbf{X} & \textbf{Y} & \textbf{Z} & \textbf{Notes} \\
+        \midrule
+        $K_p^{\text{pos}}$ & 0.2 & 0.2 & 0.8 & Proportional (gentle) \\
+        $K_i^{\text{pos}}$ & 0.005 & 0.005 & 0.05 & Integral (minimal) \\
+        $K_d^{\text{pos}}$ & 0.5 & 0.5 & 0.6 & Derivative (strong damping) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{PID attitude controller gains}
+    \label{tab:pid_att_gains}
+    \begin{tabular}{@{}lllll@{}}
+        \toprule
+        \textbf{Gain} & \textbf{Roll} & \textbf{Pitch} & \textbf{Yaw} & \textbf{Notes} \\
+        \midrule
+        $K_p^{\text{att}}$ & 1.5 & 1.5 & 1.0 & Proportional \\
+        $K_d^{\text{att}}$ & 0.3 & 0.3 & 0.2 & Derivative \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{PID controller limits}
+    \label{tab:pid_limits}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Symbol} & \textbf{Value} & \textbf{Unit} \\
+        \midrule
+        Maximum tilt angle & $\theta_{\max}$ & 0.15 & rad ($\approx 9°$) \\
+        Maximum angular rate & $\omega_{\max}$ & 1.0 & rad/s \\
+        Maximum velocity & $v_{\max}$ & 5.0 & m/s \\
+        Hover thrust & $T_{\text{hover}}$ & 0.5 & normalized \\
+        Integral windup limit & --- & 2.0 & m$\cdot$s \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{H-Infinity Controller Parameters}
+
+\begin{table}[htbp]
+    \centering
+    \caption{H-infinity controller gains}
+    \label{tab:hinf_gains}
+    \begin{tabular}{@{}lllll@{}}
+        \toprule
+        \textbf{Gain} & \textbf{X} & \textbf{Y} & \textbf{Z} & \textbf{Notes} \\
+        \midrule
+        $K_p^{\text{pos}}$ & 0.6 & 0.6 & 1.2 & More aggressive \\
+        $K_d^{\text{pos}}$ & 0.8 & 0.8 & 1.0 & Strong damping \\
+        Disturbance gain & 0.3 & 0.3 & 0.3 & Feedforward \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{H-infinity controller limits}
+    \label{tab:hinf_limits}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Symbol} & \textbf{Value} & \textbf{Unit} \\
+        \midrule
+        Maximum tilt angle & $\theta_{\max}$ & 0.4 & rad ($\approx 23°$) \\
+        Maximum angular rate & $\omega_{\max}$ & 2.0 & rad/s \\
+        Maximum velocity & $v_{\max}$ & 10.0 & m/s \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{EKF Parameters}
+
+\begin{table}[htbp]
+    \centering
+    \caption{EKF process noise covariance (diagonal elements)}
+    \label{tab:ekf_Q}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{State} & \textbf{Symbol} & \textbf{Value} & \textbf{Unit} \\
+        \midrule
+        Position & $\sigma_p^2$ & 0.01 & m$^2$ \\
+        Velocity & $\sigma_v^2$ & 0.1 & (m/s)$^2$ \\
+        Attitude & $\sigma_\theta^2$ & 0.001 & rad$^2$ \\
+        Angular rate & $\sigma_\omega^2$ & 0.01 & (rad/s)$^2$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{EKF measurement noise covariance (base values)}
+    \label{tab:ekf_R}
+    \begin{tabular}{@{}lllll@{}}
+        \toprule
+        \textbf{Sensor} & \textbf{Measurement} & \textbf{$\sigma$} & \textbf{Unit} & \textbf{Scaling} \\
+        \midrule
+        GPS & Position & 1.0 & m & $\times$ HDOP \\
+        GPS & Velocity & 0.5 & m/s & $\times$ HDOP \\
+        IMU & Attitude & 0.01 & rad & Fixed \\
+        IMU & Angular rate & 0.05 & rad/s & Fixed \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Contract Parameters}
+
+\subsection{PID Contract Thresholds}
+
+\begin{table}[htbp]
+    \centering
+    \caption{PID contract assumption thresholds}
+    \label{tab:pid_contract}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Assumption} & \textbf{Threshold} & \textbf{Unit} & \textbf{Rationale} \\
+        \midrule
+        Wind speed & $< 3.0$ & m/s & PID disturbance rejection limit \\
+        Tracking error & $< 2.0$ & m & Linearization validity \\
+        Estimation uncertainty & $< 1.0$ & m & State feedback accuracy \\
+        Angular rates & $< 0.5$ & rad/s & Small angle approximation \\
+        GPS availability & True & --- & Position feedback required \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{H-Infinity Contract Thresholds}
+
+\begin{table}[htbp]
+    \centering
+    \caption{H-infinity contract assumption thresholds}
+    \label{tab:hinf_contract}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Assumption} & \textbf{Threshold} & \textbf{Unit} & \textbf{Rationale} \\
+        \midrule
+        Wind speed & $< 10.0$ & m/s & Robust disturbance rejection \\
+        Tracking error & $< 5.0$ & m & Extended operating envelope \\
+        Estimation uncertainty & $< 3.0$ & m & Tolerates degraded estimation \\
+        Angular rates & $< 1.5$ & rad/s & Wider dynamic range \\
+        GPS availability & Optional & --- & Can operate GPS-denied \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Safety Parameters}
+
+\begin{table}[htbp]
+    \centering
+    \caption{CBF safety filter parameters}
+    \label{tab:cbf_params}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Symbol} & \textbf{Value} & \textbf{Unit} \\
+        \midrule
+        Minimum altitude (NED) & $z_{\min}$ & $-50$ & m \\
+        Maximum altitude (NED) & $z_{\max}$ & $-2$ & m \\
+        Maximum velocity & $v_{\max}$ & 15 & m/s \\
+        Maximum tilt & $\theta_{\max}$ & 0.52 & rad ($30°$) \\
+        CBF class-$\mathcal{K}$ parameter & $\alpha$ & 1.0 & --- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Horizon Planner Parameters}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Horizon planner configuration}
+    \label{tab:planner_params}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Value} & \textbf{Unit} & \textbf{Description} \\
+        \midrule
+        Horizon length & 3.0 & s & Prediction window \\
+        Horizon steps & 6 & --- & Discrete steps \\
+        Step size & 0.5 & s & Time between steps \\
+        Update rate & 2.0 & Hz & Planner recalculation \\
+        Wind filter $\alpha$ & 0.15 & --- & Low-pass filter coefficient \\
+        Safety margin threshold & 0.2 & --- & Switch warning level \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Flight Mode Supervisor Parameters}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Flight mode supervisor configuration}
+    \label{tab:supervisor_params}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Value} & \textbf{Unit} & \textbf{Description} \\
+        \midrule
+        Waypoint tolerance & 1.0 & m & Distance to consider reached \\
+        Confirmation threshold & 5 & counts & Consecutive checks required \\
+        Transition cooldown & 1.0 & s & Minimum time between modes \\
+        Landing descent rate & 0.5 & m/s & Vertical speed during land \\
+        Emergency wind threshold & 8.0 & m/s & Trigger emergency mode \\
+        Emergency rate threshold & 1.5 & rad/s & Trigger emergency mode \\
+        Recovery wind threshold & 5.0 & m/s & Exit emergency mode \\
+        Recovery rate threshold & 0.5 & rad/s & Exit emergency mode \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Simulation Parameters}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Simulation configuration}
+    \label{tab:sim_params}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Value} & \textbf{Unit} & \textbf{Description} \\
+        \midrule
+        Control loop rate & 50 & Hz & Main loop frequency \\
+        Timestep & 0.02 & s & Control period \\
+        Gravity & 9.81 & m/s$^2$ & Gravitational acceleration \\
+        Air density & 1.225 & kg/m$^3$ & At sea level \\
+        Default mission duration & 120 & s & Simulation length \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Sensor Specifications}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Sensor specifications and contract requirements}
+    \label{tab:sensor_specs}
+    \begin{tabular}{@{}lllll@{}}
+        \toprule
+        \textbf{Sensor} & \textbf{Rate} & \textbf{Accuracy} & \textbf{Contract Req.} \\
+        \midrule
+        GPS Position & 10 Hz & $\pm 2$ m (CEP) & $\geq 4$ satellites, HDOP $< 5$ \\
+        GPS Velocity & 10 Hz & $\pm 0.5$ m/s & Same as position \\
+        IMU Attitude & 200 Hz & $\pm 0.5°$ & Calibrated, valid flag \\
+        IMU Angular Rate & 200 Hz & $\pm 0.05$ rad/s & Calibrated, valid flag \\
+        Wind Sensor & 10 Hz & $\pm 0.5$ m/s & Optional \\
+        Barometer & 50 Hz & $\pm 0.5$ m & Not currently used \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Unit Conventions}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Unit conventions used throughout the system}
+    \label{tab:units}
+    \begin{tabular}{@{}lll@{}}
+        \toprule
+        \textbf{Quantity} & \textbf{Unit} & \textbf{Notes} \\
+        \midrule
+        Position & meters (m) & NED frame \\
+        Velocity & meters/second (m/s) & NED frame \\
+        Acceleration & meters/second$^2$ (m/s$^2$) & NED frame \\
+        Angles & radians (rad) & Euler angles (ZYX) \\
+        Angular rates & radians/second (rad/s) & Body frame \\
+        Force & Newtons (N) & --- \\
+        Torque & Newton-meters (Nm) & Body frame \\
+        Thrust & Normalized [0, 1] & 0.5 = hover \\
+        Mass & kilograms (kg) & --- \\
+        Time & seconds (s) & --- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\warningbox{
+\textbf{NED Altitude Convention:} In the NED frame:
+\begin{itemize}
+    \item Altitude above ground = $-z$ (e.g., 10m altitude $\Rightarrow z = -10$)
+    \item Ascending = decreasing $z$ (negative $\dot{z}$)
+    \item Descending = increasing $z$ (positive $\dot{z}$)
+\end{itemize}
+}
+

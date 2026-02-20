@@ -3,7 +3,7 @@ Contract-Based Controllers for Adaptive Drone System
 
 Implements three-tier graduated degradation:
 1. PID Controller     - Efficient, for nominal conditions (wind <= 3 m/s)
-2. MPC Controller     - Optimal, for moderate conditions (wind <= 8 m/s)
+2. MPC Controller     - Optimal, for moderate conditions (wind <= 15 m/s)
 3. H-infinity Controller - Robust, for emergency stabilization (wind <= 25 m/s)
 
 Each controller has formal contracts defining when they work.
@@ -94,7 +94,21 @@ class PIDController(BaseController):
         self.integral_error = np.zeros(3)
         self.last_error = np.zeros(3)
         logger.info(f"{self.name} reset")
-    
+
+    def get_integral_state(self) -> np.ndarray:
+        """Return effective lateral acceleration contributed by integral term."""
+        return self.ki_pos * self.integral_error
+
+    def set_integral_state(self, effective_accel: np.ndarray):
+        """
+        Initialize integral from transferred effective acceleration (bumpless transfer).
+        Solves: ki_pos * integral_error = effective_accel  →  integral_error = accel / ki
+        """
+        ratio = np.where(self.ki_pos > 1e-9,
+                         effective_accel / np.where(self.ki_pos > 1e-9, self.ki_pos, 1.0),
+                         0.0)
+        self.integral_error = np.clip(ratio, -self.integral_limit, self.integral_limit)
+
     def compute_control(self,
                        state: Dict[str, np.ndarray],
                        setpoint: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
@@ -227,7 +241,23 @@ class HInfinityController(BaseController):
         """Reset controller state"""
         self.pos_integral = np.zeros(3)
         logger.info(f"{self.name} reset")
-    
+
+    def get_integral_state(self) -> np.ndarray:
+        """Return effective lateral acceleration contributed by integral term."""
+        return self.k_int * self.pos_integral
+
+    def set_integral_state(self, effective_accel: np.ndarray):
+        """
+        Initialize integral from transferred effective acceleration (bumpless transfer).
+        Solves: k_int * pos_integral = effective_accel  →  pos_integral = accel / k_int
+        Z-axis integral is zero (k_int[2] = 0), altitude handled by thrust separately.
+        """
+        integral = np.zeros(3)
+        for i in range(3):
+            if self.k_int[i] > 1e-9:
+                integral[i] = effective_accel[i] / self.k_int[i]
+        self.pos_integral = np.clip(integral, -self.int_limit, self.int_limit)
+
     def compute_control(self,
                        state: Dict[str, np.ndarray],
                        setpoint: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
@@ -308,7 +338,7 @@ class MPCController(BaseController):
     control step is a single matrix-vector multiply + clipping.
 
     Contract:
-    - Assumes: Moderate wind (<8 m/s), bounded errors, solve time < 50ms
+    - Assumes: Moderate wind (<15 m/s), bounded errors, solve time < 50ms
     - Guarantees: Better tracking than PID (optimization reduces error),
                   constraint satisfaction, Lyapunov decrease
     """
@@ -407,6 +437,22 @@ class MPCController(BaseController):
         self.last_error = np.zeros(3)
         self.integral_error = np.zeros(3)
         logger.info(f"{self.name} reset")
+
+    def get_integral_state(self) -> np.ndarray:
+        """Return first-step acceleration from warm-start as integral state proxy."""
+        if self._prev_U is not None and len(self._prev_U) >= self.n_u:
+            return self._prev_U[0:3].copy()
+        return np.zeros(3)
+
+    def set_integral_state(self, effective_accel: np.ndarray):
+        """
+        Seed warm-start with transferred acceleration (bumpless transfer).
+        Fills all horizon steps with the inbound acceleration so the first
+        MPC solve continues from a sensible initial condition.
+        """
+        self._prev_U = np.zeros(self.N * self.n_u)
+        for i in range(self.N):
+            self._prev_U[i * self.n_u:(i + 1) * self.n_u] = effective_accel
 
     def compute_control(self,
                        state: Dict[str, np.ndarray],
@@ -523,8 +569,8 @@ class ControllerSwitcher:
         self.active_controller = 'PID'
         self.controllers[self.active_controller].activate()
         
-        # Cooldown to prevent chattering
-        self.switch_cooldown = 2.0  # seconds
+        # Cooldown to prevent chattering (≥ PID settling time ~16s; 5s is a practical minimum)
+        self.switch_cooldown = 5.0  # seconds
         self.last_switch_time = -self.switch_cooldown  # Allow immediate switch at t=0
         
         logger.info("Controller Switcher initialized")
@@ -544,16 +590,23 @@ class ControllerSwitcher:
             logger.debug(f"Switch blocked by cooldown ({self.switch_cooldown}s)")
             return False
         
+        # Bumpless transfer: capture integral state from outgoing controller before switch
+        outgoing_integral = self.controllers[self.active_controller].get_integral_state()
+
         # Perform switch
         self.controllers[self.active_controller].deactivate()
         self.active_controller = controller_name
         self.controllers[self.active_controller].activate()
-        self.controllers[self.active_controller].reset()
-        
+        self.controllers[self.active_controller].reset()  # clears non-integral state (last_error, etc.)
+
+        # Transfer integral state so incoming controller continues smoothly
+        self.controllers[self.active_controller].set_integral_state(outgoing_integral)
+
         self.last_switch_time = current_time
-        
-        logger.warning(f"CONTROLLER SWITCH: {reason}")
-        
+
+        logger.warning(f"CONTROLLER SWITCH: {reason} "
+                       f"(integral transferred: {outgoing_integral.round(3)})")
+
         return True
     
     def compute_control(self,

@@ -1,0 +1,135 @@
+% ============================================================================
+% TITLE PAGE
+% ============================================================================
+
+\begin{titlepage}
+    \centering
+
+    \vspace*{1cm}
+
+    % Logo/Header decoration
+    \begin{tikzpicture}[remember picture, overlay]
+        \fill[contractpurple!20] (current page.north west) rectangle ([yshift=-4cm]current page.north east);
+        \node[anchor=north, yshift=-1cm] at (current page.north) {
+            \textcolor{contractpurple}{\rule{0.8\textwidth}{2pt}}
+        };
+    \end{tikzpicture}
+
+    \vspace{2cm}
+
+    {\Huge\bfseries\color{contractpurple} Contract-Based Adaptive\\[0.5cm] UAV Control System}
+
+    \vspace{1cm}
+
+    {\Large\itshape Comprehensive Technical Documentation}
+
+    \vspace{0.5cm}
+
+    {\large Using Assume-Guarantee Contracts with Pacti Library}
+
+    \vspace{2cm}
+
+    % Pipeline visualization
+    \begin{tikzpicture}[
+        scale=0.7,
+        transform shape,
+        node distance=0.8cm,
+        block/.style={
+            draw,
+            rounded corners=3pt,
+            minimum width=1.8cm,
+            minimum height=0.9cm,
+            align=center,
+            font=\scriptsize\bfseries,
+            drop shadow
+        }
+    ]
+        \node[block, fill=sensorblue!30] (sensors) {Sensors};
+        \node[block, fill=ekfgreen!30, right=of sensors] (ekf) {EKF};
+        \node[block, fill=contractpurple!30, right=of ekf] (planner) {Horizon\\Planner};
+        \node[block, fill=supervisororange!30, right=of planner] (supervisor) {Supervisor};
+        \node[block, fill=pidblue!30, right=of supervisor] (controller) {Controller};
+        \node[block, fill=cbforange!30, right=of controller] (cbf) {CBF};
+        \node[block, fill=gray!30, right=of cbf] (actuators) {Actuators};
+
+        \draw[-{Stealth[scale=0.8]}, thick] (sensors) -- (ekf);
+        \draw[-{Stealth[scale=0.8]}, thick] (ekf) -- (planner);
+        \draw[-{Stealth[scale=0.8]}, thick] (planner) -- (supervisor);
+        \draw[-{Stealth[scale=0.8]}, thick] (supervisor) -- (controller);
+        \draw[-{Stealth[scale=0.8]}, thick] (controller) -- (cbf);
+        \draw[-{Stealth[scale=0.8]}, thick] (cbf) -- (actuators);
+
+        % Feedback arrow
+        \draw[-{Stealth[scale=0.8]}, thick, dashed, gray]
+            (actuators.south) -- ++(0,-0.6) -| (sensors.south);
+    \end{tikzpicture}
+
+    \vspace{2cm}
+
+    % Key features box
+    \begin{tikzpicture}
+        \node[
+            draw=contractpurple,
+            rounded corners=5pt,
+            fill=contractpurple!5,
+            inner sep=12pt,
+            text width=12cm,
+            align=left
+        ] {
+            \textbf{\color{contractpurple}Key Features:}\\[6pt]
+            \begin{tabular}{@{}ll@{}}
+                $\bullet$ Formal Assume-Guarantee Contracts &
+                $\bullet$ Predictive Horizon Planning \\
+                $\bullet$ Automatic Controller Switching &
+                $\bullet$ Control Barrier Functions \\
+                $\bullet$ Pre-flight Mission Verification &
+                $\bullet$ Contract-Aware State Estimation \\
+            \end{tabular}
+        };
+    \end{tikzpicture}
+
+    \vfill
+
+    % Date and version
+    \begin{tikzpicture}[remember picture, overlay]
+        \fill[contractpurple!20] (current page.south west) rectangle ([yshift=2cm]current page.south east);
+    \end{tikzpicture}
+
+    {\large\bfseries February 2025}\\[0.3cm]
+    {\normalsize Version 1.0}
+
+    \vspace{1cm}
+
+\end{titlepage}
+
+% Abstract page
+\thispagestyle{empty}
+\begin{center}
+    {\Large\bfseries Abstract}
+\end{center}
+
+\vspace{0.5cm}
+
+\noindent
+This document presents a comprehensive technical specification of a \textbf{Contract-Based Adaptive UAV Control System} that advances the state-of-the-art in autonomous drone safety through the application of formal methods.
+
+The system implements \textbf{Assume-Guarantee (A/G) contracts} at every interface, providing mathematically verifiable safety guarantees while enabling adaptive behavior under varying environmental conditions. Using the \textbf{Pacti library} for polyhedral contract composition, the system can formally verify mission feasibility before takeoff and continuously monitor contract satisfaction during flight.
+
+The architecture features a \textbf{horizon-based predictive planner} that cascades contracts over a planning horizon to anticipate safety violations before they occur. This enables preemptive controller switching between an efficient \textbf{PID controller} (for nominal conditions) and a robust \textbf{H-infinity controller} (for degraded conditions), with \textbf{Control Barrier Functions (CBF)} providing runtime safety enforcement as the last line of defense.
+
+Key contributions include:
+\begin{itemize}[leftmargin=*,itemsep=3pt]
+    \item A hierarchical contract framework covering sensors, estimation, control, and actuation
+    \item Predictive horizon planning using formal contract composition
+    \item Principled adaptive control with mathematically justified switching conditions
+    \item Graceful degradation through multiple fallback layers
+    \item Transparent decision-making through contract-based reasoning
+\end{itemize}
+
+Experimental results demonstrate the system's ability to complete multi-waypoint missions while automatically adapting to wind disturbances, with smooth transitions between controllers and zero safety violations.
+
+\vspace{1cm}
+
+\noindent\textbf{Keywords:} Unmanned Aerial Vehicles, Assume-Guarantee Contracts, Adaptive Control, Formal Verification, Control Barrier Functions, Pacti, Safety-Critical Systems
+
+\newpage

@@ -1,0 +1,390 @@
+% ============================================================================
+% CHAPTER 5: CONTROL SYSTEMS
+% ============================================================================
+
+\chapter{Control Systems}
+\label{ch:control}
+
+This chapter presents the two feedback controllers---PID and H-infinity---their contracts, operating envelopes, and the principled switching mechanism between them.
+
+\section{Control Architecture Overview}
+
+The control system implements a cascaded architecture with position, velocity, and attitude loops:
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.85,
+        transform shape,
+        block/.style={
+            draw,
+            rounded corners=3pt,
+            minimum width=2cm,
+            minimum height=1cm,
+            align=center,
+            font=\small
+        },
+        sum/.style={circle, draw, minimum size=0.6cm},
+        arrow/.style={-{Stealth}, thick}
+    ]
+        % Position loop
+        \node[block, fill=contractpurple!20] (pos_sp) at (0,0) {Position\\Setpoint};
+        \node[sum] (pos_sum) at (2,0) {$+$};
+        \node[block, fill=pidblue!30] (pos_ctrl) at (4.5,0) {Position\\Controller};
+
+        % Velocity loop
+        \node[sum] (vel_sum) at (7,0) {$+$};
+        \node[block, fill=pidblue!30] (vel_ctrl) at (9.5,0) {Velocity\\Controller};
+
+        % Attitude loop
+        \node[block, fill=hinfgreen!30] (att_ctrl) at (12.5,0) {Attitude\\Controller};
+        \node[block, fill=gray!30] (plant) at (12.5,-2) {Plant};
+
+        % Connections
+        \draw[arrow] (pos_sp) -- (pos_sum);
+        \draw[arrow] (pos_sum) -- (pos_ctrl) node[midway, above, font=\scriptsize] {$\mathbf{e}_p$};
+        \draw[arrow] (pos_ctrl) -- (vel_sum) node[midway, above, font=\scriptsize] {$\mathbf{v}_d$};
+        \draw[arrow] (vel_sum) -- (vel_ctrl) node[midway, above, font=\scriptsize] {$\mathbf{e}_v$};
+        \draw[arrow] (vel_ctrl) -- (att_ctrl) node[midway, above, font=\scriptsize] {$\phi_d, \theta_d$};
+        \draw[arrow] (att_ctrl) -- (plant) node[midway, right, font=\scriptsize] {$\boldsymbol{\tau}$};
+
+        % Feedback
+        \draw[arrow, dashed] (plant.west) -- ++(-2,0) |- (pos_sum.south)
+            node[pos=0.25, below, font=\scriptsize] {$\mathbf{p}$};
+        \draw[arrow, dashed] (plant.west) -- ++(-1,0) |- (vel_sum.south)
+            node[pos=0.35, below, font=\scriptsize] {$\mathbf{v}$};
+
+        % Thrust output
+        \draw[arrow] (vel_ctrl.south) -- ++(0,-0.8) -| (plant.north west)
+            node[pos=0.3, left, font=\scriptsize] {$T$};
+    \end{tikzpicture}
+    \caption{Cascaded control architecture with position, velocity, and attitude loops}
+    \label{fig:cascade_control}
+\end{figure}
+
+\section{PID Controller}
+
+The PID controller is designed for nominal operating conditions where efficiency is prioritized.
+
+\subsection{Position Control}
+
+Position error:
+\begin{equation}
+    \mathbf{e}_p = \mathbf{p}_d - \mathbf{p}
+\end{equation}
+
+Desired velocity:
+\begin{equation}
+    \mathbf{v}_d = K_p^{\text{pos}} \mathbf{e}_p + K_i^{\text{pos}} \int \mathbf{e}_p \, dt + K_d^{\text{pos}} \dot{\mathbf{e}}_p
+\end{equation}
+
+\subsection{Velocity Control}
+
+Velocity error:
+\begin{equation}
+    \mathbf{e}_v = \mathbf{v}_d - \mathbf{v}
+\end{equation}
+
+The velocity controller computes desired accelerations, which are then converted to thrust and attitude commands.
+
+\subsection{Thrust Computation}
+
+Total thrust in body Z-axis:
+\begin{equation}
+    T = m \sqrt{a_{x,d}^2 + a_{y,d}^2 + (a_{z,d} - g)^2}
+\end{equation}
+
+Normalized for actuator commands:
+\begin{equation}
+    T_{\text{norm}} = \frac{T - T_{\min}}{T_{\max} - T_{\min}}
+\end{equation}
+
+where $T_{\text{hover}} \approx 0.5$ corresponds to gravity compensation.
+
+\subsection{Attitude Command Generation}
+
+Desired roll and pitch from acceleration commands:
+\begin{align}
+    \phi_d &= \arcsin\left(\frac{m(a_{x,d}\sin\psi - a_{y,d}\cos\psi)}{T}\right) \\
+    \theta_d &= \arctan\left(\frac{a_{x,d}\cos\psi + a_{y,d}\sin\psi}{a_{z,d} - g}\right)
+\end{align}
+
+With saturation to prevent excessive tilt:
+\begin{equation}
+    \phi_d, \theta_d \in [-\theta_{\max}, \theta_{\max}]
+\end{equation}
+
+\subsection{PID Tuning Parameters}
+
+\begin{table}[htbp]
+    \centering
+    \caption{PID controller tuning parameters (conservative for simulation stability)}
+    \label{tab:pid_params}
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Symbol} & \textbf{Value} & \textbf{Notes} \\
+        \midrule
+        \multicolumn{4}{l}{\textit{Position Gains}} \\
+        Proportional & $K_p^{\text{pos}}$ & $[0.2, 0.2, 0.8]$ & Gentle to prevent overshoot \\
+        Integral & $K_i^{\text{pos}}$ & $[0.005, 0.005, 0.05]$ & Minimal for steady-state \\
+        Derivative & $K_d^{\text{pos}}$ & $[0.5, 0.5, 0.6]$ & Strong velocity damping \\
+        \midrule
+        \multicolumn{4}{l}{\textit{Attitude Gains}} \\
+        Proportional & $K_p^{\text{att}}$ & $[1.5, 1.5, 1.0]$ & Fast attitude response \\
+        Derivative & $K_d^{\text{att}}$ & $[0.3, 0.3, 0.2]$ & Rate damping \\
+        \midrule
+        \multicolumn{4}{l}{\textit{Limits}} \\
+        Max tilt & $\theta_{\max}$ & \SI{0.15}{\radian} & $\approx 9°$, prevents aggression \\
+        Max rate & $\omega_{\max}$ & \SI{1.0}{\radian\per\second} & Smooth attitude changes \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{PID Contract Specification}
+
+\begin{contractbox}[PID Controller Contract $\mathcal{C}_{\text{PID}}$]
+\textbf{Assumptions:}
+\begin{itemize}
+    \item Wind speed $< 3.0$ m/s
+    \item Tracking error $< 2.0$ m
+    \item Estimation uncertainty $< 1.0$ m
+    \item Angular rates $< 0.5$ rad/s
+    \item GPS available and valid
+\end{itemize}
+
+\textbf{Guarantees:}
+\begin{itemize}
+    \item Tracking error converges to $< 0.5$ m
+    \item Settling time $< 10$ s
+    \item No overshoot $> 20\%$
+    \item Energy consumption within nominal bounds
+    \item Smooth control outputs (bounded rate of change)
+\end{itemize}
+\end{contractbox}
+
+\section{H-Infinity Controller}
+
+The H-$\infty$ controller provides robust performance under disturbances and uncertainty at the cost of higher energy consumption.
+
+\subsection{H-Infinity Design Objective}
+
+Minimize the $H_\infty$ norm of the closed-loop transfer function from disturbance $w$ to performance output $z$:
+
+\begin{equation}
+    \min_K \|T_{zw}(K)\|_\infty = \min_K \sup_\omega \bar{\sigma}(T_{zw}(j\omega))
+\end{equation}
+
+subject to internal stability.
+
+\subsection{Mixed Sensitivity Formulation}
+
+The controller minimizes a weighted combination of sensitivity functions:
+
+\begin{equation}
+    \left\| \begin{bmatrix} W_1 S \\ W_2 KS \\ W_3 T \end{bmatrix} \right\|_\infty < \gamma
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $S = (I + GK)^{-1}$ is the sensitivity function
+    \item $T = GK(I + GK)^{-1}$ is the complementary sensitivity
+    \item $W_1$ weights tracking error
+    \item $W_2$ weights control effort
+    \item $W_3$ weights robustness to model uncertainty
+\end{itemize}
+
+\subsection{Implementation Approach}
+
+For practical implementation, we use a structured H-$\infty$ approach that preserves the cascaded architecture while adding robustness:
+
+\begin{lstlisting}[caption={H-infinity controller implementation}]
+class HInfinityController:
+    def __init__(self, dt=0.02):
+        self.dt = dt
+        # Robust gains (more aggressive than PID)
+        self.kp_pos = np.array([0.6, 0.6, 1.2])
+        self.kd_pos = np.array([0.8, 0.8, 1.0])
+
+        # Additional disturbance rejection
+        self.disturbance_gain = 0.3
+
+        # Wider operating envelope
+        self.max_tilt = 0.4  # 23 degrees
+
+    def compute_control(self, state, setpoint, disturbance_estimate=None):
+        # Position error
+        pos_error = setpoint['position'] - state[:3]
+        vel_error = setpoint.get('velocity', np.zeros(3)) - state[3:6]
+
+        # Base PD control
+        accel_cmd = self.kp_pos * pos_error + self.kd_pos * vel_error
+
+        # Disturbance feedforward compensation
+        if disturbance_estimate is not None:
+            accel_cmd -= self.disturbance_gain * disturbance_estimate
+
+        # Convert to thrust and attitude
+        # ... (similar to PID but with higher limits)
+\end{lstlisting}
+
+\subsection{H-Infinity Contract Specification}
+
+\begin{contractbox}[H-$\infty$ Controller Contract $\mathcal{C}_{H\infty}$]
+\textbf{Assumptions:}
+\begin{itemize}
+    \item Wind speed $< 10.0$ m/s (extended envelope)
+    \item Tracking error $< 5.0$ m
+    \item Estimation uncertainty $< 3.0$ m
+    \item Angular rates $< 1.5$ rad/s
+    \item IMU available (GPS optional)
+\end{itemize}
+
+\textbf{Guarantees:}
+\begin{itemize}
+    \item Bounded tracking error under disturbances
+    \item Stability maintained in GPS-denied conditions
+    \item Disturbance rejection with $\|S\|_\infty < \gamma_1$
+    \item Robustness to model uncertainty with $\|T\|_\infty < \gamma_2$
+\end{itemize}
+\end{contractbox}
+
+\section{Controller Comparison}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Comparison of PID and H-$\infty$ controllers}
+    \label{tab:controller_comparison}
+    \begin{tabular}{@{}lcc@{}}
+        \toprule
+        \textbf{Property} & \textbf{PID} & \textbf{H-$\infty$} \\
+        \midrule
+        Max wind tolerance & \SI{3}{m/s} & \SI{10}{m/s} \\
+        Max tracking error (input) & \SI{2}{m} & \SI{5}{m} \\
+        GPS required & Yes & No \\
+        Energy efficiency & High & Medium \\
+        Control smoothness & Very smooth & Moderate \\
+        Disturbance rejection & Limited & Strong \\
+        Settling time (nominal) & Fast & Moderate \\
+        Settling time (disturbed) & Poor & Fast \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=10cm, height=7cm,
+            xlabel={Wind Speed (m/s)},
+            ylabel={Tracking Error (m)},
+            xmin=0, xmax=12,
+            ymin=0, ymax=6,
+            grid=major,
+            legend pos=north west
+        ]
+            % PID performance
+            \addplot[thick, pidblue, domain=0:3] {0.3 + 0.1*x};
+            \addplot[thick, pidblue, dashed, domain=3:12] {0.6 + 0.5*(x-3)};
+
+            % H-inf performance
+            \addplot[thick, hinfgreen, domain=0:10] {0.5 + 0.15*x};
+            \addplot[thick, hinfgreen, dashed, domain=10:12] {2.0 + 0.8*(x-10)};
+
+            % Contract boundaries
+            \draw[thick, red, dashed] (axis cs:3,0) -- (axis cs:3,6);
+            \node[font=\footnotesize, red] at (axis cs:3,5.5) {PID limit};
+
+            \draw[thick, orange, dashed] (axis cs:10,0) -- (axis cs:10,6);
+            \node[font=\footnotesize, orange] at (axis cs:10,5.5) {H-$\infty$ limit};
+
+            \legend{PID (valid), PID (violated), H-$\infty$ (valid), H-$\infty$ (violated)}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Controller performance as function of wind disturbance}
+    \label{fig:controller_performance}
+\end{figure}
+
+\section{Controller Switching}
+
+\subsection{Switching Logic}
+
+The Flight Mode Supervisor determines controller selection based on contract satisfaction:
+
+\begin{algorithm}[H]
+\caption{Controller Selection Algorithm}
+\begin{algorithmic}[1]
+    \State \textbf{Input:} Flight mode, conditions, GPS status
+    \If{mode $\in$ \{EMERGENCY, LAND\}}
+        \State \Return H-$\infty$ \Comment{Always robust for critical modes}
+    \EndIf
+    \If{NOT GPS\_valid}
+        \State \Return H-$\infty$ \Comment{PID requires GPS}
+    \EndIf
+    \If{wind\_speed $>$ 3.0 OR tracking\_error $>$ 2.0 OR uncertainty $>$ 1.0}
+        \State \Return H-$\infty$ \Comment{PID contract assumptions violated}
+    \EndIf
+    \State \Return PID \Comment{Nominal conditions, use efficient controller}
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Bumpless Transfer}
+
+To ensure smooth transitions, the system implements bumpless transfer:
+
+\begin{enumerate}
+    \item \textbf{State Alignment:} Both controllers maintain identical state estimates
+    \item \textbf{Integrator Transfer:} PID integrator state transferred to H-$\infty$ equivalent
+    \item \textbf{Output Matching:} New controller initialized to match previous output
+    \item \textbf{Ramp Blending:} Gradual transition over 0.5s if time permits
+\end{enumerate}
+
+\begin{lstlisting}[caption={Bumpless transfer implementation}]
+class ControllerSwitcher:
+    def switch_controller(self, from_ctrl, to_ctrl, current_output):
+        # Transfer integrator state
+        if hasattr(from_ctrl, 'integral'):
+            to_ctrl.integral = from_ctrl.integral.copy()
+
+        # Match initial output
+        to_ctrl.last_output = current_output
+
+        # Enable blending
+        self.blend_active = True
+        self.blend_start = self.time
+        self.blend_duration = 0.5
+\end{lstlisting}
+
+\section{Attitude Control Layer}
+
+Both PID and H-$\infty$ share the same inner attitude control loop:
+
+\begin{equation}
+    \boldsymbol{\tau} = K_p^{\text{att}} (\boldsymbol{\Theta}_d - \boldsymbol{\Theta}) + K_d^{\text{att}} (\boldsymbol{\omega}_d - \boldsymbol{\omega})
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $\boldsymbol{\Theta} = [\phi, \theta, \psi]^\top$ is the current attitude
+    \item $\boldsymbol{\omega} = [p, q, r]^\top$ is the current angular rate
+    \item $\boldsymbol{\tau} = [\tau_\phi, \tau_\theta, \tau_\psi]^\top$ is the torque command
+\end{itemize}
+
+\section{Control Output Structure}
+
+\begin{lstlisting}[caption={Control output data structure}]
+control_output = {
+    'thrust': float,      # Normalized [0, 1], 0.5 = hover
+    'torques': np.array([
+        tau_phi,          # Roll torque (Nm)
+        tau_theta,        # Pitch torque (Nm)
+        tau_psi           # Yaw torque (Nm)
+    ]),
+    'desired_attitude': np.array([
+        phi_d,            # Desired roll (rad)
+        theta_d,          # Desired pitch (rad)
+        psi_d             # Desired yaw (rad)
+    ]),
+    'controller': str     # 'PID' or 'Hinf'
+}
+\end{lstlisting}
+
