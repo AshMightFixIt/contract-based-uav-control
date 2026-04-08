@@ -1,3 +1,4 @@
 numpy>=1.20.0
 matplotlib>=3.3.0
 pygame>=2.0.0
+pyserial>=3.5       # required for hardware mode (MSP over UART)
