@@ -116,6 +116,12 @@ def _shutdown_handler(sig, frame):
     global _running
     logger.warning(f"Signal {sig} received — requesting shutdown")
     _running = False
+    # Best-effort immediate disarm on second signal (double Ctrl+C = emergency)
+    if _actuator is not None:
+        try:
+            _actuator.send_emergency_disarm()
+        except Exception:
+            pass
 
 
 signal.signal(signal.SIGINT,  _shutdown_handler)
@@ -329,8 +335,8 @@ def main():
                     f"wind={wind:.1f}m/s | vbat={v:.1f}V"
                 )
 
-            # Mission complete
-            if not controller.mission_active:
+            # Mission complete — issue land command once
+            if not controller.mission_active and telemetry.get('flight_mode') != 'LAND':
                 logger.info("Mission complete — initiating landing")
                 controller.command_land()
 
@@ -355,28 +361,37 @@ def main():
         logger.exception(f"Control loop exception: {exc}")
 
     # ------------------------------------------------------------------
-    # 8. Safe shutdown
+    # 8. Safe shutdown  (wrapped in try/finally so disarm ALWAYS fires)
     # ------------------------------------------------------------------
-    logger.info("Shutting down — sending hover then disarm")
-    controller.stop_mission()
+    try:
+        logger.info("Shutting down — sending hover then disarm")
+        controller.stop_mission()
 
-    # Hold hover for 2 s to let things settle, then disarm
-    for _ in range(int(2.0 / dt)):
-        raw_sensors = reader.read()
-        control, _ = controller.control_step(raw_sensors)
-        actuator.send(control, armed=True)
-        time.sleep(dt)
+        # Hold hover for 2 s to let things settle, then disarm
+        for _ in range(int(2.0 / dt)):
+            try:
+                raw_sensors = reader.read()
+                control, _ = controller.control_step(raw_sensors)
+                actuator.send(control, armed=True)
+            except Exception:
+                actuator.send_hover()   # fallback: neutral hover frame
+            time.sleep(dt)
+    finally:
+        # Disarm no matter what
+        actuator.disarm()
+        time.sleep(0.5)
 
-    actuator.disarm()
-    time.sleep(0.5)
+        # Save flight log
+        try:
+            log_path = f"flight_log_{int(time.time())}.json"
+            controller.save_flight_log(log_path)
+            logger.info(f"Flight log saved: {log_path}")
+        except Exception as exc:
+            logger.error(f"Failed to save flight log: {exc}")
 
-    # Save flight log
-    log_path = f"flight_log_{int(time.time())}.json"
-    controller.save_flight_log(log_path)
-    logger.info(f"Flight log saved: {log_path}")
+        msp.disconnect()
+        logger.info("Disconnected.  Flight complete.")
 
-    msp.disconnect()
-    logger.info("Disconnected.  Flight complete.")
     return 0
 
 

@@ -170,14 +170,25 @@ class SensorReader:
         Called at CONTROL_RATE_HZ (50 Hz).  Unavailable readings are filled
         with safe defaults (valid=False) so the contract/EKF layer degrades
         gracefully rather than crashing.
+
+        TIMING NOTE: Each MSP request is a serial round-trip (send + wait for
+        response).  With 50ms serial timeout, 5 requests can take up to 1s in
+        the worst case.  To stay within the 20ms loop budget:
+          - Only poll GPS every 5th call (~10 Hz, matches GPS update rate)
+          - Only poll baro/analog every 10th call (~5 Hz, slow-changing)
+          - Poll attitude + gyro every call (fast, small payload)
+        Cached values are returned on skipped cycles.
         """
         now = time.monotonic()
         sensor_dict = {}
+        self._read_cycle = getattr(self, '_read_cycle', 0) + 1
 
         # ----------------------------------------------------------------
-        # GPS
+        # GPS  (poll every 5th cycle ≈ 10 Hz — GPS modules update at 5–10 Hz)
         # ----------------------------------------------------------------
-        gps_raw = self._msp.read_gps()
+        if self._read_cycle % 5 == 0:
+            self._cached_gps_raw = self._msp.read_gps()
+        gps_raw = getattr(self, '_cached_gps_raw', None)
         if gps_raw and self.home_set():
             pos_ned = self._latlon_to_ned(
                 gps_raw['lat_deg'], gps_raw['lon_deg'], gps_raw['alt_m']
@@ -258,18 +269,22 @@ class SensorReader:
             }
 
         # ----------------------------------------------------------------
-        # Battery
+        # Battery  (poll every 10th cycle ≈ 5 Hz — voltage changes slowly)
         # ----------------------------------------------------------------
-        analog = self._msp.read_analog()
+        if self._read_cycle % 10 == 0:
+            self._cached_analog = self._msp.read_analog()
+        analog = getattr(self, '_cached_analog', None)
         if analog:
             sensor_dict['battery'] = {'voltage': analog['voltage']}
         else:
             sensor_dict['battery'] = {'voltage': 0.0}
 
         # ----------------------------------------------------------------
-        # Barometer  (altitude above home)
+        # Barometer  (poll every 5th cycle ≈ 10 Hz)
         # ----------------------------------------------------------------
-        baro = self._msp.read_altitude()
+        if self._read_cycle % 5 == 2:
+            self._cached_baro = self._msp.read_altitude()
+        baro = getattr(self, '_cached_baro', None)
         if baro:
             # Betaflight altitude is relative to its own home (set at FC boot).
             # Positive = above home.  We convert sign convention for NED (down+).
@@ -297,6 +312,13 @@ class SensorReader:
         else:
             sensor_dict['wind'] = {'speed': 0.0}
 
+        # ----------------------------------------------------------------
+        # FC armed state  (poll every 10th cycle — avoids extra round-trip)
+        # ----------------------------------------------------------------
+        if self._read_cycle % 10 == 5:
+            status = self._msp.get_fc_status()
+            self._cached_armed = status.get('armed', False)
+
         return sensor_dict
 
     # ------------------------------------------------------------------
@@ -309,6 +331,5 @@ class SensorReader:
         return baro['altitude_m'] if baro else 0.0
 
     def is_armed(self) -> bool:
-        """Return True if the FC reports armed state."""
-        status = self._msp.get_fc_status()
-        return status.get('armed', False)
+        """Return the cached armed state (updated every 10th read() cycle)."""
+        return getattr(self, '_cached_armed', False)

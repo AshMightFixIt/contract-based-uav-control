@@ -11,7 +11,7 @@ Betaflight setup required before flight
 3. Modes      → map AUX1 to ARM
 4. Modes      → map AUX2 to ANGLE mode (required for attitude setpoints)
 5. GPS        → enable if an external GPS module is fitted
-6. Failsafe   → configure Stage 2 to DROP or RTH (NOT disarm)
+6. Failsafe   → configure Stage 2 to RTH or LAND (NOT drop/disarm)
 
 Coordinate frames
 -----------------
