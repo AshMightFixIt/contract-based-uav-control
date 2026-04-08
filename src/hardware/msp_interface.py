@@ -358,9 +358,10 @@ class MSPInterface:
 
         payload = struct.pack(f'<{len(vals)}H', *vals)
         try:
+            # MSP_SET_RAW_RC is fire-and-forget: Betaflight does not always send
+            # an ACK for set commands, and waiting for one would stall the 50 Hz
+            # control loop.  Just send the frame and return immediately.
             self._send(MSP_SET_RAW_RC, payload)
-            # MSP_SET_RAW_RC returns an ACK with an empty payload (no data to parse)
-            self._recv()
             return True
         except MSPError as e:
             logger.warning(f"set_rc_channels failed: {e}")
