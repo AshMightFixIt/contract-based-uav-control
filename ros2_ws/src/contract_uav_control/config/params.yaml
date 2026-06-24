@@ -1,0 +1,8 @@
+contract_controller_node:
+  ros__parameters:
+    control_frequency: 50.0      # Hz; controller dt = 1/freq
+    use_horizon_planner: true    # Pacti horizon planner (set false if pacti unavailable)
+    takeoff_altitude: 5.0        # metres above start; NED setpoint z = -altitude
+    auto_arm: false              # SAFETY: keep false on hardware; arm manually via QGC
+    # Waypoint mission as a flat NED list [x1,y1,z1, x2,y2,z2, ...] (z negative = up)
+    waypoints: [0.0, 0.0, -5.0, 10.0, 0.0, -5.0, 10.0, 10.0, -5.0]

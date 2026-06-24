@@ -61,7 +61,10 @@ Thumbs.db
 .DS_Store
 
 # Project specific
-ros2_ws/
+# Track the ROS 2 package source + docs under ros2_ws/, but never the
+# colcon artifacts (build/install/log, ignored just below) or the
+# externally-cloned px4_msgs dependency.
+ros2_ws/src/px4_msgs/
 build/
 install/
 log/

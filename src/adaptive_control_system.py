@@ -547,6 +547,10 @@ class AdaptiveDroneController:
             'position': state_dict['position'],
             'velocity': state_dict['velocity'],
             'attitude': state_dict['attitude'],
+            'setpoint': {
+                'position': setpoint.get('position', np.zeros(3)),
+                'velocity': setpoint.get('velocity', np.zeros(3)),
+            },
             'contract_status': {
                 'sensors': self.contract_monitor.get_contract_status('sensors'),
                 'estimator': self.contract_monitor.get_contract_status('estimator'),
