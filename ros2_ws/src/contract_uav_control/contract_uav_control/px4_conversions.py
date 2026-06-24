@@ -79,10 +79,16 @@ def build_raw_sensors(local_pos, attitude, ang_vel, sensor_gps, battery):
             'hdop': float(sensor_gps.hdop) if sensor_gps is not None else 99.0,
         }
 
-    if attitude is not None and ang_vel is not None:
+    # IMU validity is gated on attitude only. VehicleAttitude is published by PX4
+    # over DDS by default; VehicleAngularVelocity is commented out in the default
+    # dds_topics.yaml, so rates are optional — fall back to zeros if absent rather
+    # than invalidating the whole IMU (which would starve the EKF of attitude).
+    if attitude is not None:
+        rates = (np.array([ang_vel.xyz[0], ang_vel.xyz[1], ang_vel.xyz[2]])
+                 if ang_vel is not None else np.zeros(3))
         raw['imu'] = {
             'attitude': quaternion_to_euler(attitude.q),
-            'rates': np.array([ang_vel.xyz[0], ang_vel.xyz[1], ang_vel.xyz[2]]),
+            'rates': rates,
             'valid': True,
             'calibrated': True,
             'temperature': 25.0,

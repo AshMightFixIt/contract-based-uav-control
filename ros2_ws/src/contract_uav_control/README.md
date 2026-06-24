@@ -96,6 +96,10 @@ On DEXI hardware the agent runs over serial to the PX4 FMU
 - IMU temperature/calibration are stubbed (PX4 doesn't expose them on these
   topics); contract inputs use nominal values. Wire real telemetry before relying
   on the sensor-degradation contracts.
+- **Body rates are optional.** PX4 comments out `vehicle_angular_velocity` in the
+  default `dds_topics.yaml`, so the node falls back to zero rates if that topic is
+  absent (the IMU stays valid on attitude alone). For full rate feedback, uncomment
+  that topic in PX4's `dds_topics.yaml` and rebuild PX4.
 - No watchdog/failsafe is implemented in the node yet — rely on PX4 failsafes
   (RC loss, offboard-loss, geofence, battery) as the safety net.
 - Controller gains were tuned in a simplified simulation. **Re-tune against PX4
