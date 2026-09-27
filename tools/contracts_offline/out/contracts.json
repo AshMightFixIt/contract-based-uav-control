@@ -6604,7 +6604,7 @@
     {
       "id": "C7-ALIAS",
       "source": "both",
-      "text": "Rows are lined up through a renaming layer that the repo does not have (model.ALIASES). Judgement call: H-inf `stabilization_time` (framework) is compared with H-inf `settling_time` (Pacti library). `imu_temperature` and `imu_temp_deviation` are NOT aliased because they measure different things. Every renamed row says so in its note.",
+      "text": "Rows are lined up through a renaming layer that the repo does not have (model.ALIASES). Comparing H-inf `stabilization_time` (framework) with H-inf `settling_time` (Pacti library) is an ASSUMPTION carried over from A1's F-A1-09 table (row 50), not something the code establishes: no code in the repo reads either variable. It affects 4 rows; without it they would be 4 framework-only and 2 Pacti-only rows. `imu_temperature` and `imu_temp_deviation` are NOT aliased because they measure different things. Every renamed row says so in its note.",
       "where": "comparison layer"
     },
     {
@@ -6616,9 +6616,9 @@
   ],
   "envelope_semantics": "composed[].envelope is the per-input projection of the composed assumptions: each input's [min, max] with every other input free. It equals the admissible set only when composed[].envelope_is_admissible_set is true (no coupled_assumptions). Otherwise the box is LARGER than the admissible set; composed[].box_counterexamples lists box corners that are inside every range yet violate a coupled term. The admissible set is exactly the conjunction of composed[].assumptions; check points against those terms (reference implementation: tools/contracts_offline/admissible.py), never against the box.",
   "environment": {
-    "numpy": "2.4.6",
+    "numpy": "2.2.6",
     "pacti": "0.3.1",
-    "scipy": "1.17.1"
+    "scipy": "1.15.3"
   },
   "float_format": "rounded to 10 significant digits; null = unbounded",
   "generator": {
@@ -6872,7 +6872,7 @@
       "component": "HINF",
       "framework": "stabilization_time",
       "pacti_library": "settling_time",
-      "reason": "H-inf time bound; the names differ, the role (time bound on the H-inf response) is the same"
+      "reason": "ASSUMPTION carried over from A1's F-A1-09 table (row 50, 'H-inf time bound'), not established by the code: no code in the repo reads either variable, so their equivalence is unverified"
     }
   ]
 }

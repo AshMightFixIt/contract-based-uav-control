@@ -54,20 +54,30 @@ same files with `ast`.
      G1 => A2 obligation (F-A1-01, K05).
    - `PactiContractLibrary.compose_pipeline`, which leaves IMU out (F-A1-25).
 4. It writes one reconciliation row per (component, variable,
-   bound-or-coefficient).
+   bound-or-coefficient). A small renaming layer lines up the two libraries'
+   variable names (`model.ALIASES`). Comparing H-inf `stabilization_time`
+   (framework) with H-inf `settling_time` (Pacti library) is an assumption
+   carried over from the A1 audit's F-A1-09 table (row 50). The code does not
+   establish it, because no code in the repo reads either variable. It affects
+   4 rows.
 
 ## Run it
 
-Use Python >= 3.11. pacti 0.3.1 itself needs only 3.10, but the pinned numpy
-2.4.6 needs 3.11. CI uses 3.11, and 3.12 and 3.13 produce the same bytes. Run
+Use Python >= 3.10. The pins are pacti 0.3.1's own minimum numpy, scipy and
+matplotlib versions, which install on 3.10 through 3.13. `out/` is
+byte-identical on 3.10, 3.11, 3.12 and 3.13, and CI runs 3.10 and 3.11. Run
 from the repo root:
 
 ```bash
 python -m pip install -r tools/contracts_offline/requirements.txt   # in a venv
-python tools/contracts_offline/run.py          # or: python -m tools.contracts_offline
-python tools/contracts_offline/run.py --check  # exit 1 if out/ is stale; writes nothing
-python -m pytest -p no:cacheprovider tools/contracts_offline/tests
+python -B tools/contracts_offline/run.py          # or: python -B -m tools.contracts_offline
+python -B tools/contracts_offline/run.py --check  # exit 1 if out/ is stale; writes nothing
+python -B -m pytest -p no:cacheprovider tools/contracts_offline/tests
 ```
+
+`-B` (or `PYTHONDONTWRITEBYTECODE=1`, as CI sets) keeps Python from leaving
+`__pycache__` folders under `tools/`. They are gitignored, but without `-B` the
+commands write more than `out/`.
 
 A run takes about 7 s. Without pacti, the tool exits with code 2 and prints the
 install command. The tests skip.

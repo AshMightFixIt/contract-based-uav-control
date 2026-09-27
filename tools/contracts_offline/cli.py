@@ -64,9 +64,12 @@ def _static_notes(fw_bounds, flags: List[dict]) -> List[dict]:
                  "rows are Pacti-only with no effect on the composed assumptions."},
         {"id": "C7-ALIAS", "source": "both", "where": "comparison layer",
          "text": "Rows are lined up through a renaming layer that the repo does not have (model.ALIASES). "
-                 "Judgement call: H-inf `stabilization_time` (framework) is compared with H-inf "
-                 "`settling_time` (Pacti library). `imu_temperature` and `imu_temp_deviation` are NOT "
-                 "aliased because they measure different things. Every renamed row says so in its note."},
+                 "Comparing H-inf `stabilization_time` (framework) with H-inf `settling_time` (Pacti "
+                 "library) is an ASSUMPTION carried over from A1's F-A1-09 table (row 50), not something "
+                 "the code establishes: no code in the repo reads either variable. It affects 4 rows; "
+                 "without it they would be 4 framework-only and 2 Pacti-only rows. `imu_temperature` and "
+                 "`imu_temp_deviation` are NOT aliased because they measure different things. Every "
+                 "renamed row says so in its note."},
         {"id": "C8-ENVELOPE", "source": "both", "where": "section 1",
          "text": "Envelope bounds are linear programs over the composed assumptions only, one input at a "
                  "time (a per-input projection). Where coupled assumptions exist the box is larger than "

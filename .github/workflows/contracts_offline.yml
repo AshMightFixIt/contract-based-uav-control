@@ -25,6 +25,11 @@ jobs:
   contracts-offline:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # The pins in requirements.txt give byte-identical out/ on both.
+        python-version: ["3.10", "3.11"]
     env:
       PYTHONDONTWRITEBYTECODE: "1"
     steps:
@@ -33,10 +38,10 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: tools/contracts_offline/requirements.txt
 

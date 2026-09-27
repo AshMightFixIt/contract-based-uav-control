@@ -77,7 +77,8 @@ ALIASES = (
     ("*", "attitude_est_error", "attitude_error", "EKF output in both libraries"),
     ("*", "motor_temp", "motor_temperature", "actuator input in both libraries"),
     ("HINF", "settling_time", "stabilization_time",
-     "H-inf time bound; the names differ, the role (time bound on the H-inf response) is the same"),
+     "ASSUMPTION carried over from A1's F-A1-09 table (row 50, 'H-inf time bound'), not established by "
+     "the code: no code in the repo reads either variable, so their equivalence is unverified"),
 )
 # Deliberately NOT aliased: the quantities differ.
 NOT_ALIASED = (

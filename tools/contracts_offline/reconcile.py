@@ -26,9 +26,10 @@ from .model import (
 )
 
 # --------------------------------------------------------------------------
-# F-A1-09 cross-check: row numbers of the hand-built 55-row table in
-# $S/wave1/findings/A1.md. Only the grouping is taken from A1; every value and
-# status is recomputed from the code. None = not one of A1's 55 rows.
+# F-A1-09 cross-check: row numbers of the hand-built 55-row table in the A1
+# contracts audit (finding F-A1-09; not part of this repo). Only the grouping is
+# taken from A1; every value and status is recomputed from the code.
+# None = not one of A1's 55 rows.
 # --------------------------------------------------------------------------
 _ANY = "*"
 A1_GROUPS: Dict[Tuple[str, str, str, str], int] = {
