@@ -1,0 +1,17 @@
+# Store text with LF line endings and check it out with LF on every platform,
+# including the golden files in tests/golden/.
+* text=auto eol=lf
+
+# Windows command scripts are checked out with CRLF.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Images and PDFs: never convert line endings or diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.bmp binary
+*.ico binary
+*.webp binary
+*.pdf binary
