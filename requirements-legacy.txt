@@ -1,0 +1,13 @@
+# Legacy-reproduction set: the default install plus an exact pacti pin, so the
+# horizon planner is active. With it, benchmark_controllers.py reproduces the
+# RESULTS.md section 1 table (Adaptive mission time 53.780 s). Checked by the
+# slow test: `make test-pacti`.
+#
+# Python floor: 3.10
+#   - pacti 0.3.1 declares Requires-Python >=3.10 on PyPI and requires
+#     numpy>=2.2.6 (>=3.10), scipy>=1.15.3 (>=3.10), matplotlib>=3.10.9 (>=3.10).
+#   - Consequence: this set always installs NumPy 2.x.
+#   pacti 0.2.0 (Requires-Python <3.12,>=3.8) gave identical section 1 results
+#   in an earlier verification, but it is not the pin used here.
+-r requirements.txt
+pacti==0.3.1

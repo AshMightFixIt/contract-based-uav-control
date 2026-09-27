@@ -1,0 +1,11 @@
+# Minimal runtime set: the numpy-only core, i.e. everything under src/ except
+# src/planning/* (needs pacti, see requirements-legacy.txt) and
+# src/visualization/* (needs pygame, see requirements-viz.txt).
+# Example: PYTHONPATH=src python src/adaptive_control_system.py
+#
+# Python floor: 3.7
+#   - numpy 1.20.0, the lowest version allowed below, declares
+#     Requires-Python >=3.7 on PyPI.
+#   - The code itself needs 3.7 (dataclasses; static check with `vermin`).
+#   Python below 3.10 has not been exercised; CI covers 3.10 and 3.11.
+numpy>=1.20.0
