@@ -1,0 +1,6490 @@
+{
+  "bounds": [
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 0.5,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:465",
+      "source": "framework",
+      "variable": "gps_hdop",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 5.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:465",
+      "source": "framework",
+      "variable": "gps_hdop",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 6.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:464",
+      "source": "framework",
+      "variable": "gps_satellites",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 30.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:464",
+      "source": "framework",
+      "variable": "gps_satellites",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 0.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:475",
+      "source": "framework",
+      "variable": "position_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "gps_hdop": 1.5
+      },
+      "component": "GPS",
+      "constant": 0.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:473-474",
+      "source": "framework",
+      "variable": "position_meas_error",
+      "via": {
+        "coef[gps_hdop]": [
+          "UERE (:384)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 0.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:480",
+      "source": "framework",
+      "variable": "velocity_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 0.1,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:479",
+      "source": "framework",
+      "variable": "velocity_meas_error",
+      "via": {
+        "const": [
+          "SIGMA_DOPPLER (:385)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 1.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:467",
+      "source": "framework",
+      "variable": "imu_calibrated",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 1.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:467",
+      "source": "framework",
+      "variable": "imu_calibrated",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 5.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:466",
+      "source": "framework",
+      "variable": "imu_temperature",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 55.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:466",
+      "source": "framework",
+      "variable": "imu_temperature",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 0.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:495",
+      "source": "framework",
+      "variable": "attitude_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "imu_temperature": 1.6e-05
+      },
+      "component": "IMU",
+      "constant": 0.00012,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:493-494",
+      "source": "framework",
+      "variable": "attitude_meas_error",
+      "via": {
+        "coef[imu_temperature]": [
+          "IMU_ATT_TC (:393)"
+        ],
+        "const": [
+          "IMU_ATT_BASE (:394)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 0.0,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:488",
+      "source": "framework",
+      "variable": "rate_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "imu_temperature": 0.0008
+      },
+      "component": "IMU",
+      "constant": 0.006,
+      "contract": "GPS_IMU_Sensors",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:486-487",
+      "source": "framework",
+      "variable": "rate_meas_error",
+      "via": {
+        "coef[imu_temperature]": [
+          "IMU_RATE_TC (:391)"
+        ],
+        "const": [
+          "IMU_RATE_BASE (:392)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "EKF_Estimator",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:523",
+      "source": "framework",
+      "variable": "attitude_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.01,
+      "contract": "EKF_Estimator",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:523",
+      "source": "framework",
+      "variable": "attitude_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "EKF_Estimator",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:520",
+      "source": "framework",
+      "variable": "position_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 7.5,
+      "contract": "EKF_Estimator",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:520",
+      "source": "framework",
+      "variable": "position_meas_error",
+      "via": {
+        "bound": [
+          "UERE (:384)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "EKF_Estimator",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:522",
+      "source": "framework",
+      "variable": "rate_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.1,
+      "contract": "EKF_Estimator",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:522",
+      "source": "framework",
+      "variable": "rate_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "EKF_Estimator",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:521",
+      "source": "framework",
+      "variable": "velocity_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.5,
+      "contract": "EKF_Estimator",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:521",
+      "source": "framework",
+      "variable": "velocity_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "EKF_Estimator",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:543",
+      "source": "framework",
+      "variable": "attitude_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "attitude_meas_error": 0.3
+      },
+      "component": "EKF",
+      "constant": 0.01,
+      "contract": "EKF_Estimator",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:541-542",
+      "source": "framework",
+      "variable": "attitude_error",
+      "via": {
+        "coef[attitude_meas_error]": [
+          "ALPHA_ATT (:403)"
+        ],
+        "const": [
+          "BETA_ATT (:404)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 1.95,
+      "contract": "EKF_Estimator",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:547",
+      "source": "framework",
+      "variable": "nees_bound",
+      "via": {
+        "const": [
+          "NEES_BOUND (:406)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 1.95,
+      "contract": "EKF_Estimator",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:549",
+      "source": "framework",
+      "variable": "nis_bound",
+      "via": {
+        "const": [
+          "NIS_BOUND (:407)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "EKF_Estimator",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:531",
+      "source": "framework",
+      "variable": "position_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_meas_error": 0.7
+      },
+      "component": "EKF",
+      "constant": 0.1,
+      "contract": "EKF_Estimator",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:529-530",
+      "source": "framework",
+      "variable": "position_error",
+      "via": {
+        "coef[position_meas_error]": [
+          "ALPHA_POS (:399)"
+        ],
+        "const": [
+          "BETA_POS (:400)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "EKF_Estimator",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:537",
+      "source": "framework",
+      "variable": "velocity_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "velocity_meas_error": 0.5
+      },
+      "component": "EKF",
+      "constant": 0.05,
+      "contract": "EKF_Estimator",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:535-536",
+      "source": "framework",
+      "variable": "velocity_error",
+      "via": {
+        "coef[velocity_meas_error]": [
+          "ALPHA_VEL (:401)"
+        ],
+        "const": [
+          "BETA_VEL (:402)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "PID_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:576",
+      "source": "framework",
+      "variable": "disturbance",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 3.0,
+      "contract": "PID_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:576",
+      "source": "framework",
+      "variable": "disturbance",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "PID_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:573",
+      "source": "framework",
+      "variable": "position_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 3.0,
+      "contract": "PID_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:573",
+      "source": "framework",
+      "variable": "position_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "PID_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:574",
+      "source": "framework",
+      "variable": "velocity_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 2.0,
+      "contract": "PID_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:574",
+      "source": "framework",
+      "variable": "velocity_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "PID_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:575",
+      "source": "framework",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 3.0,
+      "contract": "PID_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:575",
+      "source": "framework",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.1,
+      "contract": "PID_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:601",
+      "source": "framework",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "disturbance": 0.05,
+        "wind_speed": 0.15
+      },
+      "component": "PID",
+      "constant": 0.3,
+      "contract": "PID_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:599-600",
+      "source": "framework",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "PID_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:605",
+      "source": "framework",
+      "variable": "max_tilt",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.15,
+      "contract": "PID_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:604",
+      "source": "framework",
+      "variable": "max_tilt",
+      "via": {
+        "const": [
+          "TILT_LIMIT (:417)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 1.0,
+      "contract": "PID_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:595",
+      "source": "framework",
+      "variable": "settling_time",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_error": 1.0,
+        "wind_speed": 2.0
+      },
+      "component": "PID",
+      "constant": 16.00813213,
+      "contract": "PID_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:592-594",
+      "source": "framework",
+      "variable": "settling_time",
+      "via": {
+        "const": [
+          "T_SETTLE_BASE (:415)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "PID_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:587",
+      "source": "framework",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_error": 1.0,
+        "wind_speed": 0.5
+      },
+      "component": "PID",
+      "constant": 0.2,
+      "contract": "PID_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:584-586",
+      "source": "framework",
+      "variable": "tracking_error",
+      "via": {
+        "coef[wind_speed]": [
+          "GAMMA_WIND_PID (:426)"
+        ],
+        "const": [
+          "E_FLOOR_PID (:418)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "MPC_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:696",
+      "source": "framework",
+      "variable": "computation_time",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.05,
+      "contract": "MPC_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:696",
+      "source": "framework",
+      "variable": "computation_time",
+      "via": {
+        "bound": [
+          "COMPUTE_TIME_MAX (:440)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "MPC_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:693",
+      "source": "framework",
+      "variable": "position_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 5.0,
+      "contract": "MPC_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:693",
+      "source": "framework",
+      "variable": "position_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "MPC_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:694",
+      "source": "framework",
+      "variable": "velocity_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 2.0,
+      "contract": "MPC_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:694",
+      "source": "framework",
+      "variable": "velocity_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "MPC_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:695",
+      "source": "framework",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 15.0,
+      "contract": "MPC_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:695",
+      "source": "framework",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.1,
+      "contract": "MPC_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:718",
+      "source": "framework",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_error": 0.05,
+        "wind_speed": 0.08
+      },
+      "component": "MPC",
+      "constant": 0.2,
+      "contract": "MPC_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:716-717",
+      "source": "framework",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 1.5,
+      "contract": "MPC_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:712",
+      "source": "framework",
+      "variable": "settling_time",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_error": 0.3,
+        "wind_speed": 0.5
+      },
+      "component": "MPC",
+      "constant": 3.0,
+      "contract": "MPC_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:710-711",
+      "source": "framework",
+      "variable": "settling_time",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "MPC_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:706",
+      "source": "framework",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_error": 0.3,
+        "wind_speed": 0.15
+      },
+      "component": "MPC",
+      "constant": 0.1,
+      "contract": "MPC_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:702-705",
+      "source": "framework",
+      "variable": "tracking_error",
+      "via": {
+        "coef[position_error]": [
+          "ALPHA_MPC (:437)"
+        ],
+        "coef[wind_speed]": [
+          "BETA_MPC (:438)"
+        ],
+        "const": [
+          "E_FLOOR_MPC (:439)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "Hinf_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:633",
+      "source": "framework",
+      "variable": "disturbance",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 20.0,
+      "contract": "Hinf_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:633",
+      "source": "framework",
+      "variable": "disturbance",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "Hinf_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:630",
+      "source": "framework",
+      "variable": "position_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 50.0,
+      "contract": "Hinf_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:630",
+      "source": "framework",
+      "variable": "position_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "Hinf_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:631",
+      "source": "framework",
+      "variable": "velocity_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 30.0,
+      "contract": "Hinf_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:631",
+      "source": "framework",
+      "variable": "velocity_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "Hinf_Controller",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:632",
+      "source": "framework",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 25.0,
+      "contract": "Hinf_Controller",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:632",
+      "source": "framework",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.2,
+      "contract": "Hinf_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:661",
+      "source": "framework",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "disturbance": 0.005,
+        "wind_speed": 0.03
+      },
+      "component": "HINF",
+      "constant": 0.4,
+      "contract": "Hinf_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:659-660",
+      "source": "framework",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.8,
+      "contract": "Hinf_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:665-666",
+      "source": "framework",
+      "variable": "rate_damping",
+      "via": {
+        "const": [
+          "K_RATE_DAMP (:432)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 2.0,
+      "contract": "Hinf_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:649",
+      "source": "framework",
+      "variable": "stabilization_time",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_error": 0.2,
+        "wind_speed": 0.3
+      },
+      "component": "HINF",
+      "constant": 3.0,
+      "contract": "Hinf_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:647-648",
+      "source": "framework",
+      "variable": "stabilization_time",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "Hinf_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:656",
+      "source": "framework",
+      "variable": "tilt_angle",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "disturbance": 0.2,
+        "wind_speed": 0.01
+      },
+      "component": "HINF",
+      "constant": 0.15,
+      "contract": "Hinf_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:653-655",
+      "source": "framework",
+      "variable": "tilt_angle",
+      "via": {
+        "coef[disturbance]": [
+          "K_ATT_GAIN (:433)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "Hinf_Controller",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:643",
+      "source": "framework",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_error": 1.0,
+        "wind_speed": 0.5
+      },
+      "component": "HINF",
+      "constant": 1.0,
+      "contract": "Hinf_Controller",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:639-642",
+      "source": "framework",
+      "variable": "tracking_error",
+      "via": {
+        "coef[wind_speed]": [
+          "GAMMA_WIND_HINF (:430)"
+        ],
+        "const": [
+          "E_BASE_HINF (:431)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 11.0,
+      "contract": "Actuators",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:742",
+      "source": "framework",
+      "variable": "battery_voltage",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 12.6,
+      "contract": "Actuators",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:742",
+      "source": "framework",
+      "variable": "battery_voltage",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 0.0,
+      "contract": "Actuators",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:741",
+      "source": "framework",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 1.0,
+      "contract": "Actuators",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:741",
+      "source": "framework",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 20.0,
+      "contract": "Actuators",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:743",
+      "source": "framework",
+      "variable": "motor_temperature",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 80.0,
+      "contract": "Actuators",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/contracts/contract_framework.py:743",
+      "source": "framework",
+      "variable": "motor_temperature",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 0.005,
+      "contract": "Actuators",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:763",
+      "source": "framework",
+      "variable": "response_time",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "control_effort": 0.01,
+        "motor_temperature": 0.0005
+      },
+      "component": "ACTUATOR",
+      "constant": 0.015,
+      "contract": "Actuators",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:760-762",
+      "source": "framework",
+      "variable": "response_time",
+      "via": {
+        "const": [
+          "TAU_MOTOR (:443)"
+        ]
+      }
+    },
+    {
+      "coefficients": {
+        "battery_voltage": 0.03,
+        "motor_temperature": -0.0005
+      },
+      "component": "ACTUATOR",
+      "constant": 0.6,
+      "contract": "Actuators",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:749-752",
+      "source": "framework",
+      "variable": "thrust_accuracy",
+      "via": {
+        "coef[battery_voltage]": [
+          "K_V_THRUST (:444)"
+        ],
+        "coef[motor_temperature]": [
+          "K_T_DERATE (:445)"
+        ]
+      }
+    },
+    {
+      "coefficients": {
+        "battery_voltage": -0.03,
+        "motor_temperature": 0.0005
+      },
+      "component": "ACTUATOR",
+      "constant": 1.4,
+      "contract": "Actuators",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:754-756",
+      "source": "framework",
+      "variable": "thrust_accuracy",
+      "via": {
+        "coef[battery_voltage]": [
+          "K_V_THRUST (:444)"
+        ],
+        "coef[motor_temperature]": [
+          "K_T_DERATE (:445)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 10.6103385,
+      "contract": "Actuators",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/contracts/contract_framework.py:767-769",
+      "source": "framework",
+      "variable": "thrust_bandwidth",
+      "via": {
+        "const": [
+          "TAU_MOTOR (:443)"
+        ]
+      }
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 0.5,
+      "contract": "gps",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:54",
+      "source": "pacti_library",
+      "variable": "gps_hdop",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 10.0,
+      "contract": "gps",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:55",
+      "source": "pacti_library",
+      "variable": "gps_hdop",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 4.0,
+      "contract": "gps",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:52",
+      "source": "pacti_library",
+      "variable": "gps_satellites",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 24.0,
+      "contract": "gps",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:53",
+      "source": "pacti_library",
+      "variable": "gps_satellites",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 0.0,
+      "contract": "gps",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:58",
+      "source": "pacti_library",
+      "variable": "position_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "gps_hdop": 0.5
+      },
+      "component": "GPS",
+      "constant": 0.0,
+      "contract": "gps",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:59",
+      "source": "pacti_library",
+      "variable": "position_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "GPS",
+      "constant": 0.0,
+      "contract": "gps",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:60",
+      "source": "pacti_library",
+      "variable": "velocity_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "gps_hdop": 0.1
+      },
+      "component": "GPS",
+      "constant": 0.0,
+      "contract": "gps",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:61",
+      "source": "pacti_library",
+      "variable": "velocity_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 0.0,
+      "contract": "imu",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:70",
+      "source": "pacti_library",
+      "variable": "imu_temp_deviation",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 20.0,
+      "contract": "imu",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:71",
+      "source": "pacti_library",
+      "variable": "imu_temp_deviation",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 0.0,
+      "contract": "imu",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:74",
+      "source": "pacti_library",
+      "variable": "attitude_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "imu_temp_deviation": 0.005
+      },
+      "component": "IMU",
+      "constant": 0.02,
+      "contract": "imu",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:75",
+      "source": "pacti_library",
+      "variable": "attitude_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "IMU",
+      "constant": 0.0,
+      "contract": "imu",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:76",
+      "source": "pacti_library",
+      "variable": "rate_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "imu_temp_deviation": 0.01
+      },
+      "component": "IMU",
+      "constant": 0.05,
+      "contract": "imu",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:77",
+      "source": "pacti_library",
+      "variable": "rate_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "ekf",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:95",
+      "source": "pacti_library",
+      "variable": "attitude_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.2,
+      "contract": "ekf",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:96",
+      "source": "pacti_library",
+      "variable": "attitude_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "ekf",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:91",
+      "source": "pacti_library",
+      "variable": "position_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 5.0,
+      "contract": "ekf",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:92",
+      "source": "pacti_library",
+      "variable": "position_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "ekf",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:97",
+      "source": "pacti_library",
+      "variable": "rate_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.3,
+      "contract": "ekf",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:98",
+      "source": "pacti_library",
+      "variable": "rate_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "ekf",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:93",
+      "source": "pacti_library",
+      "variable": "velocity_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 1.0,
+      "contract": "ekf",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:94",
+      "source": "pacti_library",
+      "variable": "velocity_meas_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "ekf",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:106",
+      "source": "pacti_library",
+      "variable": "attitude_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "attitude_meas_error": 0.5
+      },
+      "component": "EKF",
+      "constant": 0.01,
+      "contract": "ekf",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:107",
+      "source": "pacti_library",
+      "variable": "attitude_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "ekf",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:102",
+      "source": "pacti_library",
+      "variable": "position_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_meas_error": 0.7
+      },
+      "component": "EKF",
+      "constant": 0.1,
+      "contract": "ekf",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:103",
+      "source": "pacti_library",
+      "variable": "position_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "ekf",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:108",
+      "source": "pacti_library",
+      "variable": "rate_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "rate_meas_error": 0.5
+      },
+      "component": "EKF",
+      "constant": 0.02,
+      "contract": "ekf",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:109",
+      "source": "pacti_library",
+      "variable": "rate_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "EKF",
+      "constant": 0.0,
+      "contract": "ekf",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:104",
+      "source": "pacti_library",
+      "variable": "velocity_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "velocity_meas_error": 0.7
+      },
+      "component": "EKF",
+      "constant": 0.05,
+      "contract": "ekf",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:105",
+      "source": "pacti_library",
+      "variable": "velocity_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "pid",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:129",
+      "source": "pacti_library",
+      "variable": "initial_tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 5.0,
+      "contract": "pid",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:130",
+      "source": "pacti_library",
+      "variable": "initial_tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "pid",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:123",
+      "source": "pacti_library",
+      "variable": "position_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 2.0,
+      "contract": "pid",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:124",
+      "source": "pacti_library",
+      "variable": "position_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "pid",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:125",
+      "source": "pacti_library",
+      "variable": "velocity_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.5,
+      "contract": "pid",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:126",
+      "source": "pacti_library",
+      "variable": "velocity_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "pid",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:127",
+      "source": "pacti_library",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 3.0,
+      "contract": "pid",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:128",
+      "source": "pacti_library",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.2,
+      "contract": "pid",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:136",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.8,
+      "contract": "pid",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:137",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 1.0,
+      "contract": "pid",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:138",
+      "source": "pacti_library",
+      "variable": "settling_time",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 5.0,
+      "contract": "pid",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:139",
+      "source": "pacti_library",
+      "variable": "settling_time",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "PID",
+      "constant": 0.0,
+      "contract": "pid",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:133",
+      "source": "pacti_library",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_est_error": 1.0,
+        "wind_speed": 0.3
+      },
+      "component": "PID",
+      "constant": 0.2,
+      "contract": "pid",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:135",
+      "source": "pacti_library",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "mpc",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:155",
+      "source": "pacti_library",
+      "variable": "initial_tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 10.0,
+      "contract": "mpc",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:156",
+      "source": "pacti_library",
+      "variable": "initial_tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "mpc",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:149",
+      "source": "pacti_library",
+      "variable": "position_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 5.0,
+      "contract": "mpc",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:150",
+      "source": "pacti_library",
+      "variable": "position_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "mpc",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:151",
+      "source": "pacti_library",
+      "variable": "velocity_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 2.0,
+      "contract": "mpc",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:152",
+      "source": "pacti_library",
+      "variable": "velocity_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "mpc",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:153",
+      "source": "pacti_library",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 8.0,
+      "contract": "mpc",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:154",
+      "source": "pacti_library",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.1,
+      "contract": "mpc",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:162",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.7,
+      "contract": "mpc",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:163",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 1.5,
+      "contract": "mpc",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:164",
+      "source": "pacti_library",
+      "variable": "settling_time",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 7.0,
+      "contract": "mpc",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:165",
+      "source": "pacti_library",
+      "variable": "settling_time",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "MPC",
+      "constant": 0.0,
+      "contract": "mpc",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:159",
+      "source": "pacti_library",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_est_error": 0.3,
+        "wind_speed": 0.15
+      },
+      "component": "MPC",
+      "constant": 0.1,
+      "contract": "mpc",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:161",
+      "source": "pacti_library",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "hinf",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:182",
+      "source": "pacti_library",
+      "variable": "initial_tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 20.0,
+      "contract": "hinf",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:183",
+      "source": "pacti_library",
+      "variable": "initial_tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "hinf",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:176",
+      "source": "pacti_library",
+      "variable": "position_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 10.0,
+      "contract": "hinf",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:177",
+      "source": "pacti_library",
+      "variable": "position_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "hinf",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:178",
+      "source": "pacti_library",
+      "variable": "velocity_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 5.0,
+      "contract": "hinf",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:179",
+      "source": "pacti_library",
+      "variable": "velocity_est_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "hinf",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:180",
+      "source": "pacti_library",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 15.0,
+      "contract": "hinf",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:181",
+      "source": "pacti_library",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.3,
+      "contract": "hinf",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:189",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.9,
+      "contract": "hinf",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:190",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 3.0,
+      "contract": "hinf",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:191",
+      "source": "pacti_library",
+      "variable": "settling_time",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 10.0,
+      "contract": "hinf",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:192",
+      "source": "pacti_library",
+      "variable": "settling_time",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "HINF",
+      "constant": 0.0,
+      "contract": "hinf",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:186",
+      "source": "pacti_library",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "position_est_error": 1.0,
+        "wind_speed": 0.5
+      },
+      "component": "HINF",
+      "constant": 1.0,
+      "contract": "hinf",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:188",
+      "source": "pacti_library",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 10.5,
+      "contract": "actuator",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:206",
+      "source": "pacti_library",
+      "variable": "battery_voltage",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 12.6,
+      "contract": "actuator",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:207",
+      "source": "pacti_library",
+      "variable": "battery_voltage",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 0.0,
+      "contract": "actuator",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:204",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 1.0,
+      "contract": "actuator",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:205",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 10.0,
+      "contract": "actuator",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:208",
+      "source": "pacti_library",
+      "variable": "motor_temp",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 80.0,
+      "contract": "actuator",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:209",
+      "source": "pacti_library",
+      "variable": "motor_temp",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 0.9,
+      "contract": "actuator",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:213",
+      "source": "pacti_library",
+      "variable": "thrust_accuracy",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 1.1,
+      "contract": "actuator",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:214",
+      "source": "pacti_library",
+      "variable": "thrust_accuracy",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 0.9,
+      "contract": "actuator",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:215",
+      "source": "pacti_library",
+      "variable": "torque_accuracy",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "ACTUATOR",
+      "constant": 1.1,
+      "contract": "actuator",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:216",
+      "source": "pacti_library",
+      "variable": "torque_accuracy",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 0.0,
+      "contract": "dynamics",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:231",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 1.0,
+      "contract": "dynamics",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:232",
+      "source": "pacti_library",
+      "variable": "control_effort",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 0.01,
+      "contract": "dynamics",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:235",
+      "source": "pacti_library",
+      "variable": "dt",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 0.1,
+      "contract": "dynamics",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:236",
+      "source": "pacti_library",
+      "variable": "dt",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 0.0,
+      "contract": "dynamics",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:229",
+      "source": "pacti_library",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 10.0,
+      "contract": "dynamics",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:230",
+      "source": "pacti_library",
+      "variable": "tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 0.0,
+      "contract": "dynamics",
+      "direction": "lower",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:233",
+      "source": "pacti_library",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 15.0,
+      "contract": "dynamics",
+      "direction": "upper",
+      "kind": "A",
+      "loc": "src/planning/pacti_contracts.py:234",
+      "source": "pacti_library",
+      "variable": "wind_speed",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 0.0,
+      "contract": "dynamics",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:239",
+      "source": "pacti_library",
+      "variable": "next_tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "tracking_error": 0.9,
+        "wind_speed": 0.1
+      },
+      "component": "DYNAMICS",
+      "constant": 0.0,
+      "contract": "dynamics",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:242",
+      "source": "pacti_library",
+      "variable": "next_tracking_error",
+      "via": {}
+    },
+    {
+      "coefficients": {},
+      "component": "DYNAMICS",
+      "constant": 0.0,
+      "contract": "dynamics",
+      "direction": "lower",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:243",
+      "source": "pacti_library",
+      "variable": "position_change",
+      "via": {}
+    },
+    {
+      "coefficients": {
+        "dt": 2.0
+      },
+      "component": "DYNAMICS",
+      "constant": 0.0,
+      "contract": "dynamics",
+      "direction": "upper",
+      "kind": "G",
+      "loc": "src/planning/pacti_contracts.py:244",
+      "source": "pacti_library",
+      "variable": "position_change",
+      "via": {}
+    }
+  ],
+  "composed": [
+    {
+      "controller": "hinf",
+      "envelope": {
+        "battery_voltage": [
+          11.0,
+          12.6
+        ],
+        "disturbance": [
+          0.0,
+          20.0
+        ],
+        "gps_hdop": [
+          0.5,
+          5.0
+        ],
+        "gps_satellites": [
+          6.0,
+          30.0
+        ],
+        "imu_calibrated": [
+          1.0,
+          1.0
+        ],
+        "imu_temperature": [
+          5.0,
+          55.0
+        ],
+        "motor_temperature": [
+          20.0,
+          80.0
+        ],
+        "wind_speed": [
+          0.0,
+          25.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "disturbance",
+        "gps_hdop",
+        "gps_satellites",
+        "imu_calibrated",
+        "imu_temperature",
+        "motor_temperature",
+        "wind_speed"
+      ],
+      "method": "SimpleContract.compose",
+      "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables (F-A1-01, K05), so this envelope is NOT sound",
+      "pipeline": [
+        "GPS_IMU_Sensors",
+        "EKF_Estimator",
+        "Hinf_Controller",
+        "Actuators"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -11.0,
+          "text": "battery_voltage >= 11"
+        },
+        {
+          "coefficients": {
+            "disturbance": 1.0
+          },
+          "constant": 20.0,
+          "text": "disturbance <= 20"
+        },
+        {
+          "coefficients": {
+            "disturbance": -1.0
+          },
+          "constant": 0.0,
+          "text": "disturbance >= 0"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 5.0,
+          "text": "gps_hdop <= 5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 30.0,
+          "text": "gps_satellites <= 30"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -6.0,
+          "text": "gps_satellites >= 6"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": 1.0
+          },
+          "constant": 1.0,
+          "text": "imu_calibrated <= 1"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": -1.0
+          },
+          "constant": -1.0,
+          "text": "imu_calibrated >= 1"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": 1.0
+          },
+          "constant": 55.0,
+          "text": "imu_temperature <= 55"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": -1.0
+          },
+          "constant": -5.0,
+          "text": "imu_temperature >= 5"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temperature <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": -1.0
+          },
+          "constant": -20.0,
+          "text": "motor_temperature >= 20"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        },
+        {
+          "coefficients": {
+            "disturbance": 0.005,
+            "wind_speed": 0.03
+          },
+          "constant": 0.6,
+          "text": "0.005*disturbance + 0.03*wind_speed <= 0.6"
+        }
+      ],
+      "controller": "hinf",
+      "coupled_assumptions": [
+        {
+          "coefficients": {
+            "disturbance": 0.005,
+            "wind_speed": 0.03
+          },
+          "constant": 0.6,
+          "text": "0.005*disturbance + 0.03*wind_speed <= 0.6"
+        }
+      ],
+      "envelope": {
+        "battery_voltage": [
+          11.0,
+          12.6
+        ],
+        "disturbance": [
+          0.0,
+          20.0
+        ],
+        "gps_hdop": [
+          0.5,
+          5.0
+        ],
+        "gps_satellites": [
+          6.0,
+          30.0
+        ],
+        "imu_calibrated": [
+          1.0,
+          1.0
+        ],
+        "imu_temperature": [
+          5.0,
+          55.0
+        ],
+        "motor_temperature": [
+          20.0,
+          80.0
+        ],
+        "wind_speed": [
+          0.0,
+          20.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "disturbance",
+        "gps_hdop",
+        "gps_satellites",
+        "imu_calibrated",
+        "imu_temperature",
+        "motor_temperature",
+        "wind_speed"
+      ],
+      "method": "pacti.compose",
+      "note": "framework constants (define_contracts) converted to PolyhedralIoContract and composed with Pacti: sensors -> estimator -> controller -> actuators",
+      "output_bounds": {
+        "attitude_error": [
+          0.0,
+          0.0103
+        ],
+        "nees_bound": [
+          null,
+          1.95
+        ],
+        "nis_bound": [
+          null,
+          1.95
+        ],
+        "rate_damping": [
+          0.8,
+          null
+        ],
+        "response_time": [
+          0.005,
+          0.065
+        ],
+        "stabilization_time": [
+          2.0,
+          10.07
+        ],
+        "thrust_accuracy": [
+          0.89,
+          1.11
+        ],
+        "thrust_bandwidth": [
+          10.6103385,
+          null
+        ],
+        "tilt_angle": [
+          0.0,
+          4.316666667
+        ],
+        "tracking_error": [
+          0.0,
+          16.35
+        ]
+      },
+      "output_vars": [
+        "attitude_error",
+        "nees_bound",
+        "nis_bound",
+        "rate_damping",
+        "response_time",
+        "stabilization_time",
+        "thrust_accuracy",
+        "thrust_bandwidth",
+        "tilt_angle",
+        "tracking_error"
+      ],
+      "pipeline": [
+        "GPS_IMU_Sensors",
+        "EKF_Estimator",
+        "Hinf_Controller",
+        "Actuators"
+      ],
+      "source": "framework"
+    },
+    {
+      "controller": "mpc",
+      "envelope": {
+        "battery_voltage": [
+          11.0,
+          12.6
+        ],
+        "computation_time": [
+          0.0,
+          0.05
+        ],
+        "gps_hdop": [
+          0.5,
+          5.0
+        ],
+        "gps_satellites": [
+          6.0,
+          30.0
+        ],
+        "imu_calibrated": [
+          1.0,
+          1.0
+        ],
+        "imu_temperature": [
+          5.0,
+          55.0
+        ],
+        "motor_temperature": [
+          20.0,
+          80.0
+        ],
+        "wind_speed": [
+          0.0,
+          15.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "computation_time",
+        "gps_hdop",
+        "gps_satellites",
+        "imu_calibrated",
+        "imu_temperature",
+        "motor_temperature",
+        "wind_speed"
+      ],
+      "method": "SimpleContract.compose",
+      "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables (F-A1-01, K05), so this envelope is NOT sound",
+      "pipeline": [
+        "GPS_IMU_Sensors",
+        "EKF_Estimator",
+        "MPC_Controller",
+        "Actuators"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -11.0,
+          "text": "battery_voltage >= 11"
+        },
+        {
+          "coefficients": {
+            "computation_time": 1.0
+          },
+          "constant": 0.05,
+          "text": "computation_time <= 0.05"
+        },
+        {
+          "coefficients": {
+            "computation_time": -1.0
+          },
+          "constant": 0.0,
+          "text": "computation_time >= 0"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.05
+          },
+          "constant": 4.9,
+          "text": "gps_hdop <= 4.666666667"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 30.0,
+          "text": "gps_satellites <= 30"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -6.0,
+          "text": "gps_satellites >= 6"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": 1.0
+          },
+          "constant": 1.0,
+          "text": "imu_calibrated <= 1"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": -1.0
+          },
+          "constant": -1.0,
+          "text": "imu_calibrated >= 1"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": 1.0
+          },
+          "constant": 55.0,
+          "text": "imu_temperature <= 55"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": -1.0
+          },
+          "constant": -5.0,
+          "text": "imu_temperature >= 5"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temperature <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": -1.0
+          },
+          "constant": -20.0,
+          "text": "motor_temperature >= 20"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 0.0525,
+            "wind_speed": 0.08
+          },
+          "constant": 0.795,
+          "text": "0.0525*gps_hdop + 0.08*wind_speed <= 0.795"
+        }
+      ],
+      "controller": "mpc",
+      "coupled_assumptions": [
+        {
+          "coefficients": {
+            "gps_hdop": 0.0525,
+            "wind_speed": 0.08
+          },
+          "constant": 0.795,
+          "text": "0.0525*gps_hdop + 0.08*wind_speed <= 0.795"
+        }
+      ],
+      "envelope": {
+        "battery_voltage": [
+          11.0,
+          12.6
+        ],
+        "computation_time": [
+          0.0,
+          0.05
+        ],
+        "gps_hdop": [
+          0.5,
+          4.666666667
+        ],
+        "gps_satellites": [
+          6.0,
+          30.0
+        ],
+        "imu_calibrated": [
+          1.0,
+          1.0
+        ],
+        "imu_temperature": [
+          5.0,
+          55.0
+        ],
+        "motor_temperature": [
+          20.0,
+          80.0
+        ],
+        "wind_speed": [
+          0.0,
+          9.609375
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "computation_time",
+        "gps_hdop",
+        "gps_satellites",
+        "imu_calibrated",
+        "imu_temperature",
+        "motor_temperature",
+        "wind_speed"
+      ],
+      "method": "pacti.compose",
+      "note": "framework constants (define_contracts) converted to PolyhedralIoContract and composed with Pacti: sensors -> estimator -> controller -> actuators",
+      "output_bounds": {
+        "attitude_error": [
+          0.0,
+          0.0103
+        ],
+        "nees_bound": [
+          null,
+          1.95
+        ],
+        "nis_bound": [
+          null,
+          1.95
+        ],
+        "response_time": [
+          0.005,
+          0.065
+        ],
+        "settling_time": [
+          1.5,
+          7.9921875
+        ],
+        "thrust_accuracy": [
+          0.89,
+          1.11
+        ],
+        "thrust_bandwidth": [
+          10.6103385,
+          null
+        ],
+        "tracking_error": [
+          0.0,
+          2.63125
+        ]
+      },
+      "output_vars": [
+        "attitude_error",
+        "nees_bound",
+        "nis_bound",
+        "response_time",
+        "settling_time",
+        "thrust_accuracy",
+        "thrust_bandwidth",
+        "tracking_error"
+      ],
+      "pipeline": [
+        "GPS_IMU_Sensors",
+        "EKF_Estimator",
+        "MPC_Controller",
+        "Actuators"
+      ],
+      "source": "framework"
+    },
+    {
+      "controller": "pid",
+      "envelope": {
+        "battery_voltage": [
+          11.0,
+          12.6
+        ],
+        "disturbance": [
+          0.0,
+          3.0
+        ],
+        "gps_hdop": [
+          0.5,
+          5.0
+        ],
+        "gps_satellites": [
+          6.0,
+          30.0
+        ],
+        "imu_calibrated": [
+          1.0,
+          1.0
+        ],
+        "imu_temperature": [
+          5.0,
+          55.0
+        ],
+        "motor_temperature": [
+          20.0,
+          80.0
+        ],
+        "wind_speed": [
+          0.0,
+          3.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "disturbance",
+        "gps_hdop",
+        "gps_satellites",
+        "imu_calibrated",
+        "imu_temperature",
+        "motor_temperature",
+        "wind_speed"
+      ],
+      "method": "SimpleContract.compose",
+      "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables (F-A1-01, K05), so this envelope is NOT sound",
+      "pipeline": [
+        "GPS_IMU_Sensors",
+        "EKF_Estimator",
+        "PID_Controller",
+        "Actuators"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -11.0,
+          "text": "battery_voltage >= 11"
+        },
+        {
+          "coefficients": {
+            "disturbance": 1.0
+          },
+          "constant": 3.0,
+          "text": "disturbance <= 3"
+        },
+        {
+          "coefficients": {
+            "disturbance": -1.0
+          },
+          "constant": 0.0,
+          "text": "disturbance >= 0"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.05
+          },
+          "constant": 2.9,
+          "text": "gps_hdop <= 2.761904762"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 30.0,
+          "text": "gps_satellites <= 30"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -6.0,
+          "text": "gps_satellites >= 6"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": 1.0
+          },
+          "constant": 1.0,
+          "text": "imu_calibrated <= 1"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": -1.0
+          },
+          "constant": -1.0,
+          "text": "imu_calibrated >= 1"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": 1.0
+          },
+          "constant": 55.0,
+          "text": "imu_temperature <= 55"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": -1.0
+          },
+          "constant": -5.0,
+          "text": "imu_temperature >= 5"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temperature <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": -1.0
+          },
+          "constant": -20.0,
+          "text": "motor_temperature >= 20"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 3.0,
+          "text": "wind_speed <= 3"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "controller": "pid",
+      "coupled_assumptions": [],
+      "envelope": {
+        "battery_voltage": [
+          11.0,
+          12.6
+        ],
+        "disturbance": [
+          0.0,
+          3.0
+        ],
+        "gps_hdop": [
+          0.5,
+          2.761904762
+        ],
+        "gps_satellites": [
+          6.0,
+          30.0
+        ],
+        "imu_calibrated": [
+          1.0,
+          1.0
+        ],
+        "imu_temperature": [
+          5.0,
+          55.0
+        ],
+        "motor_temperature": [
+          20.0,
+          80.0
+        ],
+        "wind_speed": [
+          0.0,
+          3.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "disturbance",
+        "gps_hdop",
+        "gps_satellites",
+        "imu_calibrated",
+        "imu_temperature",
+        "motor_temperature",
+        "wind_speed"
+      ],
+      "method": "pacti.compose",
+      "note": "framework constants (define_contracts) converted to PolyhedralIoContract and composed with Pacti: sensors -> estimator -> controller -> actuators",
+      "output_bounds": {
+        "attitude_error": [
+          0.0,
+          0.0103
+        ],
+        "max_tilt": [
+          0.0,
+          0.15
+        ],
+        "nees_bound": [
+          null,
+          1.95
+        ],
+        "nis_bound": [
+          null,
+          1.95
+        ],
+        "response_time": [
+          0.005,
+          0.064
+        ],
+        "settling_time": [
+          1.0,
+          25.00813213
+        ],
+        "thrust_accuracy": [
+          0.89,
+          1.11
+        ],
+        "thrust_bandwidth": [
+          10.6103385,
+          null
+        ],
+        "tracking_error": [
+          0.0,
+          4.7
+        ]
+      },
+      "output_vars": [
+        "attitude_error",
+        "max_tilt",
+        "nees_bound",
+        "nis_bound",
+        "response_time",
+        "settling_time",
+        "thrust_accuracy",
+        "thrust_bandwidth",
+        "tracking_error"
+      ],
+      "pipeline": [
+        "GPS_IMU_Sensors",
+        "EKF_Estimator",
+        "PID_Controller",
+        "Actuators"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "attitude_meas_error": 1.0
+          },
+          "constant": 0.2,
+          "text": "attitude_meas_error <= 0.2"
+        },
+        {
+          "coefficients": {
+            "attitude_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -10.5,
+          "text": "battery_voltage >= 10.5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 10.0,
+          "text": "gps_hdop <= 10"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 24.0,
+          "text": "gps_satellites <= 24"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -4.0,
+          "text": "gps_satellites >= 4"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 20.0,
+          "text": "initial_tracking_error <= 20"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "motor_temp": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temp <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temp": -1.0
+          },
+          "constant": -10.0,
+          "text": "motor_temp >= 10"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": 1.0
+          },
+          "constant": 0.3,
+          "text": "rate_meas_error <= 0.3"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 15.0,
+          "text": "wind_speed <= 15"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "controller": "hinf",
+      "coupled_assumptions": [],
+      "envelope": {
+        "attitude_meas_error": [
+          0.0,
+          0.2
+        ],
+        "battery_voltage": [
+          10.5,
+          12.6
+        ],
+        "gps_hdop": [
+          0.5,
+          10.0
+        ],
+        "gps_satellites": [
+          4.0,
+          24.0
+        ],
+        "initial_tracking_error": [
+          0.0,
+          20.0
+        ],
+        "motor_temp": [
+          10.0,
+          80.0
+        ],
+        "rate_meas_error": [
+          0.0,
+          0.3
+        ],
+        "wind_speed": [
+          0.0,
+          15.0
+        ]
+      },
+      "input_vars": [
+        "attitude_meas_error",
+        "battery_voltage",
+        "gps_hdop",
+        "gps_satellites",
+        "initial_tracking_error",
+        "motor_temp",
+        "rate_meas_error",
+        "wind_speed"
+      ],
+      "method": "PactiContractLibrary.compose_pipeline",
+      "note": "the library's own method; composes gps -> ekf -> controller -> actuator and leaves the IMU contract out (F-A1-25)",
+      "pipeline": [
+        "gps",
+        "ekf",
+        "hinf",
+        "actuator"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -10.5,
+          "text": "battery_voltage >= 10.5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 10.0,
+          "text": "gps_hdop <= 10"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 24.0,
+          "text": "gps_satellites <= 24"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -4.0,
+          "text": "gps_satellites >= 4"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": 1.0
+          },
+          "constant": 20.0,
+          "text": "imu_temp_deviation <= 20"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": -1.0
+          },
+          "constant": 0.0,
+          "text": "imu_temp_deviation >= 0"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 20.0,
+          "text": "initial_tracking_error <= 20"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "motor_temp": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temp <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temp": -1.0
+          },
+          "constant": -10.0,
+          "text": "motor_temp >= 10"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 15.0,
+          "text": "wind_speed <= 15"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "controller": "hinf",
+      "coupled_assumptions": [],
+      "envelope": {
+        "battery_voltage": [
+          10.5,
+          12.6
+        ],
+        "gps_hdop": [
+          0.5,
+          10.0
+        ],
+        "gps_satellites": [
+          4.0,
+          24.0
+        ],
+        "imu_temp_deviation": [
+          0.0,
+          20.0
+        ],
+        "initial_tracking_error": [
+          0.0,
+          20.0
+        ],
+        "motor_temp": [
+          10.0,
+          80.0
+        ],
+        "wind_speed": [
+          0.0,
+          15.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "gps_hdop",
+        "gps_satellites",
+        "imu_temp_deviation",
+        "initial_tracking_error",
+        "motor_temp",
+        "wind_speed"
+      ],
+      "method": "pacti.compose",
+      "note": "PactiContractLibrary contracts composed with Pacti: (gps || imu) -> ekf -> controller -> actuator",
+      "output_bounds": {
+        "attitude_est_error": [
+          0.0,
+          0.07
+        ],
+        "rate_est_error": [
+          0.0,
+          0.145
+        ],
+        "settling_time": [
+          3.0,
+          10.0
+        ],
+        "thrust_accuracy": [
+          0.9,
+          1.1
+        ],
+        "torque_accuracy": [
+          0.9,
+          1.1
+        ],
+        "tracking_error": [
+          0.0,
+          12.1
+        ]
+      },
+      "output_vars": [
+        "attitude_est_error",
+        "rate_est_error",
+        "settling_time",
+        "thrust_accuracy",
+        "torque_accuracy",
+        "tracking_error"
+      ],
+      "pipeline": [
+        "gps",
+        "imu",
+        "ekf",
+        "hinf",
+        "actuator"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "attitude_meas_error": 1.0
+          },
+          "constant": 0.2,
+          "text": "attitude_meas_error <= 0.2"
+        },
+        {
+          "coefficients": {
+            "attitude_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -10.5,
+          "text": "battery_voltage >= 10.5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 10.0,
+          "text": "gps_hdop <= 10"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 24.0,
+          "text": "gps_satellites <= 24"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -4.0,
+          "text": "gps_satellites >= 4"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 10.0,
+          "text": "initial_tracking_error <= 10"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "motor_temp": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temp <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temp": -1.0
+          },
+          "constant": -10.0,
+          "text": "motor_temp >= 10"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": 1.0
+          },
+          "constant": 0.3,
+          "text": "rate_meas_error <= 0.3"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 8.0,
+          "text": "wind_speed <= 8"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "controller": "mpc",
+      "coupled_assumptions": [],
+      "envelope": {
+        "attitude_meas_error": [
+          0.0,
+          0.2
+        ],
+        "battery_voltage": [
+          10.5,
+          12.6
+        ],
+        "gps_hdop": [
+          0.5,
+          10.0
+        ],
+        "gps_satellites": [
+          4.0,
+          24.0
+        ],
+        "initial_tracking_error": [
+          0.0,
+          10.0
+        ],
+        "motor_temp": [
+          10.0,
+          80.0
+        ],
+        "rate_meas_error": [
+          0.0,
+          0.3
+        ],
+        "wind_speed": [
+          0.0,
+          8.0
+        ]
+      },
+      "input_vars": [
+        "attitude_meas_error",
+        "battery_voltage",
+        "gps_hdop",
+        "gps_satellites",
+        "initial_tracking_error",
+        "motor_temp",
+        "rate_meas_error",
+        "wind_speed"
+      ],
+      "method": "PactiContractLibrary.compose_pipeline",
+      "note": "the library's own method; composes gps -> ekf -> controller -> actuator and leaves the IMU contract out (F-A1-25)",
+      "pipeline": [
+        "gps",
+        "ekf",
+        "mpc",
+        "actuator"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -10.5,
+          "text": "battery_voltage >= 10.5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 10.0,
+          "text": "gps_hdop <= 10"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 24.0,
+          "text": "gps_satellites <= 24"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -4.0,
+          "text": "gps_satellites >= 4"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": 1.0
+          },
+          "constant": 20.0,
+          "text": "imu_temp_deviation <= 20"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": -1.0
+          },
+          "constant": 0.0,
+          "text": "imu_temp_deviation >= 0"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 10.0,
+          "text": "initial_tracking_error <= 10"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "motor_temp": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temp <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temp": -1.0
+          },
+          "constant": -10.0,
+          "text": "motor_temp >= 10"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 8.0,
+          "text": "wind_speed <= 8"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "controller": "mpc",
+      "coupled_assumptions": [],
+      "envelope": {
+        "battery_voltage": [
+          10.5,
+          12.6
+        ],
+        "gps_hdop": [
+          0.5,
+          10.0
+        ],
+        "gps_satellites": [
+          4.0,
+          24.0
+        ],
+        "imu_temp_deviation": [
+          0.0,
+          20.0
+        ],
+        "initial_tracking_error": [
+          0.0,
+          10.0
+        ],
+        "motor_temp": [
+          10.0,
+          80.0
+        ],
+        "wind_speed": [
+          0.0,
+          8.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "gps_hdop",
+        "gps_satellites",
+        "imu_temp_deviation",
+        "initial_tracking_error",
+        "motor_temp",
+        "wind_speed"
+      ],
+      "method": "pacti.compose",
+      "note": "PactiContractLibrary contracts composed with Pacti: (gps || imu) -> ekf -> controller -> actuator",
+      "output_bounds": {
+        "attitude_est_error": [
+          0.0,
+          0.07
+        ],
+        "rate_est_error": [
+          0.0,
+          0.145
+        ],
+        "settling_time": [
+          1.5,
+          7.0
+        ],
+        "thrust_accuracy": [
+          0.9,
+          1.1
+        ],
+        "torque_accuracy": [
+          0.9,
+          1.1
+        ],
+        "tracking_error": [
+          0.0,
+          2.38
+        ]
+      },
+      "output_vars": [
+        "attitude_est_error",
+        "rate_est_error",
+        "settling_time",
+        "thrust_accuracy",
+        "torque_accuracy",
+        "tracking_error"
+      ],
+      "pipeline": [
+        "gps",
+        "imu",
+        "ekf",
+        "mpc",
+        "actuator"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "attitude_meas_error": 1.0
+          },
+          "constant": 0.2,
+          "text": "attitude_meas_error <= 0.2"
+        },
+        {
+          "coefficients": {
+            "attitude_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -10.5,
+          "text": "battery_voltage >= 10.5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 0.35
+          },
+          "constant": 1.9,
+          "text": "gps_hdop <= 5.428571429"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 24.0,
+          "text": "gps_satellites <= 24"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -4.0,
+          "text": "gps_satellites >= 4"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "initial_tracking_error <= 5"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "motor_temp": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temp <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temp": -1.0
+          },
+          "constant": -10.0,
+          "text": "motor_temp >= 10"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": 1.0
+          },
+          "constant": 0.3,
+          "text": "rate_meas_error <= 0.3"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 3.0,
+          "text": "wind_speed <= 3"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "controller": "pid",
+      "coupled_assumptions": [],
+      "envelope": {
+        "attitude_meas_error": [
+          0.0,
+          0.2
+        ],
+        "battery_voltage": [
+          10.5,
+          12.6
+        ],
+        "gps_hdop": [
+          0.5,
+          5.428571429
+        ],
+        "gps_satellites": [
+          4.0,
+          24.0
+        ],
+        "initial_tracking_error": [
+          0.0,
+          5.0
+        ],
+        "motor_temp": [
+          10.0,
+          80.0
+        ],
+        "rate_meas_error": [
+          0.0,
+          0.3
+        ],
+        "wind_speed": [
+          0.0,
+          3.0
+        ]
+      },
+      "input_vars": [
+        "attitude_meas_error",
+        "battery_voltage",
+        "gps_hdop",
+        "gps_satellites",
+        "initial_tracking_error",
+        "motor_temp",
+        "rate_meas_error",
+        "wind_speed"
+      ],
+      "method": "PactiContractLibrary.compose_pipeline",
+      "note": "the library's own method; composes gps -> ekf -> controller -> actuator and leaves the IMU contract out (F-A1-25)",
+      "pipeline": [
+        "gps",
+        "ekf",
+        "pid",
+        "actuator"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -10.5,
+          "text": "battery_voltage >= 10.5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 0.35
+          },
+          "constant": 1.9,
+          "text": "gps_hdop <= 5.428571429"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 24.0,
+          "text": "gps_satellites <= 24"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -4.0,
+          "text": "gps_satellites >= 4"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": 1.0
+          },
+          "constant": 20.0,
+          "text": "imu_temp_deviation <= 20"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": -1.0
+          },
+          "constant": 0.0,
+          "text": "imu_temp_deviation >= 0"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "initial_tracking_error <= 5"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "motor_temp": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temp <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temp": -1.0
+          },
+          "constant": -10.0,
+          "text": "motor_temp >= 10"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 3.0,
+          "text": "wind_speed <= 3"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "controller": "pid",
+      "coupled_assumptions": [],
+      "envelope": {
+        "battery_voltage": [
+          10.5,
+          12.6
+        ],
+        "gps_hdop": [
+          0.5,
+          5.428571429
+        ],
+        "gps_satellites": [
+          4.0,
+          24.0
+        ],
+        "imu_temp_deviation": [
+          0.0,
+          20.0
+        ],
+        "initial_tracking_error": [
+          0.0,
+          5.0
+        ],
+        "motor_temp": [
+          10.0,
+          80.0
+        ],
+        "wind_speed": [
+          0.0,
+          3.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "gps_hdop",
+        "gps_satellites",
+        "imu_temp_deviation",
+        "initial_tracking_error",
+        "motor_temp",
+        "wind_speed"
+      ],
+      "method": "pacti.compose",
+      "note": "PactiContractLibrary contracts composed with Pacti: (gps || imu) -> ekf -> controller -> actuator",
+      "output_bounds": {
+        "attitude_est_error": [
+          0.0,
+          0.07
+        ],
+        "rate_est_error": [
+          0.0,
+          0.145
+        ],
+        "settling_time": [
+          1.0,
+          5.0
+        ],
+        "thrust_accuracy": [
+          0.9,
+          1.1
+        ],
+        "torque_accuracy": [
+          0.9,
+          1.1
+        ],
+        "tracking_error": [
+          0.0,
+          3.1
+        ]
+      },
+      "output_vars": [
+        "attitude_est_error",
+        "rate_est_error",
+        "settling_time",
+        "thrust_accuracy",
+        "torque_accuracy",
+        "tracking_error"
+      ],
+      "pipeline": [
+        "gps",
+        "imu",
+        "ekf",
+        "pid",
+        "actuator"
+      ],
+      "source": "pacti_library"
+    }
+  ],
+  "contracts": [
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -11.0,
+          "text": "battery_voltage >= 11"
+        },
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 1.0,
+          "text": "control_effort <= 1"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": 0.0,
+          "text": "control_effort >= 0"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temperature <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": -1.0
+          },
+          "constant": -20.0,
+          "text": "motor_temperature >= 20"
+        }
+      ],
+      "component": "ACTUATOR",
+      "contract": "Actuators",
+      "guarantees": [
+        {
+          "coefficients": {
+            "response_time": -1.0
+          },
+          "constant": -0.005,
+          "text": "response_time >= 0.005"
+        },
+        {
+          "coefficients": {
+            "thrust_bandwidth": -1.0
+          },
+          "constant": -10.6103385,
+          "text": "thrust_bandwidth >= 10.6103385"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": 0.03,
+            "motor_temperature": -0.0005,
+            "thrust_accuracy": 1.0
+          },
+          "constant": 1.4,
+          "text": "0.03*battery_voltage - 0.0005*motor_temperature + thrust_accuracy <= 1.4"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": 0.03,
+            "motor_temperature": -0.0005,
+            "thrust_accuracy": -1.0
+          },
+          "constant": -0.6,
+          "text": "0.03*battery_voltage - 0.0005*motor_temperature - thrust_accuracy <= -0.6"
+        },
+        {
+          "coefficients": {
+            "control_effort": -0.01,
+            "motor_temperature": -0.0005,
+            "response_time": 1.0
+          },
+          "constant": 0.015,
+          "text": "-0.01*control_effort - 0.0005*motor_temperature + response_time <= 0.015"
+        }
+      ],
+      "input_bounds": {
+        "battery_voltage": [
+          11.0,
+          12.6
+        ],
+        "control_effort": [
+          0.0,
+          1.0
+        ],
+        "motor_temperature": [
+          20.0,
+          80.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "control_effort",
+        "motor_temperature"
+      ],
+      "output_vars": [
+        "response_time",
+        "thrust_accuracy",
+        "thrust_bandwidth"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "attitude_meas_error": 1.0
+          },
+          "constant": 0.01,
+          "text": "attitude_meas_error <= 0.01"
+        },
+        {
+          "coefficients": {
+            "attitude_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_meas_error": 1.0
+          },
+          "constant": 7.5,
+          "text": "position_meas_error <= 7.5"
+        },
+        {
+          "coefficients": {
+            "position_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": 1.0
+          },
+          "constant": 0.1,
+          "text": "rate_meas_error <= 0.1"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": 1.0
+          },
+          "constant": 0.5,
+          "text": "velocity_meas_error <= 0.5"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_meas_error >= 0"
+        }
+      ],
+      "component": "EKF",
+      "contract": "EKF_Estimator",
+      "guarantees": [
+        {
+          "coefficients": {
+            "attitude_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_error >= 0"
+        },
+        {
+          "coefficients": {
+            "nees_bound": 1.0
+          },
+          "constant": 1.95,
+          "text": "nees_bound <= 1.95"
+        },
+        {
+          "coefficients": {
+            "nis_bound": 1.0
+          },
+          "constant": 1.95,
+          "text": "nis_bound <= 1.95"
+        },
+        {
+          "coefficients": {
+            "position_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_error >= 0"
+        },
+        {
+          "coefficients": {
+            "attitude_error": 1.0,
+            "attitude_meas_error": -0.3
+          },
+          "constant": 0.01,
+          "text": "attitude_error - 0.3*attitude_meas_error <= 0.01"
+        },
+        {
+          "coefficients": {
+            "position_error": 1.0,
+            "position_meas_error": -0.7
+          },
+          "constant": 0.1,
+          "text": "position_error - 0.7*position_meas_error <= 0.1"
+        },
+        {
+          "coefficients": {
+            "velocity_error": 1.0,
+            "velocity_meas_error": -0.5
+          },
+          "constant": 0.05,
+          "text": "velocity_error - 0.5*velocity_meas_error <= 0.05"
+        }
+      ],
+      "input_bounds": {
+        "attitude_meas_error": [
+          0.0,
+          0.01
+        ],
+        "position_meas_error": [
+          0.0,
+          7.5
+        ],
+        "rate_meas_error": [
+          0.0,
+          0.1
+        ],
+        "velocity_meas_error": [
+          0.0,
+          0.5
+        ]
+      },
+      "input_vars": [
+        "attitude_meas_error",
+        "position_meas_error",
+        "rate_meas_error",
+        "velocity_meas_error"
+      ],
+      "output_vars": [
+        "attitude_error",
+        "nees_bound",
+        "nis_bound",
+        "position_error",
+        "velocity_error"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 5.0,
+          "text": "gps_hdop <= 5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 30.0,
+          "text": "gps_satellites <= 30"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -6.0,
+          "text": "gps_satellites >= 6"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": 1.0
+          },
+          "constant": 1.0,
+          "text": "imu_calibrated <= 1"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": -1.0
+          },
+          "constant": -1.0,
+          "text": "imu_calibrated >= 1"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": 1.0
+          },
+          "constant": 55.0,
+          "text": "imu_temperature <= 55"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": -1.0
+          },
+          "constant": -5.0,
+          "text": "imu_temperature >= 5"
+        }
+      ],
+      "component": "GPS+IMU",
+      "contract": "GPS_IMU_Sensors",
+      "guarantees": [
+        {
+          "coefficients": {
+            "attitude_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": 1.0
+          },
+          "constant": 0.1,
+          "text": "velocity_meas_error <= 0.1"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "attitude_meas_error": 1.0,
+            "imu_temperature": -1.6e-05
+          },
+          "constant": 0.00012,
+          "text": "attitude_meas_error - 1.6e-05*imu_temperature <= 0.00012"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.5,
+            "position_meas_error": 1.0
+          },
+          "constant": 0.0,
+          "text": "-1.5*gps_hdop + position_meas_error <= 0"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": -0.0008,
+            "rate_meas_error": 1.0
+          },
+          "constant": 0.006,
+          "text": "-0.0008*imu_temperature + rate_meas_error <= 0.006"
+        }
+      ],
+      "input_bounds": {
+        "gps_hdop": [
+          0.5,
+          5.0
+        ],
+        "gps_satellites": [
+          6.0,
+          30.0
+        ],
+        "imu_calibrated": [
+          1.0,
+          1.0
+        ],
+        "imu_temperature": [
+          5.0,
+          55.0
+        ]
+      },
+      "input_vars": [
+        "gps_hdop",
+        "gps_satellites",
+        "imu_calibrated",
+        "imu_temperature"
+      ],
+      "output_vars": [
+        "attitude_meas_error",
+        "position_meas_error",
+        "rate_meas_error",
+        "velocity_meas_error"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "disturbance": 1.0
+          },
+          "constant": 20.0,
+          "text": "disturbance <= 20"
+        },
+        {
+          "coefficients": {
+            "disturbance": -1.0
+          },
+          "constant": 0.0,
+          "text": "disturbance >= 0"
+        },
+        {
+          "coefficients": {
+            "position_error": 1.0
+          },
+          "constant": 50.0,
+          "text": "position_error <= 50"
+        },
+        {
+          "coefficients": {
+            "position_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_error": 1.0
+          },
+          "constant": 30.0,
+          "text": "velocity_error <= 30"
+        },
+        {
+          "coefficients": {
+            "velocity_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 25.0,
+          "text": "wind_speed <= 25"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "component": "HINF",
+      "contract": "Hinf_Controller",
+      "guarantees": [
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": -0.2,
+          "text": "control_effort >= 0.2"
+        },
+        {
+          "coefficients": {
+            "rate_damping": -1.0
+          },
+          "constant": -0.8,
+          "text": "rate_damping >= 0.8"
+        },
+        {
+          "coefficients": {
+            "stabilization_time": -1.0
+          },
+          "constant": -2.0,
+          "text": "stabilization_time >= 2"
+        },
+        {
+          "coefficients": {
+            "tilt_angle": -1.0
+          },
+          "constant": 0.0,
+          "text": "tilt_angle >= 0"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "control_effort": 1.0,
+            "disturbance": -0.005,
+            "wind_speed": -0.03
+          },
+          "constant": 0.4,
+          "text": "control_effort - 0.005*disturbance - 0.03*wind_speed <= 0.4"
+        },
+        {
+          "coefficients": {
+            "disturbance": -0.2,
+            "tilt_angle": 1.0,
+            "wind_speed": -0.01
+          },
+          "constant": 0.15,
+          "text": "-0.2*disturbance + tilt_angle - 0.01*wind_speed <= 0.15"
+        },
+        {
+          "coefficients": {
+            "position_error": -0.2,
+            "stabilization_time": 1.0,
+            "wind_speed": -0.3
+          },
+          "constant": 3.0,
+          "text": "-0.2*position_error + stabilization_time - 0.3*wind_speed <= 3"
+        },
+        {
+          "coefficients": {
+            "position_error": -1.0,
+            "tracking_error": 1.0,
+            "wind_speed": -0.5
+          },
+          "constant": 1.0,
+          "text": "-position_error + tracking_error - 0.5*wind_speed <= 1"
+        }
+      ],
+      "input_bounds": {
+        "disturbance": [
+          0.0,
+          20.0
+        ],
+        "position_error": [
+          0.0,
+          50.0
+        ],
+        "velocity_error": [
+          0.0,
+          30.0
+        ],
+        "wind_speed": [
+          0.0,
+          25.0
+        ]
+      },
+      "input_vars": [
+        "disturbance",
+        "position_error",
+        "velocity_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "control_effort",
+        "rate_damping",
+        "stabilization_time",
+        "tilt_angle",
+        "tracking_error"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "computation_time": 1.0
+          },
+          "constant": 0.05,
+          "text": "computation_time <= 0.05"
+        },
+        {
+          "coefficients": {
+            "computation_time": -1.0
+          },
+          "constant": 0.0,
+          "text": "computation_time >= 0"
+        },
+        {
+          "coefficients": {
+            "position_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "position_error <= 5"
+        },
+        {
+          "coefficients": {
+            "position_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_error": 1.0
+          },
+          "constant": 2.0,
+          "text": "velocity_error <= 2"
+        },
+        {
+          "coefficients": {
+            "velocity_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 15.0,
+          "text": "wind_speed <= 15"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "component": "MPC",
+      "contract": "MPC_Controller",
+      "guarantees": [
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": -0.1,
+          "text": "control_effort >= 0.1"
+        },
+        {
+          "coefficients": {
+            "settling_time": -1.0
+          },
+          "constant": -1.5,
+          "text": "settling_time >= 1.5"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "control_effort": 1.0,
+            "position_error": -0.05,
+            "wind_speed": -0.08
+          },
+          "constant": 0.2,
+          "text": "control_effort - 0.05*position_error - 0.08*wind_speed <= 0.2"
+        },
+        {
+          "coefficients": {
+            "position_error": -0.3,
+            "settling_time": 1.0,
+            "wind_speed": -0.5
+          },
+          "constant": 3.0,
+          "text": "-0.3*position_error + settling_time - 0.5*wind_speed <= 3"
+        },
+        {
+          "coefficients": {
+            "position_error": -0.3,
+            "tracking_error": 1.0,
+            "wind_speed": -0.15
+          },
+          "constant": 0.1,
+          "text": "-0.3*position_error + tracking_error - 0.15*wind_speed <= 0.1"
+        }
+      ],
+      "input_bounds": {
+        "computation_time": [
+          0.0,
+          0.05
+        ],
+        "position_error": [
+          0.0,
+          5.0
+        ],
+        "velocity_error": [
+          0.0,
+          2.0
+        ],
+        "wind_speed": [
+          0.0,
+          15.0
+        ]
+      },
+      "input_vars": [
+        "computation_time",
+        "position_error",
+        "velocity_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "control_effort",
+        "settling_time",
+        "tracking_error"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "disturbance": 1.0
+          },
+          "constant": 3.0,
+          "text": "disturbance <= 3"
+        },
+        {
+          "coefficients": {
+            "disturbance": -1.0
+          },
+          "constant": 0.0,
+          "text": "disturbance >= 0"
+        },
+        {
+          "coefficients": {
+            "position_error": 1.0
+          },
+          "constant": 3.0,
+          "text": "position_error <= 3"
+        },
+        {
+          "coefficients": {
+            "position_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_error": 1.0
+          },
+          "constant": 2.0,
+          "text": "velocity_error <= 2"
+        },
+        {
+          "coefficients": {
+            "velocity_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 3.0,
+          "text": "wind_speed <= 3"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "component": "PID",
+      "contract": "PID_Controller",
+      "guarantees": [
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": -0.1,
+          "text": "control_effort >= 0.1"
+        },
+        {
+          "coefficients": {
+            "max_tilt": 1.0
+          },
+          "constant": 0.15,
+          "text": "max_tilt <= 0.15"
+        },
+        {
+          "coefficients": {
+            "max_tilt": -1.0
+          },
+          "constant": 0.0,
+          "text": "max_tilt >= 0"
+        },
+        {
+          "coefficients": {
+            "settling_time": -1.0
+          },
+          "constant": -1.0,
+          "text": "settling_time >= 1"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "control_effort": 1.0,
+            "disturbance": -0.05,
+            "wind_speed": -0.15
+          },
+          "constant": 0.3,
+          "text": "control_effort - 0.05*disturbance - 0.15*wind_speed <= 0.3"
+        },
+        {
+          "coefficients": {
+            "position_error": -1.0,
+            "settling_time": 1.0,
+            "wind_speed": -2.0
+          },
+          "constant": 16.00813213,
+          "text": "-position_error + settling_time - 2*wind_speed <= 16.00813213"
+        },
+        {
+          "coefficients": {
+            "position_error": -1.0,
+            "tracking_error": 1.0,
+            "wind_speed": -0.5
+          },
+          "constant": 0.2,
+          "text": "-position_error + tracking_error - 0.5*wind_speed <= 0.2"
+        }
+      ],
+      "input_bounds": {
+        "disturbance": [
+          0.0,
+          3.0
+        ],
+        "position_error": [
+          0.0,
+          3.0
+        ],
+        "velocity_error": [
+          0.0,
+          2.0
+        ],
+        "wind_speed": [
+          0.0,
+          3.0
+        ]
+      },
+      "input_vars": [
+        "disturbance",
+        "position_error",
+        "velocity_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "control_effort",
+        "max_tilt",
+        "settling_time",
+        "tracking_error"
+      ],
+      "source": "framework"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -10.5,
+          "text": "battery_voltage >= 10.5"
+        },
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 1.0,
+          "text": "control_effort <= 1"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": 0.0,
+          "text": "control_effort >= 0"
+        },
+        {
+          "coefficients": {
+            "motor_temp": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temp <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temp": -1.0
+          },
+          "constant": -10.0,
+          "text": "motor_temp >= 10"
+        }
+      ],
+      "component": "ACTUATOR",
+      "contract": "actuator",
+      "guarantees": [
+        {
+          "coefficients": {
+            "thrust_accuracy": 1.0
+          },
+          "constant": 1.1,
+          "text": "thrust_accuracy <= 1.1"
+        },
+        {
+          "coefficients": {
+            "thrust_accuracy": -1.0
+          },
+          "constant": -0.9,
+          "text": "thrust_accuracy >= 0.9"
+        },
+        {
+          "coefficients": {
+            "torque_accuracy": 1.0
+          },
+          "constant": 1.1,
+          "text": "torque_accuracy <= 1.1"
+        },
+        {
+          "coefficients": {
+            "torque_accuracy": -1.0
+          },
+          "constant": -0.9,
+          "text": "torque_accuracy >= 0.9"
+        }
+      ],
+      "input_bounds": {
+        "battery_voltage": [
+          10.5,
+          12.6
+        ],
+        "control_effort": [
+          0.0,
+          1.0
+        ],
+        "motor_temp": [
+          10.0,
+          80.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "control_effort",
+        "motor_temp"
+      ],
+      "output_vars": [
+        "thrust_accuracy",
+        "torque_accuracy"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 1.0,
+          "text": "control_effort <= 1"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": 0.0,
+          "text": "control_effort >= 0"
+        },
+        {
+          "coefficients": {
+            "dt": 1.0
+          },
+          "constant": 0.1,
+          "text": "dt <= 0.1"
+        },
+        {
+          "coefficients": {
+            "dt": -1.0
+          },
+          "constant": -0.01,
+          "text": "dt >= 0.01"
+        },
+        {
+          "coefficients": {
+            "tracking_error": 1.0
+          },
+          "constant": 10.0,
+          "text": "tracking_error <= 10"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 15.0,
+          "text": "wind_speed <= 15"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "component": "DYNAMICS",
+      "contract": "dynamics",
+      "guarantees": [
+        {
+          "coefficients": {
+            "next_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "next_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_change": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_change >= 0"
+        },
+        {
+          "coefficients": {
+            "dt": -2.0,
+            "position_change": 1.0
+          },
+          "constant": 0.0,
+          "text": "-2*dt + position_change <= 0"
+        },
+        {
+          "coefficients": {
+            "next_tracking_error": 1.0,
+            "tracking_error": -0.9,
+            "wind_speed": -0.1
+          },
+          "constant": 0.0,
+          "text": "next_tracking_error - 0.9*tracking_error - 0.1*wind_speed <= 0"
+        }
+      ],
+      "input_bounds": {
+        "control_effort": [
+          0.0,
+          1.0
+        ],
+        "dt": [
+          0.01,
+          0.1
+        ],
+        "tracking_error": [
+          0.0,
+          10.0
+        ],
+        "wind_speed": [
+          0.0,
+          15.0
+        ]
+      },
+      "input_vars": [
+        "control_effort",
+        "dt",
+        "tracking_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "next_tracking_error",
+        "position_change"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "attitude_meas_error": 1.0
+          },
+          "constant": 0.2,
+          "text": "attitude_meas_error <= 0.2"
+        },
+        {
+          "coefficients": {
+            "attitude_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_meas_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "position_meas_error <= 5"
+        },
+        {
+          "coefficients": {
+            "position_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": 1.0
+          },
+          "constant": 0.3,
+          "text": "rate_meas_error <= 0.3"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": 1.0
+          },
+          "constant": 1.0,
+          "text": "velocity_meas_error <= 1"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_meas_error >= 0"
+        }
+      ],
+      "component": "EKF",
+      "contract": "ekf",
+      "guarantees": [
+        {
+          "coefficients": {
+            "attitude_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "rate_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "attitude_est_error": 1.0,
+            "attitude_meas_error": -0.5
+          },
+          "constant": 0.01,
+          "text": "attitude_est_error - 0.5*attitude_meas_error <= 0.01"
+        },
+        {
+          "coefficients": {
+            "position_est_error": 1.0,
+            "position_meas_error": -0.7
+          },
+          "constant": 0.1,
+          "text": "position_est_error - 0.7*position_meas_error <= 0.1"
+        },
+        {
+          "coefficients": {
+            "rate_est_error": 1.0,
+            "rate_meas_error": -0.5
+          },
+          "constant": 0.02,
+          "text": "rate_est_error - 0.5*rate_meas_error <= 0.02"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": 1.0,
+            "velocity_meas_error": -0.7
+          },
+          "constant": 0.05,
+          "text": "velocity_est_error - 0.7*velocity_meas_error <= 0.05"
+        }
+      ],
+      "input_bounds": {
+        "attitude_meas_error": [
+          0.0,
+          0.2
+        ],
+        "position_meas_error": [
+          0.0,
+          5.0
+        ],
+        "rate_meas_error": [
+          0.0,
+          0.3
+        ],
+        "velocity_meas_error": [
+          0.0,
+          1.0
+        ]
+      },
+      "input_vars": [
+        "attitude_meas_error",
+        "position_meas_error",
+        "rate_meas_error",
+        "velocity_meas_error"
+      ],
+      "output_vars": [
+        "attitude_est_error",
+        "position_est_error",
+        "rate_est_error",
+        "velocity_est_error"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 10.0,
+          "text": "gps_hdop <= 10"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 24.0,
+          "text": "gps_satellites <= 24"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -4.0,
+          "text": "gps_satellites >= 4"
+        }
+      ],
+      "component": "GPS",
+      "contract": "gps",
+      "guarantees": [
+        {
+          "coefficients": {
+            "position_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -0.5,
+            "position_meas_error": 1.0
+          },
+          "constant": 0.0,
+          "text": "-0.5*gps_hdop + position_meas_error <= 0"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -0.1,
+            "velocity_meas_error": 1.0
+          },
+          "constant": 0.0,
+          "text": "-0.1*gps_hdop + velocity_meas_error <= 0"
+        }
+      ],
+      "input_bounds": {
+        "gps_hdop": [
+          0.5,
+          10.0
+        ],
+        "gps_satellites": [
+          4.0,
+          24.0
+        ]
+      },
+      "input_vars": [
+        "gps_hdop",
+        "gps_satellites"
+      ],
+      "output_vars": [
+        "position_meas_error",
+        "velocity_meas_error"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 20.0,
+          "text": "initial_tracking_error <= 20"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": 1.0
+          },
+          "constant": 10.0,
+          "text": "position_est_error <= 10"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "velocity_est_error <= 5"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 15.0,
+          "text": "wind_speed <= 15"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "component": "HINF",
+      "contract": "hinf",
+      "guarantees": [
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 0.9,
+          "text": "control_effort <= 0.9"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": -0.3,
+          "text": "control_effort >= 0.3"
+        },
+        {
+          "coefficients": {
+            "settling_time": 1.0
+          },
+          "constant": 10.0,
+          "text": "settling_time <= 10"
+        },
+        {
+          "coefficients": {
+            "settling_time": -1.0
+          },
+          "constant": -3.0,
+          "text": "settling_time >= 3"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0,
+            "tracking_error": 1.0,
+            "wind_speed": -0.5
+          },
+          "constant": 1.0,
+          "text": "-position_est_error + tracking_error - 0.5*wind_speed <= 1"
+        }
+      ],
+      "input_bounds": {
+        "initial_tracking_error": [
+          0.0,
+          20.0
+        ],
+        "position_est_error": [
+          0.0,
+          10.0
+        ],
+        "velocity_est_error": [
+          0.0,
+          5.0
+        ],
+        "wind_speed": [
+          0.0,
+          15.0
+        ]
+      },
+      "input_vars": [
+        "initial_tracking_error",
+        "position_est_error",
+        "velocity_est_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "control_effort",
+        "settling_time",
+        "tracking_error"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "imu_temp_deviation": 1.0
+          },
+          "constant": 20.0,
+          "text": "imu_temp_deviation <= 20"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": -1.0
+          },
+          "constant": 0.0,
+          "text": "imu_temp_deviation >= 0"
+        }
+      ],
+      "component": "IMU",
+      "contract": "imu",
+      "guarantees": [
+        {
+          "coefficients": {
+            "attitude_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "attitude_meas_error": 1.0,
+            "imu_temp_deviation": -0.005
+          },
+          "constant": 0.02,
+          "text": "attitude_meas_error - 0.005*imu_temp_deviation <= 0.02"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": -0.01,
+            "rate_meas_error": 1.0
+          },
+          "constant": 0.05,
+          "text": "-0.01*imu_temp_deviation + rate_meas_error <= 0.05"
+        }
+      ],
+      "input_bounds": {
+        "imu_temp_deviation": [
+          0.0,
+          20.0
+        ]
+      },
+      "input_vars": [
+        "imu_temp_deviation"
+      ],
+      "output_vars": [
+        "attitude_meas_error",
+        "rate_meas_error"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 10.0,
+          "text": "initial_tracking_error <= 10"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "position_est_error <= 5"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": 1.0
+          },
+          "constant": 2.0,
+          "text": "velocity_est_error <= 2"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 8.0,
+          "text": "wind_speed <= 8"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "component": "MPC",
+      "contract": "mpc",
+      "guarantees": [
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 0.7,
+          "text": "control_effort <= 0.7"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": -0.1,
+          "text": "control_effort >= 0.1"
+        },
+        {
+          "coefficients": {
+            "settling_time": 1.0
+          },
+          "constant": 7.0,
+          "text": "settling_time <= 7"
+        },
+        {
+          "coefficients": {
+            "settling_time": -1.0
+          },
+          "constant": -1.5,
+          "text": "settling_time >= 1.5"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -0.3,
+            "tracking_error": 1.0,
+            "wind_speed": -0.15
+          },
+          "constant": 0.1,
+          "text": "-0.3*position_est_error + tracking_error - 0.15*wind_speed <= 0.1"
+        }
+      ],
+      "input_bounds": {
+        "initial_tracking_error": [
+          0.0,
+          10.0
+        ],
+        "position_est_error": [
+          0.0,
+          5.0
+        ],
+        "velocity_est_error": [
+          0.0,
+          2.0
+        ],
+        "wind_speed": [
+          0.0,
+          8.0
+        ]
+      },
+      "input_vars": [
+        "initial_tracking_error",
+        "position_est_error",
+        "velocity_est_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "control_effort",
+        "settling_time",
+        "tracking_error"
+      ],
+      "source": "pacti_library"
+    },
+    {
+      "assumptions": [
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "initial_tracking_error <= 5"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": 1.0
+          },
+          "constant": 2.0,
+          "text": "position_est_error <= 2"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": 1.0
+          },
+          "constant": 0.5,
+          "text": "velocity_est_error <= 0.5"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 3.0,
+          "text": "wind_speed <= 3"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "component": "PID",
+      "contract": "pid",
+      "guarantees": [
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 0.8,
+          "text": "control_effort <= 0.8"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": -0.2,
+          "text": "control_effort >= 0.2"
+        },
+        {
+          "coefficients": {
+            "settling_time": 1.0
+          },
+          "constant": 5.0,
+          "text": "settling_time <= 5"
+        },
+        {
+          "coefficients": {
+            "settling_time": -1.0
+          },
+          "constant": -1.0,
+          "text": "settling_time >= 1"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0,
+            "tracking_error": 1.0,
+            "wind_speed": -0.3
+          },
+          "constant": 0.2,
+          "text": "-position_est_error + tracking_error - 0.3*wind_speed <= 0.2"
+        }
+      ],
+      "input_bounds": {
+        "initial_tracking_error": [
+          0.0,
+          5.0
+        ],
+        "position_est_error": [
+          0.0,
+          2.0
+        ],
+        "velocity_est_error": [
+          0.0,
+          0.5
+        ],
+        "wind_speed": [
+          0.0,
+          3.0
+        ]
+      },
+      "input_vars": [
+        "initial_tracking_error",
+        "position_est_error",
+        "velocity_est_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "control_effort",
+        "settling_time",
+        "tracking_error"
+      ],
+      "source": "pacti_library"
+    }
+  ],
+  "conversion_notes": [
+    {
+      "id": "C1-IO",
+      "source": "framework",
+      "text": "SimpleContract declares no input/output lists. Converted with inputs = assumption variables plus every variable used in a guarantee coefficient, and outputs = guarantee output variables.",
+      "where": "all contracts"
+    },
+    {
+      "id": "C2-FORM",
+      "source": "framework",
+      "text": "Assumption `var in (lo, hi)` became `-var <= -lo` and `var <= hi`. Guarantee `y <= sum(c*x) + k` became `y - sum(c*x) <= k`; `y >= sum(c*x) + k` became `-y + sum(c*x) <= -k`. Numbers are passed to Pacti as floats (no string round trip). Pacti's constructor simplifies guarantees against assumptions (simplify=True, the default the Pacti library also uses).",
+      "where": "all contracts"
+    },
+    {
+      "id": "C3-MULTI",
+      "source": "framework",
+      "text": "13 guarantees have coefficients on several inputs. Each became ONE half-space over all of its inputs, which is the relational meaning of LinearConstraint when every input is present. Flag: SimpleContract.evaluate_bound treats a missing input as 0 (F-A1-04) while Pacti quantifies over it, so the two differ only when an input is missing at run time. No input was dropped, split or bounded separately.",
+      "where": "cf:584-586, cf:592-594, cf:599-600, cf:639-642, cf:647-648, cf:653-655, cf:659-660, cf:702-705, cf:710-711, cf:716-717, cf:749-752, cf:754-756, cf:760-762"
+    },
+    {
+      "id": "C4-EQUALITY",
+      "source": "framework",
+      "text": "IMU assumes `imu_calibrated` in [1, 1], a degenerate interval. Converted to two inequalities (an equality). It stays a box bound in the envelope.",
+      "where": "cf:467"
+    },
+    {
+      "id": "C5-SENSORS",
+      "source": "framework",
+      "text": "The framework has one sensor contract for GPS and IMU. It is composed as one stage, as compose_pipeline does; its rows are split into GPS and IMU by variable for the table.",
+      "where": "GPS_IMU_Sensors (cf:461)"
+    },
+    {
+      "id": "C6-PIPELINE",
+      "source": "pacti_library",
+      "text": "The Pacti-library pipeline is built here as (gps || imu) -> ekf -> controller -> actuator, to match the framework's sensors -> estimator -> controller -> actuators. PactiContractLibrary.compose_pipeline leaves imu out (F-A1-25); that variant is kept in contracts.json as a cross-check. The dynamics contract is in neither pipeline; its rows are Pacti-only with no effect on the composed assumptions.",
+      "where": "pc:252-290"
+    },
+    {
+      "id": "C7-ALIAS",
+      "source": "both",
+      "text": "Rows are lined up through a renaming layer that the repo does not have (model.ALIASES). Judgement call: H-inf `stabilization_time` (framework) is compared with H-inf `settling_time` (Pacti library). `imu_temperature` and `imu_temp_deviation` are NOT aliased because they measure different things. Every renamed row says so in its note.",
+      "where": "comparison layer"
+    },
+    {
+      "id": "C8-ENVELOPE",
+      "source": "both",
+      "text": "Envelope bounds are linear programs over the composed assumptions only. They are cross-checked against Pacti's get_variable_bounds (assumptions and guarantees), which the planner and the Wave-2 probes use; any difference is flagged as P-AGDIFF.",
+      "where": "section 1"
+    }
+  ],
+  "environment": {
+    "numpy": "2.4.6",
+    "pacti": "0.3.1",
+    "scipy": "1.17.1"
+  },
+  "float_format": "rounded to 10 significant digits; null = unbounded",
+  "generator": {
+    "name": "tools/contracts_offline",
+    "version": "1.0.0"
+  },
+  "not_aliased": [
+    {
+      "component": "IMU",
+      "framework": "imu_temperature",
+      "pacti_library": "imu_temp_deviation",
+      "reason": "absolute IMU temperature in degC (framework) vs deviation from the calibration temperature (Pacti library)"
+    }
+  ],
+  "provenance": {
+    "hash_rule": "sha256 over '<path>\\0<sha256 of the file with CRLF normalised to LF>\\n' for the input files sorted by path",
+    "inputs": [
+      {
+        "path": "src/contracts/contract_framework.py",
+        "sha256": "87aead05be2760dc1aaaa9d714e524d66cf6668d31b312f0b7f10e9b94bf6b9d"
+      },
+      {
+        "path": "src/planning/horizon_planner.py",
+        "sha256": "5661498ce63a3fea45ba68d00684454e9b7b329b584080f0934c7fa59dfca734"
+      },
+      {
+        "path": "src/planning/integrated_planner.py",
+        "sha256": "cf4b4f43d796ce11197e9f1c10267e936793edaf3a09ef99ab9517ab7977c042"
+      },
+      {
+        "path": "src/planning/pacti_contracts.py",
+        "sha256": "4d9fc06b7c179d4da00844d819059881f649bab9c44076898250729fe7e770db"
+      }
+    ],
+    "inputs_sha256": "5a173bfa29be2b05e5f7d9386fa4ee12ae6fc771172478d3bdc65c82a997cbf2",
+    "source_commit": "057743fcb21ebd582bc284316b088c03e2ecd88e",
+    "source_commit_matches_inputs": true,
+    "source_commit_note": "",
+    "source_commit_rule": "last commit that touched any input file: git log -1 --format=%H -- <inputs>"
+  },
+  "reconciliation": {
+    "both_present": 101,
+    "columns": [
+      "row",
+      "row_id",
+      "component",
+      "variable",
+      "variable_framework",
+      "variable_pacti",
+      "kind",
+      "direction",
+      "item",
+      "framework_value",
+      "framework_loc",
+      "framework_via",
+      "pacti_value",
+      "pacti_loc",
+      "third_copy_value",
+      "third_copy_loc",
+      "third_copy_matches",
+      "status",
+      "a1_row",
+      "effect_framework",
+      "effect_pacti",
+      "note"
+    ],
+    "f_a1_09_rollup": {
+      "agrees_with_f_a1_09": true,
+      "claimed_matched_rows": [
+        4,
+        6,
+        11,
+        16,
+        19,
+        24,
+        28,
+        30,
+        34,
+        35,
+        39,
+        41,
+        43,
+        49,
+        53
+      ],
+      "groups": 55,
+      "groups_expected": 55,
+      "match": 15,
+      "matched_rows": [
+        4,
+        6,
+        11,
+        16,
+        19,
+        24,
+        28,
+        30,
+        34,
+        35,
+        39,
+        41,
+        43,
+        49,
+        53
+      ],
+      "not_match": 40,
+      "rows_outside_a1_table": 30
+    },
+    "files": [
+      "reconciliation.csv",
+      "reconciliation.md"
+    ],
+    "framework_only": 24,
+    "match": 47,
+    "mismatch": 54,
+    "not_match": 106,
+    "pacti_only": 28,
+    "rows": 153
+  },
+  "schema_version": "1.0.0",
+  "sources": {
+    "framework": {
+      "module": "contracts.contract_framework",
+      "objects": "HierarchicalContractMonitor().define_contracts()",
+      "path": "src/contracts/contract_framework.py"
+    },
+    "pacti_library": {
+      "module": "planning.pacti_contracts",
+      "objects": "PactiContractLibrary().contracts",
+      "path": "src/planning/pacti_contracts.py"
+    }
+  },
+  "third_copy": [
+    {
+      "direction": "upper",
+      "function": "check_and_replan",
+      "line": 368,
+      "path": "src/planning/horizon_planner.py",
+      "values": {
+        "hinf": 15.0,
+        "mpc": 8.0,
+        "pid": 3.0
+      },
+      "variable": "wind_speed"
+    },
+    {
+      "direction": "upper",
+      "function": "_safety_critical",
+      "line": 210,
+      "path": "src/planning/integrated_planner.py",
+      "values": {
+        "hinf": 15.0,
+        "mpc": 8.0,
+        "pid": 3.0
+      },
+      "variable": "wind_speed"
+    }
+  ],
+  "tightenings": [
+    {
+      "component_bound": 5.0,
+      "component_loc": "src/contracts/contract_framework.py:465",
+      "composed_bound": 2.761904762,
+      "composed_terms": [
+        "gps_hdop <= 2.761904762",
+        "gps_hdop >= 0.5"
+      ],
+      "controller": "pid",
+      "direction": "upper",
+      "source": "framework",
+      "variable": "gps_hdop"
+    },
+    {
+      "component_bound": 5.0,
+      "component_loc": "src/contracts/contract_framework.py:465",
+      "composed_bound": 4.666666667,
+      "composed_terms": [
+        "gps_hdop <= 4.666666667",
+        "gps_hdop >= 0.5",
+        "0.0525*gps_hdop + 0.08*wind_speed <= 0.795"
+      ],
+      "controller": "mpc",
+      "direction": "upper",
+      "source": "framework",
+      "variable": "gps_hdop"
+    },
+    {
+      "component_bound": 15.0,
+      "component_loc": "src/contracts/contract_framework.py:695",
+      "composed_bound": 9.609375,
+      "composed_terms": [
+        "wind_speed >= 0",
+        "0.0525*gps_hdop + 0.08*wind_speed <= 0.795"
+      ],
+      "controller": "mpc",
+      "direction": "upper",
+      "source": "framework",
+      "variable": "wind_speed"
+    },
+    {
+      "component_bound": 25.0,
+      "component_loc": "src/contracts/contract_framework.py:632",
+      "composed_bound": 20.0,
+      "composed_terms": [
+        "wind_speed >= 0",
+        "0.005*disturbance + 0.03*wind_speed <= 0.6"
+      ],
+      "controller": "hinf",
+      "direction": "upper",
+      "source": "framework",
+      "variable": "wind_speed"
+    },
+    {
+      "component_bound": 10.0,
+      "component_loc": "src/planning/pacti_contracts.py:55",
+      "composed_bound": 5.428571429,
+      "composed_terms": [
+        "gps_hdop <= 5.428571429",
+        "gps_hdop >= 0.5"
+      ],
+      "controller": "pid",
+      "direction": "upper",
+      "source": "pacti_library",
+      "variable": "gps_hdop"
+    }
+  ],
+  "value_policy": "value-agnostic: both libraries are recorded side by side under their own 'source'; no value is selected as authoritative. Choosing the values is the user's decision (DC).",
+  "variable_aliases": [
+    {
+      "component": "*",
+      "framework": "position_error",
+      "pacti_library": "position_est_error",
+      "reason": "EKF output and controller input in both libraries"
+    },
+    {
+      "component": "*",
+      "framework": "velocity_error",
+      "pacti_library": "velocity_est_error",
+      "reason": "EKF output and controller input in both libraries"
+    },
+    {
+      "component": "*",
+      "framework": "attitude_error",
+      "pacti_library": "attitude_est_error",
+      "reason": "EKF output in both libraries"
+    },
+    {
+      "component": "*",
+      "framework": "motor_temperature",
+      "pacti_library": "motor_temp",
+      "reason": "actuator input in both libraries"
+    },
+    {
+      "component": "HINF",
+      "framework": "stabilization_time",
+      "pacti_library": "settling_time",
+      "reason": "H-inf time bound; the names differ, the role (time bound on the H-inf response) is the same"
+    }
+  ]
+}
