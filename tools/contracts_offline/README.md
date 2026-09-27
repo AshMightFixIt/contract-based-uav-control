@@ -1,0 +1,144 @@
+# Offline contracts tool
+
+An **offline design tool**. It composes the repo's assume-guarantee contracts
+soundly with [Pacti](https://github.com/FormalSystems/pacti), and reports where
+the two contract libraries disagree. It does not run on the robot and changes no
+flight code.
+
+Keep Pacti off the robot, for two reasons:
+
+- pacti 0.3.1 needs NumPy >= 2.2.6 and Python >= 3.10. ROS 2 Humble ships apt
+  NumPy 1.21.5, so the two conflict (A-E1).
+- Composing online inside the control loop costs about 120–160 ms per call, and
+  the result is discarded (K10).
+
+Consume the composed bounds from `out/contracts.json` instead.
+
+The tool is **value-agnostic**. It shows both libraries side by side and does not
+pick a winner. Choosing which contract values are authoritative is the user's
+decision (decision DC).
+
+## What it reads
+
+Both libraries are imported read-only from `src/`. `src` is added to `sys.path`
+inside the tool only, and bytecode writing is switched off, so nothing is written
+under `src/`.
+
+- The framework: `src/contracts/contract_framework.py`, i.e.
+  `HierarchicalContractMonitor().define_contracts()`, with `SimpleContract` and
+  `LinearConstraint`.
+- The Pacti library: `src/planning/pacti_contracts.py`, i.e.
+  `PactiContractLibrary().contracts`.
+- The third copy of the wind limits: the `wind_limits` dicts in
+  `src/planning/horizon_planner.py` and `src/planning/integrated_planner.py`.
+  These are local variables inside methods, so they are read from the source
+  with `ast`.
+
+Values come from the imported objects. File:line locations come from parsing the
+same files with `ast`.
+
+## What it does
+
+1. It converts every framework `SimpleContract` into a Pacti
+   `PolyhedralIoContract`. Assumption boxes become two inequalities each. A
+   guarantee `y <= sum(c*x) + k` becomes one half-space over all its inputs.
+   Every conversion choice is listed in the report's section 3.
+2. It composes each controller pipeline with Pacti, for each library. The
+   pipeline is sensors -> estimator -> controller -> actuators, as the
+   framework's `compose_pipeline` defines it.
+   - Framework: `GPS_IMU_Sensors -> EKF_Estimator -> <controller> -> Actuators`.
+   - Pacti library: `(gps || imu) -> ekf -> <controller> -> actuator`.
+3. It records two reference compositions that the repo itself performs.
+   Neither is a sound, complete pipeline.
+   - `SimpleContract.compose`, which pre-flight uses today. It drops the
+     G1 => A2 obligation (F-A1-01, K05).
+   - `PactiContractLibrary.compose_pipeline`, which leaves IMU out (F-A1-25).
+4. It writes one reconciliation row per (component, variable,
+   bound-or-coefficient).
+
+## Run it
+
+Use Python >= 3.11. pacti 0.3.1 itself needs only 3.10, but the pinned numpy
+2.4.6 needs 3.11. CI uses 3.11, and 3.12 and 3.13 produce the same bytes. Run
+from the repo root:
+
+```bash
+python -m pip install -r tools/contracts_offline/requirements.txt   # in a venv
+python tools/contracts_offline/run.py          # or: python -m tools.contracts_offline
+python tools/contracts_offline/run.py --check  # exit 1 if out/ is stale; writes nothing
+python -m pytest -p no:cacheprovider tools/contracts_offline/tests
+```
+
+A run takes about 7 s. Without pacti, the tool exits with code 2 and prints the
+install command. The tests skip.
+
+## Outputs (`out/`, committed)
+
+- **`contracts.json`**: versioned by `schema_version`. It contains:
+  - `provenance`:
+    - `source_commit`: the last commit that touched an input file. It is not
+      HEAD, so committing `out/` does not make `out/` stale.
+    - `inputs_sha256`: a content hash of the inputs, with CRLF normalised to LF.
+  - `environment`: the pacti, numpy and scipy versions.
+  - Every normalised bound (`bounds`), each with its file:line.
+  - Per-contract input bounds (`contracts`).
+  - The composed results per controller (`composed`). Each record carries:
+    - a `source`: `framework` or `pacti_library`
+    - a `method`: `pacti.compose`, or one of the two reference methods
+    - the composed assumption terms
+    - the envelope (the range of each top-level input)
+    - the composed output bounds
+  - The third copy (`third_copy`), the reconciliation counts, and the
+    conversion notes.
+  - No field selects an authoritative value.
+- **`reconciliation.md`**: the report.
+  - The composed per-controller envelopes come first, side by side.
+  - Then the counts, the conversion notes, how to read the rows, and the rows.
+  - Paths are abbreviated: cf, pc, hp and ip.
+- **`reconciliation.csv`**: the same rows, with full paths. It has these
+  columns:
+  - the framework value with its file:line
+  - the named constant it comes from (`via`)
+  - the Pacti-library value with its file:line
+  - the third-copy value where one exists
+  - match or mismatch
+  - the row of A1's F-A1-09 table the item belongs to
+  - the effect on the composed assumptions, for each library
+
+The effect column says, under that library's own values:
+
+- For an assumption on a top-level input: whether it **binds** in the composed
+  envelope or is **slack**.
+- For an assumption on an internal variable: whether it is **discharged**
+  (upstream already keeps the variable inside it) or makes Pacti **cut** the
+  inputs.
+- For a guarantee: which of those downstream obligations it feeds.
+
+The effect of swapping a single value to the other library's is not computed.
+
+## Determinism
+
+Two runs produce byte-identical files:
+
+- Keys and lists are sorted.
+- Numbers are rounded to 10 significant digits.
+- Line endings are LF.
+- There are no timestamps; the files carry only the commit and the hash.
+
+CI regenerates `out/` and fails if it differs from the committed copy. The
+check needs full git history (`fetch-depth: 0`). Rewriting the commit that last
+touched the inputs, for example with a squash or a rebase, changes
+`source_commit`. In that case, rerun the tool and commit `out/`.
+
+## Files
+
+- `run.py` / `__main__.py`: the entry points.
+- `cli.py`: builds and writes the outputs.
+- `extract.py`: read-only import and `ast` locations.
+- `compose.py`: the Pacti conversion, composition and effect analysis.
+- `reconcile.py`: the rows and the F-A1-09 cross-check.
+- `render.py`: the JSON, CSV and Markdown writers.
+- `provenance.py`: the commit, hashes and versions.
+- `model.py`: constants, variable aliases and number formatting.
+- `.gitignore`: re-includes `out/*.json` and `out/*.csv`, which the root
+  `.gitignore` ignores.
