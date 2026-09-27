@@ -179,6 +179,7 @@ def composed_record(source: str, ctrl: str, stages, method: str, note: str, flag
         envelope[v] = _pair(lo, hi)
     outputs = {v: _pair(*ag_bounds(final, v)) for v in names(final.outputvars)}
     terms = sorted_terms(final.a)
+    coupled = [t for t in terms if len(t["coefficients"]) > 1]
     return {
         "source": source,
         "controller": ctrl,
@@ -188,10 +189,41 @@ def composed_record(source: str, ctrl: str, stages, method: str, note: str, flag
         "input_vars": names(final.inputvars),
         "output_vars": names(final.outputvars),
         "assumptions": terms,
-        "coupled_assumptions": [t for t in terms if len(t["coefficients"]) > 1],
+        "coupled_assumptions": coupled,
         "envelope": envelope,
+        # The box equals the admissible set only when every assumption term has one variable.
+        "envelope_is_admissible_set": not coupled,
         "output_bounds": outputs,
     }
+
+
+def box_counterexamples(rec: dict) -> List[dict]:
+    """Corners of the envelope box that violate a coupled assumption term.
+
+    Each one proves that the box is not the admissible set. For every coupled term,
+    the corner is taken at the envelope end that maximises the term's left side.
+    """
+    out = []
+    for t in rec.get("coupled_assumptions", []):
+        point = {}
+        for v, a in sorted(t["coefficients"].items()):
+            lo, hi = rec["envelope"][v]
+            point[v] = hi if a > 0 else lo
+        if any(x is None for x in point.values()):
+            continue
+        lhs = sum(a * point[v] for v, a in t["coefficients"].items())
+        if lhs > t["constant"] and not close(lhs, t["constant"]):
+            out.append({"point": point, "term": t["text"], "lhs": rnd(lhs), "constant": t["constant"]})
+    return out
+
+
+def _box_terms(box: Dict[str, Tuple[float, float]]) -> List[dict]:
+    """Assumption terms for a plain box, in the same form as Pacti terms (sum(a*v) <= c)."""
+    terms = []
+    for v, (lo, hi) in sorted(box.items()):
+        for a, c in ((-1.0, -float(lo)), (1.0, float(hi))):
+            terms.append({"coefficients": {v: rnd(a)}, "constant": rnd(c), "text": term_text([(v, a)], c)})
+    return terms
 
 
 def reference_records(monitor, lib) -> List[dict]:
@@ -207,12 +239,16 @@ def reference_records(monitor, lib) -> List[dict]:
                     "(F-A1-01, K05), so this envelope is NOT sound",
             "pipeline": sc.name.split(">>"),
             "input_vars": sorted(sc.assumptions),
+            "assumptions": _box_terms(sc.assumptions),
+            "coupled_assumptions": [],
             "envelope": {v: _pair(lo, hi) for v, (lo, hi) in sorted(sc.assumptions.items())},
+            "envelope_is_admissible_set": True,
         })
     for ctrl in CONTROLLERS:
         p = lib.compose_pipeline(ctrl)
         envelope = {v: _pair(*a_only_bounds(p, v)) for v in names(p.inputvars)}
         terms = sorted_terms(p.a)
+        coupled = [t for t in terms if len(t["coefficients"]) > 1]
         recs.append({
             "source": "pacti_library",
             "controller": ctrl,
@@ -222,8 +258,9 @@ def reference_records(monitor, lib) -> List[dict]:
             "pipeline": ["gps", "ekf", ctrl, "actuator"],
             "input_vars": names(p.inputvars),
             "assumptions": terms,
-            "coupled_assumptions": [t for t in terms if len(t["coefficients"]) > 1],
+            "coupled_assumptions": coupled,
             "envelope": envelope,
+            "envelope_is_admissible_set": not coupled,
         })
     return recs
 

@@ -85,8 +85,12 @@ install command. The tests skip.
   - The composed results per controller (`composed`). Each record carries:
     - a `source`: `framework` or `pacti_library`
     - a `method`: `pacti.compose`, or one of the two reference methods
-    - the composed assumption terms
-    - the envelope (the range of each top-level input)
+    - the composed assumption terms (`assumptions`, and the multi-input ones
+      again as `coupled_assumptions`), each meaning
+      `sum(coefficients[v] * v) <= constant`
+    - the envelope, and whether it equals the admissible set
+      (`envelope_is_admissible_set`), with box corners that disprove it
+      (`box_counterexamples`)
     - the composed output bounds
   - The third copy (`third_copy`), the reconciliation counts, and the
     conversion notes.
@@ -104,6 +108,21 @@ install command. The tests skip.
   - match or mismatch
   - the row of A1's F-A1-09 table the item belongs to
   - the effect on the composed assumptions, for each library
+
+**The envelope is a per-input projection, not the admissible set.** Each range
+is that input's minimum and maximum with every other input free. When a record
+has coupled assumptions, the box is larger than what the composition admits.
+For example, framework MPC admits wind 9.609375 only at hdop 0.5, and the box
+corner (hdop 4.666666667, wind 9.609375) violates
+`0.0525*gps_hdop + 0.08*wind_speed <= 0.795`. Check a point against the full
+`assumptions`, never against the box. `admissible.py` does this with the
+standard library only:
+
+```bash
+python tools/contracts_offline/admissible.py framework mpc gps_hdop=4.6 wind_speed=9.6 --partial
+# VIOLATED  0.0525*gps_hdop + 0.08*wind_speed <= 0.795   (left side 1.0095 > 0.795)
+# ... NOT ADMISSIBLE (exit 1). Without --partial every input is required (exit 2 otherwise).
+```
 
 The effect column says, under that library's own values:
 
@@ -139,6 +158,8 @@ cherry-picks, rebases and squash merges leave `out/` valid.
 - `compose.py`: the Pacti conversion, composition and effect analysis.
 - `reconcile.py`: the rows and the F-A1-09 cross-check.
 - `render.py`: the JSON, CSV and Markdown writers.
+- `admissible.py`: exact point check against a composed record (standard
+  library only; also a CLI).
 - `provenance.py`: the commit, hashes and versions.
 - `model.py`: constants, variable aliases and number formatting.
 - `.gitignore`: re-includes `out/*.json` and `out/*.csv`, which the root
