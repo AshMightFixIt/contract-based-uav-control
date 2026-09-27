@@ -75,10 +75,10 @@ install command. The tests skip.
 ## Outputs (`out/`, committed)
 
 - **`contracts.json`**: versioned by `schema_version`. It contains:
-  - `provenance`:
-    - `source_commit`: the last commit that touched an input file. It is not
-      HEAD, so committing `out/` does not make `out/` stale.
-    - `inputs_sha256`: a content hash of the inputs, with CRLF normalised to LF.
+  - `provenance`: `inputs_sha256`, a content hash of the four input files with
+    CRLF normalised to LF, plus a hash per file. No git commit ID is recorded,
+    so cherry-picks, rebases and squashes do not change `out/`. The last commit
+    touching the inputs is printed to stdout only.
   - `environment`: the pacti, numpy and scipy versions.
   - Every normalised bound (`bounds`), each with its file:line.
   - Per-contract input bounds (`contracts`).
@@ -123,12 +123,13 @@ Two runs produce byte-identical files:
 - Keys and lists are sorted.
 - Numbers are rounded to 10 significant digits.
 - Line endings are LF.
-- There are no timestamps; the files carry only the commit and the hash.
+- There are no timestamps and no git commit IDs; the inputs are identified by
+  their content hash only.
 
 CI regenerates `out/` and fails if it differs from the committed copy. The
-check needs full git history (`fetch-depth: 0`). Rewriting the commit that last
-touched the inputs, for example with a squash or a rebase, changes
-`source_commit`. In that case, rerun the tool and commit `out/`.
+output depends only on the input files and the tool, not on git history. An
+input edit and the regenerated `out/` can therefore go in the same commit, and
+cherry-picks, rebases and squash merges leave `out/` valid.
 
 ## Files
 

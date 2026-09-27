@@ -6232,7 +6232,7 @@
   "float_format": "rounded to 10 significant digits; null = unbounded",
   "generator": {
     "name": "tools/contracts_offline",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "not_aliased": [
     {
@@ -6243,6 +6243,7 @@
     }
   ],
   "provenance": {
+    "commit_policy": "no git commit ID is recorded in out/; the inputs are identified by inputs_sha256, so cherry-pick, rebase and squash do not change out/",
     "hash_rule": "sha256 over '<path>\\0<sha256 of the file with CRLF normalised to LF>\\n' for the input files sorted by path",
     "inputs": [
       {
@@ -6262,11 +6263,7 @@
         "sha256": "4d9fc06b7c179d4da00844d819059881f649bab9c44076898250729fe7e770db"
       }
     ],
-    "inputs_sha256": "5a173bfa29be2b05e5f7d9386fa4ee12ae6fc771172478d3bdc65c82a997cbf2",
-    "source_commit": "057743fcb21ebd582bc284316b088c03e2ecd88e",
-    "source_commit_matches_inputs": true,
-    "source_commit_note": "",
-    "source_commit_rule": "last commit that touched any input file: git log -1 --format=%H -- <inputs>"
+    "inputs_sha256": "5a173bfa29be2b05e5f7d9386fa4ee12ae6fc771172478d3bdc65c82a997cbf2"
   },
   "reconciliation": {
     "both_present": 101,
@@ -6347,7 +6344,7 @@
     "pacti_only": 28,
     "rows": 153
   },
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "sources": {
     "framework": {
       "module": "contracts.contract_framework",

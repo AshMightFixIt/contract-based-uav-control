@@ -225,6 +225,11 @@ def main(argv=None) -> int:
         return 2
 
     files, doc, _ = build(args.repo_root)
+    from .provenance import last_input_commit
+
+    # Console only, never written to out/ (see provenance.py).
+    print(f"contracts_offline: inputs sha256 {doc['provenance']['inputs_sha256']}; last commit touching "
+          f"the inputs (log only): {last_input_commit(args.repo_root.resolve()) or 'unknown'}")
     if args.check:
         stale = [n for n in OUT_FILES if not (args.out / n).is_file() or (args.out / n).read_bytes() != files[n]]
         for n in stale:

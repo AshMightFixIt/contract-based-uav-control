@@ -126,7 +126,7 @@ def test_contracts_json_schema_and_value_agnostic(built):
     assert json.loads(files["contracts.json"]) == doc
     assert doc["schema_version"] == SCHEMA_VERSION
     prov = doc["provenance"]
-    assert "source_commit" in prov and re.fullmatch(r"[0-9a-f]{64}", prov["inputs_sha256"])
+    assert re.fullmatch(r"[0-9a-f]{64}", prov["inputs_sha256"])
     assert doc["environment"]["pacti"] == "0.3.1"
     assert {r["source"] for r in doc["composed"]} == {"framework", "pacti_library"}
     for rec in doc["composed"]:
@@ -141,6 +141,15 @@ def test_outputs_have_no_timestamps(built):
     for name, data in files.items():
         assert not stamp.search(data), name
         assert b"\r\n" not in data, name
+
+
+def test_outputs_contain_no_git_commit_id(built):
+    """Commit IDs change under cherry-pick/rebase/squash; out/ must not depend on them (review M2)."""
+    files, doc, _ = built
+    commit_id = re.compile(rb"\b[0-9a-f]{40}\b")  # a 64-hex sha256 does not match (no word boundary at 40)
+    for name, data in files.items():
+        assert not commit_id.search(data), name
+    assert not any("commit" in k and k != "commit_policy" for k in _keys(doc["provenance"]))
 
 
 def test_two_runs_are_byte_identical(tmp_path, built):
@@ -161,8 +170,6 @@ def test_committed_outputs_are_current(built):
     committed = TOOL_DIR / "out" / "contracts.json"
     if not committed.is_file():
         pytest.skip("no committed out/ yet")
-    if doc["provenance"]["source_commit"] is None:
-        pytest.skip("git history unavailable (shallow clone?)")
     if json.loads(committed.read_text(encoding="utf-8"))["environment"] != doc["environment"]:
         pytest.skip("installed pacti/numpy/scipy differ from the versions out/ was generated with")
     for name in cli.OUT_FILES:
