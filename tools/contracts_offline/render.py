@@ -126,8 +126,8 @@ def _glance_section(doc: dict, lines: List[str]) -> None:
                  "favourable values of the other inputs in that constraint.")
     lines.append("")
     lines.append("| controller | input | framework component | framework composed (sound) | framework "
-                 "SimpleContract (today) | Pacti library component | Pacti library composed (sound) | "
-                 "third copy |")
+                 "SimpleContract.compose (today; unsound, reference only) | Pacti library component | "
+                 "Pacti library composed (sound) | third copy |")
     lines.append("|---|---|---|---|---|---|---|---|")
     for ctrl in CONTROLLERS:
         for var in ("wind_speed", "gps_hdop"):
@@ -157,7 +157,8 @@ def _envelope_section(doc: dict, lines: List[str]) -> None:
         lines.append(f"### {cc}")
         lines.append("")
         lines.append("| top-level input | framework, Pacti-composed (sound) | framework, SimpleContract.compose "
-                     "(pre-flight today, unsound) | Pacti library, Pacti-composed (sound) | third copy |")
+                     "(pre-flight today; unsound, reference only, NOT an admissible set) | Pacti library, "
+                     "Pacti-composed (sound) | third copy |")
         lines.append("|---|---|---|---|---|")
         for v in variables:
             tc = ""
@@ -281,8 +282,10 @@ def reconciliation_md(doc: dict, rows: List[dict]) -> bytes:
              "a point must be checked against the full composed assumptions (`contracts.json` "
              "`composed[].assumptions`, or `tools/contracts_offline/admissible.py`), never against the "
              "box. Sound columns are "
-             "Pacti compositions (A1 and (G1 => A2)); the SimpleContract column is what pre-flight "
-             "computes today and drops G1 => A2 (F-A1-01, K05). The Pacti-library pipeline composes "
+             "Pacti compositions (A1 and (G1 => A2)). The SimpleContract column is what pre-flight "
+             "computes today and drops G1 => A2 (F-A1-01, K05): it is **unsound and shown for reference "
+             "only; its box is not an admissible set** (in `contracts.json` those records have "
+             "`sound: false` and `envelope_is_admissible_set: false`). The Pacti-library pipeline composes "
              "gps and imu in parallel before ekf; the library's own `compose_pipeline` leaves imu out "
              "(F-A1-25), and that variant is in `contracts.json` under method "
              "`PactiContractLibrary.compose_pipeline`.")

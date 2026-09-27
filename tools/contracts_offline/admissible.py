@@ -96,6 +96,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     except ValueError:
         p.error("values must look like var=number")
     rec = load_record(args.contracts, args.source, args.controller, args.method)
+    if rec.get("sound") is False:
+        print(f"WARNING: {rec.get('composition', args.method)}: this record is an unsound reference; "
+              "the result says what that composition accepts, not what is admissible")
     res = check(rec, point)
     for v in res["violated"]:
         if v.get("variable"):

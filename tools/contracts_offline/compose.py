@@ -184,6 +184,9 @@ def composed_record(source: str, ctrl: str, stages, method: str, note: str, flag
         "source": source,
         "controller": ctrl,
         "method": method,
+        "composition": "pacti.compose (sound)",
+        "sound": True,
+        "reference_only": False,
         "note": note,
         "pipeline": [n for st in stages for n in st[2]],
         "input_vars": names(final.inputvars),
@@ -235,14 +238,19 @@ def reference_records(monitor, lib) -> List[dict]:
             "source": "framework",
             "controller": ctrl,
             "method": "SimpleContract.compose",
+            "composition": "SimpleContract.compose (unsound, reference only)",
+            "sound": False,
+            "reference_only": True,
             "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables "
-                    "(F-A1-01, K05), so this envelope is NOT sound",
+                    "(F-A1-01, K05), so this envelope is NOT sound and NOT an admissible set",
             "pipeline": sc.name.split(">>"),
             "input_vars": sorted(sc.assumptions),
             "assumptions": _box_terms(sc.assumptions),
             "coupled_assumptions": [],
             "envelope": {v: _pair(lo, hi) for v, (lo, hi) in sorted(sc.assumptions.items())},
-            "envelope_is_admissible_set": True,
+            # Unsound composition: its box admits points the composed contracts do not
+            # (e.g. PID at hdop 4.9, K05), so it never claims to be an admissible set.
+            "envelope_is_admissible_set": False,
         })
     for ctrl in CONTROLLERS:
         p = lib.compose_pipeline(ctrl)
@@ -253,6 +261,9 @@ def reference_records(monitor, lib) -> List[dict]:
             "source": "pacti_library",
             "controller": ctrl,
             "method": "PactiContractLibrary.compose_pipeline",
+            "composition": "PactiContractLibrary.compose_pipeline (sound, reference only: leaves IMU out)",
+            "sound": True,
+            "reference_only": True,
             "note": "the library's own method; composes gps -> ekf -> controller -> actuator and "
                     "leaves the IMU contract out (F-A1-25)",
             "pipeline": ["gps", "ekf", ctrl, "actuator"],

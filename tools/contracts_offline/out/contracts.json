@@ -2529,6 +2529,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "SimpleContract.compose (unsound, reference only)",
       "controller": "hinf",
       "coupled_assumptions": [],
       "envelope": {
@@ -2565,7 +2566,7 @@
           25.0
         ]
       },
-      "envelope_is_admissible_set": true,
+      "envelope_is_admissible_set": false,
       "input_vars": [
         "battery_voltage",
         "disturbance",
@@ -2577,13 +2578,15 @@
         "wind_speed"
       ],
       "method": "SimpleContract.compose",
-      "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables (F-A1-01, K05), so this envelope is NOT sound",
+      "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables (F-A1-01, K05), so this envelope is NOT sound and NOT an admissible set",
       "pipeline": [
         "GPS_IMU_Sensors",
         "EKF_Estimator",
         "Hinf_Controller",
         "Actuators"
       ],
+      "reference_only": true,
+      "sound": false,
       "source": "framework"
     },
     {
@@ -2713,6 +2716,7 @@
           "term": "0.005*disturbance + 0.03*wind_speed <= 0.6"
         }
       ],
+      "composition": "pacti.compose (sound)",
       "controller": "hinf",
       "coupled_assumptions": [
         {
@@ -2831,6 +2835,8 @@
         "Hinf_Controller",
         "Actuators"
       ],
+      "reference_only": false,
+      "sound": true,
       "source": "framework"
     },
     {
@@ -2949,6 +2955,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "SimpleContract.compose (unsound, reference only)",
       "controller": "mpc",
       "coupled_assumptions": [],
       "envelope": {
@@ -2985,7 +2992,7 @@
           15.0
         ]
       },
-      "envelope_is_admissible_set": true,
+      "envelope_is_admissible_set": false,
       "input_vars": [
         "battery_voltage",
         "computation_time",
@@ -2997,13 +3004,15 @@
         "wind_speed"
       ],
       "method": "SimpleContract.compose",
-      "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables (F-A1-01, K05), so this envelope is NOT sound",
+      "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables (F-A1-01, K05), so this envelope is NOT sound and NOT an admissible set",
       "pipeline": [
         "GPS_IMU_Sensors",
         "EKF_Estimator",
         "MPC_Controller",
         "Actuators"
       ],
+      "reference_only": true,
+      "sound": false,
       "source": "framework"
     },
     {
@@ -3133,6 +3142,7 @@
           "term": "0.0525*gps_hdop + 0.08*wind_speed <= 0.795"
         }
       ],
+      "composition": "pacti.compose (sound)",
       "controller": "mpc",
       "coupled_assumptions": [
         {
@@ -3241,6 +3251,8 @@
         "MPC_Controller",
         "Actuators"
       ],
+      "reference_only": false,
+      "sound": true,
       "source": "framework"
     },
     {
@@ -3359,6 +3371,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "SimpleContract.compose (unsound, reference only)",
       "controller": "pid",
       "coupled_assumptions": [],
       "envelope": {
@@ -3395,7 +3408,7 @@
           3.0
         ]
       },
-      "envelope_is_admissible_set": true,
+      "envelope_is_admissible_set": false,
       "input_vars": [
         "battery_voltage",
         "disturbance",
@@ -3407,13 +3420,15 @@
         "wind_speed"
       ],
       "method": "SimpleContract.compose",
-      "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables (F-A1-01, K05), so this envelope is NOT sound",
+      "note": "what pre-flight uses today; drops the G1=>A2 obligation on internal variables (F-A1-01, K05), so this envelope is NOT sound and NOT an admissible set",
       "pipeline": [
         "GPS_IMU_Sensors",
         "EKF_Estimator",
         "PID_Controller",
         "Actuators"
       ],
+      "reference_only": true,
+      "sound": false,
       "source": "framework"
     },
     {
@@ -3532,6 +3547,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "pacti.compose (sound)",
       "controller": "pid",
       "coupled_assumptions": [],
       "envelope": {
@@ -3636,6 +3652,8 @@
         "PID_Controller",
         "Actuators"
       ],
+      "reference_only": false,
+      "sound": true,
       "source": "framework"
     },
     {
@@ -3754,6 +3772,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "PactiContractLibrary.compose_pipeline (sound, reference only: leaves IMU out)",
       "controller": "hinf",
       "coupled_assumptions": [],
       "envelope": {
@@ -3809,6 +3828,8 @@
         "hinf",
         "actuator"
       ],
+      "reference_only": true,
+      "sound": true,
       "source": "pacti_library"
     },
     {
@@ -3913,6 +3934,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "pacti.compose (sound)",
       "controller": "hinf",
       "coupled_assumptions": [],
       "envelope": {
@@ -3998,6 +4020,8 @@
         "hinf",
         "actuator"
       ],
+      "reference_only": false,
+      "sound": true,
       "source": "pacti_library"
     },
     {
@@ -4116,6 +4140,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "PactiContractLibrary.compose_pipeline (sound, reference only: leaves IMU out)",
       "controller": "mpc",
       "coupled_assumptions": [],
       "envelope": {
@@ -4171,6 +4196,8 @@
         "mpc",
         "actuator"
       ],
+      "reference_only": true,
+      "sound": true,
       "source": "pacti_library"
     },
     {
@@ -4275,6 +4302,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "pacti.compose (sound)",
       "controller": "mpc",
       "coupled_assumptions": [],
       "envelope": {
@@ -4360,6 +4388,8 @@
         "mpc",
         "actuator"
       ],
+      "reference_only": false,
+      "sound": true,
       "source": "pacti_library"
     },
     {
@@ -4478,6 +4508,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "PactiContractLibrary.compose_pipeline (sound, reference only: leaves IMU out)",
       "controller": "pid",
       "coupled_assumptions": [],
       "envelope": {
@@ -4533,6 +4564,8 @@
         "pid",
         "actuator"
       ],
+      "reference_only": true,
+      "sound": true,
       "source": "pacti_library"
     },
     {
@@ -4637,6 +4670,7 @@
         }
       ],
       "box_counterexamples": [],
+      "composition": "pacti.compose (sound)",
       "controller": "pid",
       "coupled_assumptions": [],
       "envelope": {
@@ -4722,6 +4756,8 @@
         "pid",
         "actuator"
       ],
+      "reference_only": false,
+      "sound": true,
       "source": "pacti_library"
     }
   ],
@@ -6614,7 +6650,7 @@
       "where": "section 1"
     }
   ],
-  "envelope_semantics": "composed[].envelope is the per-input projection of the composed assumptions: each input's [min, max] with every other input free. It equals the admissible set only when composed[].envelope_is_admissible_set is true (no coupled_assumptions). Otherwise the box is LARGER than the admissible set; composed[].box_counterexamples lists box corners that are inside every range yet violate a coupled term. The admissible set is exactly the conjunction of composed[].assumptions; check points against those terms (reference implementation: tools/contracts_offline/admissible.py), never against the box.",
+  "envelope_semantics": "composed[].envelope is the per-input projection of the composed assumptions: each input's [min, max] with every other input free. It equals the admissible set only when composed[].envelope_is_admissible_set is true (no coupled_assumptions). Otherwise the box is LARGER than the admissible set; composed[].box_counterexamples lists box corners that are inside every range yet violate a coupled term. The admissible set is exactly the conjunction of composed[].assumptions; check points against those terms (reference implementation: tools/contracts_offline/admissible.py), never against the box. Only records with sound == true are sound compositions. The method 'SimpleContract.compose' records are the repo's own unsound composition, kept as a reference only (composition: 'SimpleContract.compose (unsound, reference only)'); they carry envelope_is_admissible_set: false and must not be used as an envelope. Consumers should select method == 'pacti.compose'.",
   "environment": {
     "numpy": "2.2.6",
     "pacti": "0.3.1",
@@ -6735,7 +6771,7 @@
     "pacti_only": 28,
     "rows": 153
   },
-  "schema_version": "2.1.0",
+  "schema_version": "2.2.0",
   "sources": {
     "framework": {
       "module": "contracts.contract_framework",

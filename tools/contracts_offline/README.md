@@ -95,6 +95,10 @@ install command. The tests skip.
   - The composed results per controller (`composed`). Each record carries:
     - a `source`: `framework` or `pacti_library`
     - a `method`: `pacti.compose`, or one of the two reference methods
+    - `composition`, `sound` and `reference_only`. Only the `pacti.compose`
+      records are primary. The `SimpleContract.compose` records are the repo's
+      own composition: `sound: false`, `reference_only: true` and
+      `envelope_is_admissible_set: false`. Never use them as an envelope.
     - the composed assumption terms (`assumptions`, and the multi-input ones
       again as `coupled_assumptions`), each meaning
       `sum(coefficients[v] * v) <= constant`

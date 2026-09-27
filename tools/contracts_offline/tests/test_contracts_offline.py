@@ -84,13 +84,37 @@ def test_envelope_semantics_are_explicit(built):
     assert "sum(coefficients[v] * v) <= constant" in doc["assumption_term_form"]
     for rec in doc["composed"]:
         assert rec["assumptions"], rec["method"]
-        assert rec["envelope_is_admissible_set"] == (not rec["coupled_assumptions"])
-        assert bool(rec["box_counterexamples"]) == (not rec["envelope_is_admissible_set"])
+        if rec["sound"]:
+            assert rec["envelope_is_admissible_set"] == (not rec["coupled_assumptions"])
+            assert bool(rec["box_counterexamples"]) == (not rec["envelope_is_admissible_set"])
     flags = {(r["source"], r["controller"]): r["envelope_is_admissible_set"]
              for r in doc["composed"] if r["method"] == "pacti.compose"}
     assert flags == {("framework", "pid"): True, ("framework", "mpc"): False, ("framework", "hinf"): False,
                      ("pacti_library", "pid"): True, ("pacti_library", "mpc"): True,
                      ("pacti_library", "hinf"): True}
+
+
+def test_no_unsound_reference_record_claims_an_admissible_set(built):
+    """The repo's own SimpleContract.compose is unsound (K05); its records must not look usable."""
+    files, doc, _ = built
+    for rec in doc["composed"]:
+        assert isinstance(rec["sound"], bool) and rec["composition"] and isinstance(rec["reference_only"], bool)
+        if not rec["sound"]:
+            assert rec["envelope_is_admissible_set"] is not True, (rec["source"], rec["controller"])
+            assert rec["reference_only"] is True
+    unsound = [r for r in doc["composed"] if r["method"] == "SimpleContract.compose"]
+    assert len(unsound) == 3
+    for rec in unsound:
+        assert rec["sound"] is False and rec["envelope_is_admissible_set"] is False
+        assert rec["composition"] == "SimpleContract.compose (unsound, reference only)"
+    # only pacti.compose records are primary (sound, not reference-only)
+    primary = {(r["source"], r["controller"]) for r in doc["composed"] if r["sound"] and not r["reference_only"]}
+    assert primary == {(s, c) for s in ("framework", "pacti_library") for c in ("pid", "mpc", "hinf")}
+    assert all(r["method"] == "pacti.compose" for r in doc["composed"] if r["sound"] and not r["reference_only"])
+    assert "Only records with sound == true" in doc["envelope_semantics"]
+    md = files["reconciliation.md"].decode("utf-8")
+    assert "SimpleContract.compose (pre-flight today; unsound, reference only, NOT an admissible set)" in md
+    assert "SimpleContract.compose (today; unsound, reference only)" in md
 
 
 def test_box_corner_is_infeasible_against_full_composite_assumptions(built):
