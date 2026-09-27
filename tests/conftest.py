@@ -71,14 +71,18 @@ def no_pacti_dir(tmp_path_factory) -> Path:
     """A directory holding a stub ``pacti`` package whose import fails.
 
     Placed first on PYTHONPATH, it makes a child process behave as if pacti
-    were not installed: every pacti import in src/ is guarded by
-    ``except ImportError``. The requirements-only goldens therefore hold even
-    in an environment that has pacti.
+    were not installed. The stub raises ModuleNotFoundError with
+    ``name="pacti"``, as a genuinely missing package does, so it matches both
+    ``except ImportError`` (today's guards in src/) and a narrower
+    ``except ModuleNotFoundError``. The requirements-only goldens therefore
+    hold even in an environment that has pacti.
     """
     root = tmp_path_factory.mktemp("no_pacti")
     (root / "pacti").mkdir()
     (root / "pacti" / "__init__.py").write_text(
-        'raise ImportError("pacti hidden by the test harness (tests/conftest.py)")\n',
+        "raise ModuleNotFoundError(\n"
+        '    "pacti hidden by the test harness (tests/conftest.py)", name="pacti"\n'
+        ")\n",
         encoding="utf-8",
     )
     return root
