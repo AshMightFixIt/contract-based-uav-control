@@ -20,6 +20,14 @@ Goldens:
 To regenerate after a reviewed, intentional behaviour change:
   make golden-update         (the two requirements-only goldens)
   make golden-update-pacti   (the pacti golden; needs requirements-legacy.txt)
+
+Known host dependence (review note N2): the Adaptive column depends on the
+MPC's wall-clock solve time (time.perf_counter() in src/control/controllers.py)
+staying under the 50 ms contract bound it is checked against
+(src/adaptive_control_system.py:344), so a heavily loaded CI runner could in
+principle flip a switching decision. A golden diff confined to the Adaptive
+column that does not reproduce on re-run points to this, not to a behaviour
+change.
 """
 from __future__ import annotations
 
