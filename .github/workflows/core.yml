@@ -1,0 +1,108 @@
+name: core
+
+# core: the default test suite (module smoke tests + requirements-only
+#   goldens) on every push and pull request, across OS x Python x NumPy.
+# pacti-reproduction: the slow opt-in check that pacti 0.3.1 reproduces
+#   RESULTS.md section 1. Runs only when started by hand or on the weekly schedule.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 * * 1"  # Mondays 04:23 UTC: pacti-reproduction only
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MPLBACKEND: Agg
+  SDL_VIDEODRIVER: dummy
+  SDL_AUDIODRIVER: dummy
+  PYTHONDONTWRITEBYTECODE: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  core:
+    if: github.event_name != 'schedule'
+    name: core (${{ matrix.os }}, Python ${{ matrix.python }}, NumPy ${{ matrix.numpy }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.11"]
+        numpy: ["1.x", "2.x"]
+        include:
+          - numpy: "1.x"
+            numpy-spec: "numpy==1.26.*"
+          - numpy: "2.x"
+            numpy-spec: "numpy>=2,<3"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Install requirements-test.txt with ${{ matrix.numpy-spec }}
+        run: python -m pip install -r requirements-test.txt "${{ matrix.numpy-spec }}"
+
+      - name: Show versions
+        run: |
+          python --version
+          python -m pip list
+
+      - name: Test (make test)
+        if: runner.os != 'Windows'
+        run: make test PYTHON=python
+
+      - name: Test (pytest)
+        if: runner.os == 'Windows'
+        run: python -m pytest
+
+      - name: Working tree is clean after the tests
+        run: |
+          git status --porcelain --ignored
+          test -z "$(git status --porcelain --ignored)"
+
+  pacti-reproduction:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    name: pacti reproduction (RESULTS.md section 1, slow)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Install requirements-legacy.txt and requirements-test.txt
+        run: python -m pip install -r requirements-legacy.txt -r requirements-test.txt
+
+      - name: Show versions and require pacti 0.3.1
+        run: |
+          python -m pip list
+          python -c "import importlib.metadata as m; v = m.version('pacti'); print('pacti', v); assert v == '0.3.1', v"
+
+      - name: Test everything, slow tests included (make test-all)
+        run: make test-all PYTHON=python
+
+      - name: Working tree is clean after the tests
+        run: |
+          git status --porcelain --ignored
+          test -z "$(git status --porcelain --ignored)"
