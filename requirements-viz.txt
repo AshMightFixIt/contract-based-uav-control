@@ -1,0 +1,13 @@
+# Visualisation extras, on top of the runtime set: matplotlib for the plotting
+# scripts (benchmark_*.py, demo_*.py, simulation_demo*.py) and pygame for
+# src/visualization/live_visualizer.py (used by demo_waypoint_mission.py and
+# demo_sensor_degradation.py).
+#
+# Python floor: 3.7
+#   - Set by requirements-runtime.txt (numpy 1.20.0: >=3.7).
+#   - matplotlib 3.3.0 declares Requires-Python >=3.6; pygame 2.0.0 declares
+#     none and pygame 2.6.1 declares >=3.6.
+#   Note: pygame 2.6.1, the newest release, ships wheels only up to CPython 3.13.
+-r requirements-runtime.txt
+matplotlib>=3.3.0
+pygame>=2.0.0
