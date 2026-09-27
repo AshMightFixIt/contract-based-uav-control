@@ -1,17 +1,18 @@
 # Offline contracts tool (tools/contracts_offline). Design-time only: Pacti is
 # not a dependency of the flight code and must not be installed on the robot.
-# Requires Python >= 3.11: pacti 0.3.1 itself needs >= 3.10, but the pinned
-# numpy 2.4.6 needs >= 3.11. CI uses 3.11; 3.12 and 3.13 give the same bytes.
+# Requires Python >= 3.10. numpy/scipy/matplotlib are pinned at pacti 0.3.1's own
+# minimum versions, which install on Python 3.10 through 3.13; out/ is
+# byte-identical on 3.10, 3.11, 3.12 and 3.13 with these pins. CI uses 3.10 and 3.11.
 #
 # Exact pins: the committed out/ files are compared byte for byte in CI, and the
 # composed bounds come from scipy's LP solver, so numpy/scipy are pinned too.
 pacti==0.3.1
-numpy==2.4.6
-scipy==1.17.1
+numpy==2.2.6
+scipy==1.15.3
+matplotlib==3.10.9
 sympy==1.14.0
 pyparsing==3.3.3
 typing-extensions==4.16.0
 z3-solver==5.1.0.0
-matplotlib==3.11.2
 # test runner for tools/contracts_offline/tests
 pytest==9.1.1

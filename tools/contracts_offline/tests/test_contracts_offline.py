@@ -238,6 +238,17 @@ def test_outputs_contain_no_git_commit_id(built):
     assert not any("commit" in k and k != "commit_policy" for k in _keys(doc["provenance"]))
 
 
+def test_no_machine_specific_paths_in_tool():
+    """Nothing committed under the tool (sources, README, out/) or its workflow names a local path."""
+    # Built from parts so this file does not match itself.
+    patterns = ["/" + "tmp" + "/", "scratch" + "pad", "/" + "root" + "/", "/" + "home" + "/", "$" + "S/"]
+    files = [p for p in TOOL_DIR.rglob("*") if p.is_file() and "__pycache__" not in p.parts]
+    files.append(REPO_ROOT / ".github" / "workflows" / "contracts_offline.yml")
+    hits = [(str(p.relative_to(REPO_ROOT)), pat) for p in files if p.is_file()
+            for pat in patterns if pat in p.read_text(encoding="utf-8", errors="replace")]
+    assert not hits
+
+
 def test_two_runs_are_byte_identical(tmp_path, built):
     files, _, _ = built
     outs = []
