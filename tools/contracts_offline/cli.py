@@ -196,7 +196,12 @@ def build(repo_root: Path) -> Tuple[Dict[str, bytes], dict, List[dict]]:
                 "LARGER than the admissible set; composed[].box_counterexamples lists box corners that are "
                 "inside every range yet violate a coupled term. The admissible set is exactly the "
                 "conjunction of composed[].assumptions; check points against those terms (reference "
-                "implementation: tools/contracts_offline/admissible.py), never against the box."),
+                "implementation: tools/contracts_offline/admissible.py), never against the box. "
+                "Only records with sound == true are sound compositions. The method "
+                "'SimpleContract.compose' records are the repo's own unsound composition, kept as a "
+                "reference only (composition: 'SimpleContract.compose (unsound, reference only)'); they carry "
+                "envelope_is_admissible_set: false and must not be used as an envelope. Consumers should "
+                "select method == 'pacti.compose'."),
             "assumption_term_form": (
                 "each term in assumptions / coupled_assumptions / guarantees means "
                 "sum(coefficients[v] * v) <= constant; numbers are rounded to 10 significant digits, so "

@@ -36,8 +36,16 @@ def input_hashes(repo_root: Path) -> dict:
 
 
 def last_input_commit(repo_root: Path) -> Optional[str]:
-    """For the console only: the last commit that touched an input (None without git history)."""
+    """For the console only: the last commit that touched an input (None without git history).
+
+    In a shallow clone ``git log`` would report the graft commit even if it touched no
+    input, so the history is reported as unknown instead.
+    """
     try:
+        shallow = subprocess.run(["git", "-C", str(repo_root), "rev-parse", "--is-shallow-repository"],
+                                 capture_output=True, check=False)
+        if shallow.returncode == 0 and shallow.stdout.decode().strip() == "true":
+            return "unknown (shallow clone)"
         res = subprocess.run(["git", "-C", str(repo_root), "log", "-1", "--format=%H", "--", *INPUT_PATHS],
                              capture_output=True, check=False)
     except OSError:
