@@ -122,7 +122,8 @@ def _glance_section(doc: dict, lines: List[str]) -> None:
     lines.append("At a glance: upper bounds of the two inputs that decide tier switching. "
                  "\"component\" is the tightest bound any single component of the pipeline assumes; "
                  "\"(coupled)\" means the composed bound comes from a constraint over several inputs, "
-                 "listed under the controller's table below.")
+                 "listed under the controller's table below; such a bound is reachable only at the most "
+                 "favourable values of the other inputs in that constraint.")
     lines.append("")
     lines.append("| controller | input | framework component | framework composed (sound) | framework "
                  "SimpleContract (today) | Pacti library component | Pacti library composed (sound) | "
@@ -173,9 +174,17 @@ def _envelope_section(doc: dict, lines: List[str]) -> None:
             label = SOURCE_LABEL[rec["source"]]
             if coupled:
                 terms = ", ".join(f"`{t['text']}`" for t in coupled)
-                lines.append(f"- Coupled composed assumptions, {label}: {terms}")
+                lines.append(f"- Coupled composed assumptions, {label}: {terms}. **The box above is NOT the "
+                             f"admissible set for this source**; check points against the full composed "
+                             f"assumptions.")
+                for cx in rec["box_counterexamples"]:
+                    pt = ", ".join(f"{v} = {fmt(x)}" for v, x in sorted(cx["point"].items()))
+                    lines.append(f"  - Counterexample: the box corner {pt} gives `{cx['term']}` a left side of "
+                                 f"{fmt(cx['lhs'])} > {fmt(cx['constant'])}, so it is inadmissible although "
+                                 "every coordinate is inside its range.")
             else:
-                lines.append(f"- Coupled composed assumptions, {label}: none (the envelope is a box)")
+                lines.append(f"- Coupled composed assumptions, {label}: none (the box is exactly the "
+                             "admissible set)")
         outs = [_canon_map(r, "output_bounds", cc) for r in (fw, pl)]
         ovars = sorted(set(outs[0]) | set(outs[1]))
         lines.append("")
@@ -266,7 +275,12 @@ def reconciliation_md(doc: dict, rows: List[dict]) -> bytes:
     L.append("")
     L.append("Each cell is the range of a top-level input allowed by the composed assumptions of "
              "sensors -> estimator -> controller -> actuators (the pipeline of the framework's "
-             "`compose_pipeline`). `—` means the input does not exist in that source. Sound columns are "
+             "`compose_pipeline`). `—` means the input does not exist in that source. **Each range is a "
+             "per-input projection (the other inputs free), not the admissible set:** where a controller "
+             "lists coupled composed assumptions, the box is larger than what the composition admits, so "
+             "a point must be checked against the full composed assumptions (`contracts.json` "
+             "`composed[].assumptions`, or `tools/contracts_offline/admissible.py`), never against the "
+             "box. Sound columns are "
              "Pacti compositions (A1 and (G1 => A2)); the SimpleContract column is what pre-flight "
              "computes today and drops G1 => A2 (F-A1-01, K05). The Pacti-library pipeline composes "
              "gps and imu in parallel before ekf; the library's own `compose_pipeline` leaves imu out "

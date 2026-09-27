@@ -68,9 +68,12 @@ def _static_notes(fw_bounds, flags: List[dict]) -> List[dict]:
                  "`settling_time` (Pacti library). `imu_temperature` and `imu_temp_deviation` are NOT "
                  "aliased because they measure different things. Every renamed row says so in its note."},
         {"id": "C8-ENVELOPE", "source": "both", "where": "section 1",
-         "text": "Envelope bounds are linear programs over the composed assumptions only. They are "
-                 "cross-checked against Pacti's get_variable_bounds (assumptions and guarantees), which "
-                 "the planner and the Wave-2 probes use; any difference is flagged as P-AGDIFF."},
+         "text": "Envelope bounds are linear programs over the composed assumptions only, one input at a "
+                 "time (a per-input projection). Where coupled assumptions exist the box is larger than "
+                 "the admissible set; points must be checked against the full composed assumptions "
+                 "(contracts.json composed[].assumptions, admissible.py). The bounds are cross-checked "
+                 "against Pacti's get_variable_bounds (assumptions and guarantees), which the planner and "
+                 "the Wave-2 probes use; any difference is flagged as P-AGDIFF."},
     ]
     return notes + sorted(flags, key=lambda f: (f["id"], f["source"], f["where"], f["text"]))
 
@@ -169,6 +172,8 @@ def build(repo_root: Path) -> Tuple[Dict[str, bytes], dict, List[dict]]:
             return (b.source, comp, b.contract, b.kind, b.var, b.direction, b.loc)
 
         composed = sorted(primary + reference, key=lambda r: (r["source"], r["controller"], r["method"]))
+        for rec in composed:
+            rec["box_counterexamples"] = compose.box_counterexamples(rec)
         tightenings = _tightenings(bounds_by_source, primary)
         for t in tightenings:
             for k in ("component_bound", "composed_bound"):
@@ -181,6 +186,18 @@ def build(repo_root: Path) -> Tuple[Dict[str, bytes], dict, List[dict]]:
             "provenance": provenance.provenance(repo_root),
             "environment": provenance.environment(),
             "float_format": f"rounded to {SIG_DIGITS} significant digits; null = unbounded",
+            "envelope_semantics": (
+                "composed[].envelope is the per-input projection of the composed assumptions: each input's "
+                "[min, max] with every other input free. It equals the admissible set only when "
+                "composed[].envelope_is_admissible_set is true (no coupled_assumptions). Otherwise the box is "
+                "LARGER than the admissible set; composed[].box_counterexamples lists box corners that are "
+                "inside every range yet violate a coupled term. The admissible set is exactly the "
+                "conjunction of composed[].assumptions; check points against those terms (reference "
+                "implementation: tools/contracts_offline/admissible.py), never against the box."),
+            "assumption_term_form": (
+                "each term in assumptions / coupled_assumptions / guarantees means "
+                "sum(coefficients[v] * v) <= constant; numbers are rounded to 10 significant digits, so "
+                "compare with a relative tolerance of about 1e-9"),
             "sources": {
                 "framework": {"path": FRAMEWORK_PATH, "module": "contracts.contract_framework",
                               "objects": "HierarchicalContractMonitor().define_contracts()"},

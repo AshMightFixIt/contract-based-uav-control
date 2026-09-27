@@ -22,6 +22,7 @@ if str(TOOL_DIR.parent) not in sys.path:
     sys.path.insert(0, str(TOOL_DIR.parent))
 
 from contracts_offline import SCHEMA_VERSION, cli  # noqa: E402
+from contracts_offline import admissible as adm  # noqa: E402
 
 # Pinned: one row per (component, variable, bound-or-coefficient) at commit 057743f.
 # If the contracts change, regenerate out/ and update this number deliberately.
@@ -68,6 +69,91 @@ def test_reproduces_probe_m1_bounds_from_pacti_library(built):
     for method in ("pacti.compose", "PactiContractLibrary.compose_pipeline"):
         assert _composed(doc, "pacti_library", "mpc", method)["envelope"]["wind_speed"] == [0.0, 8.0]
         assert _composed(doc, "pacti_library", "hinf", method)["envelope"]["wind_speed"] == [0.0, 15.0]
+
+
+# --------------------------------------------------------------------------
+# Envelope semantics (review M1)
+# --------------------------------------------------------------------------
+def _mid_point(rec):
+    return {v: (lo + hi) / 2 for v, (lo, hi) in rec["envelope"].items()}
+
+
+def test_envelope_semantics_are_explicit(built):
+    _, doc, _ = built
+    assert "per-input projection" in doc["envelope_semantics"]
+    assert "sum(coefficients[v] * v) <= constant" in doc["assumption_term_form"]
+    for rec in doc["composed"]:
+        assert rec["assumptions"], rec["method"]
+        assert rec["envelope_is_admissible_set"] == (not rec["coupled_assumptions"])
+        assert bool(rec["box_counterexamples"]) == (not rec["envelope_is_admissible_set"])
+    flags = {(r["source"], r["controller"]): r["envelope_is_admissible_set"]
+             for r in doc["composed"] if r["method"] == "pacti.compose"}
+    assert flags == {("framework", "pid"): True, ("framework", "mpc"): False, ("framework", "hinf"): False,
+                     ("pacti_library", "pid"): True, ("pacti_library", "mpc"): True,
+                     ("pacti_library", "hinf"): True}
+
+
+def test_box_corner_is_infeasible_against_full_composite_assumptions(built):
+    """(hdop 4.667, wind 9.609) is inside the framework MPC envelope box but NOT admissible."""
+    _, doc, _ = built
+    rec = _composed(doc, "framework", "mpc")
+    env = rec["envelope"]
+    corner = dict(_mid_point(rec), gps_hdop=env["gps_hdop"][1], wind_speed=env["wind_speed"][1])
+    assert corner["gps_hdop"] == pytest.approx(4.6667, abs=1e-4)
+    assert corner["wind_speed"] == pytest.approx(9.609375)
+    assert all(env[v][0] <= x <= env[v][1] for v, x in corner.items())  # a box check would accept it
+
+    res = adm.check(rec, corner)
+    assert not res["unchecked"] and not res["unknown_inputs"]
+    assert [v["term"] for v in res["violated"]] == ["0.0525*gps_hdop + 0.08*wind_speed <= 0.795"]
+    assert res["violated"][0]["lhs"] == pytest.approx(1.01375)
+    assert adm.admissible(rec, corner) is False
+    # admissible neighbours on the same constraint
+    assert adm.admissible(rec, dict(corner, gps_hdop=0.5)) is True        # wind 9.609375 needs hdop 0.5
+    assert adm.admissible(rec, dict(corner, wind_speed=6.875)) is True    # hdop 4.667 allows wind 6.875
+    # H-inf: the same effect between wind and disturbance
+    h = _composed(doc, "framework", "hinf")
+    hc = dict(_mid_point(h), wind_speed=h["envelope"]["wind_speed"][1], disturbance=h["envelope"]["disturbance"][1])
+    assert adm.admissible(h, hc) is False
+    # the recorded counterexample is the same corner
+    [cx] = rec["box_counterexamples"]
+    assert cx["point"] == {"gps_hdop": env["gps_hdop"][1], "wind_speed": env["wind_speed"][1]}
+    # fails closed when an input is missing
+    with pytest.raises(ValueError):
+        adm.admissible(rec, {"gps_hdop": 1.0, "wind_speed": 1.0})
+
+
+def test_box_corner_is_infeasible_in_pacti_composite():
+    """The same corner, checked on Pacti's own composed contract (unrounded, no JSON)."""
+    from pacti.iocontract import Var
+
+    from contracts_offline import compose, extract
+
+    _, monitor = extract.import_framework(REPO_ROOT)
+    _, lib = extract.import_pacti_library(REPO_ROOT)
+    fw = {sc.name: compose.simple_contract_to_pacti(sc, []) for sc in extract.framework_contracts(monitor)}
+    final = compose.build_pipelines(monitor, lib, fw)["framework"]["mpc"][-1][4]
+    box = {v.name: compose.a_only_bounds(final, v.name) for v in final.inputvars}
+    point = {v: (lo + hi) / 2 for v, (lo, hi) in box.items()}
+    point.update(gps_hdop=box["gps_hdop"][1], wind_speed=box["wind_speed"][1])
+    assert final.a.contains_behavior({Var(k): x for k, x in point.items()}) is False
+    point.update(gps_hdop=0.5, wind_speed=9.6)
+    assert final.a.contains_behavior({Var(k): x for k, x in point.items()}) is True
+
+
+def test_admissible_cli(capsys):
+    contracts = TOOL_DIR / "out" / "contracts.json"
+    if not contracts.is_file():
+        pytest.skip("no committed out/ yet")
+    rc = adm.main(["framework", "mpc", "gps_hdop=4.6", "wind_speed=9.6", "--partial",
+                   "--contracts", str(contracts)])
+    out = capsys.readouterr().out
+    violated = [line for line in out.splitlines() if line.startswith("VIOLATED")]
+    assert rc == 1 and "NOT ADMISSIBLE" in out
+    assert len(violated) == 1 and "0.0525*gps_hdop + 0.08*wind_speed <= 0.795" in violated[0]
+    assert adm.main(["framework", "mpc", "gps_hdop=2", "wind_speed=8", "--partial",
+                     "--contracts", str(contracts)]) == 0
+    assert adm.main(["framework", "mpc", "gps_hdop=2", "--contracts", str(contracts)]) == 2
 
 
 # --------------------------------------------------------------------------

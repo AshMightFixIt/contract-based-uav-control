@@ -1,4 +1,5 @@
 {
+  "assumption_term_form": "each term in assumptions / coupled_assumptions / guarantees means sum(coefficients[v] * v) <= constant; numbers are rounded to 10 significant digits, so compare with a relative tolerance of about 1e-9",
   "bounds": [
     {
       "coefficients": {},
@@ -2413,7 +2414,123 @@
   ],
   "composed": [
     {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -11.0,
+          "text": "battery_voltage >= 11"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "disturbance": -1.0
+          },
+          "constant": 0.0,
+          "text": "disturbance >= 0"
+        },
+        {
+          "coefficients": {
+            "disturbance": 1.0
+          },
+          "constant": 20.0,
+          "text": "disturbance <= 20"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 5.0,
+          "text": "gps_hdop <= 5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -6.0,
+          "text": "gps_satellites >= 6"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 30.0,
+          "text": "gps_satellites <= 30"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": -1.0
+          },
+          "constant": -1.0,
+          "text": "imu_calibrated >= 1"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": 1.0
+          },
+          "constant": 1.0,
+          "text": "imu_calibrated <= 1"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": -1.0
+          },
+          "constant": -5.0,
+          "text": "imu_temperature >= 5"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": 1.0
+          },
+          "constant": 55.0,
+          "text": "imu_temperature <= 55"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": -1.0
+          },
+          "constant": -20.0,
+          "text": "motor_temperature >= 20"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temperature <= 80"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 25.0,
+          "text": "wind_speed <= 25"
+        }
+      ],
+      "box_counterexamples": [],
       "controller": "hinf",
+      "coupled_assumptions": [],
       "envelope": {
         "battery_voltage": [
           11.0,
@@ -2448,6 +2565,7 @@
           25.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "battery_voltage",
         "disturbance",
@@ -2584,6 +2702,17 @@
           "text": "0.005*disturbance + 0.03*wind_speed <= 0.6"
         }
       ],
+      "box_counterexamples": [
+        {
+          "constant": 0.6,
+          "lhs": 0.7,
+          "point": {
+            "disturbance": 20.0,
+            "wind_speed": 20.0
+          },
+          "term": "0.005*disturbance + 0.03*wind_speed <= 0.6"
+        }
+      ],
       "controller": "hinf",
       "coupled_assumptions": [
         {
@@ -2629,6 +2758,7 @@
           20.0
         ]
       },
+      "envelope_is_admissible_set": false,
       "input_vars": [
         "battery_voltage",
         "disturbance",
@@ -2704,7 +2834,123 @@
       "source": "framework"
     },
     {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -11.0,
+          "text": "battery_voltage >= 11"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "computation_time": -1.0
+          },
+          "constant": 0.0,
+          "text": "computation_time >= 0"
+        },
+        {
+          "coefficients": {
+            "computation_time": 1.0
+          },
+          "constant": 0.05,
+          "text": "computation_time <= 0.05"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 5.0,
+          "text": "gps_hdop <= 5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -6.0,
+          "text": "gps_satellites >= 6"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 30.0,
+          "text": "gps_satellites <= 30"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": -1.0
+          },
+          "constant": -1.0,
+          "text": "imu_calibrated >= 1"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": 1.0
+          },
+          "constant": 1.0,
+          "text": "imu_calibrated <= 1"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": -1.0
+          },
+          "constant": -5.0,
+          "text": "imu_temperature >= 5"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": 1.0
+          },
+          "constant": 55.0,
+          "text": "imu_temperature <= 55"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": -1.0
+          },
+          "constant": -20.0,
+          "text": "motor_temperature >= 20"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temperature <= 80"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 15.0,
+          "text": "wind_speed <= 15"
+        }
+      ],
+      "box_counterexamples": [],
       "controller": "mpc",
+      "coupled_assumptions": [],
       "envelope": {
         "battery_voltage": [
           11.0,
@@ -2739,6 +2985,7 @@
           15.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "battery_voltage",
         "computation_time",
@@ -2875,6 +3122,17 @@
           "text": "0.0525*gps_hdop + 0.08*wind_speed <= 0.795"
         }
       ],
+      "box_counterexamples": [
+        {
+          "constant": 0.795,
+          "lhs": 1.01375,
+          "point": {
+            "gps_hdop": 4.666666667,
+            "wind_speed": 9.609375
+          },
+          "term": "0.0525*gps_hdop + 0.08*wind_speed <= 0.795"
+        }
+      ],
       "controller": "mpc",
       "coupled_assumptions": [
         {
@@ -2920,6 +3178,7 @@
           9.609375
         ]
       },
+      "envelope_is_admissible_set": false,
       "input_vars": [
         "battery_voltage",
         "computation_time",
@@ -2985,7 +3244,123 @@
       "source": "framework"
     },
     {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -11.0,
+          "text": "battery_voltage >= 11"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "disturbance": -1.0
+          },
+          "constant": 0.0,
+          "text": "disturbance >= 0"
+        },
+        {
+          "coefficients": {
+            "disturbance": 1.0
+          },
+          "constant": 3.0,
+          "text": "disturbance <= 3"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 5.0,
+          "text": "gps_hdop <= 5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -6.0,
+          "text": "gps_satellites >= 6"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 30.0,
+          "text": "gps_satellites <= 30"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": -1.0
+          },
+          "constant": -1.0,
+          "text": "imu_calibrated >= 1"
+        },
+        {
+          "coefficients": {
+            "imu_calibrated": 1.0
+          },
+          "constant": 1.0,
+          "text": "imu_calibrated <= 1"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": -1.0
+          },
+          "constant": -5.0,
+          "text": "imu_temperature >= 5"
+        },
+        {
+          "coefficients": {
+            "imu_temperature": 1.0
+          },
+          "constant": 55.0,
+          "text": "imu_temperature <= 55"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": -1.0
+          },
+          "constant": -20.0,
+          "text": "motor_temperature >= 20"
+        },
+        {
+          "coefficients": {
+            "motor_temperature": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temperature <= 80"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 3.0,
+          "text": "wind_speed <= 3"
+        }
+      ],
+      "box_counterexamples": [],
       "controller": "pid",
+      "coupled_assumptions": [],
       "envelope": {
         "battery_voltage": [
           11.0,
@@ -3020,6 +3395,7 @@
           3.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "battery_voltage",
         "disturbance",
@@ -3155,6 +3531,7 @@
           "text": "wind_speed >= 0"
         }
       ],
+      "box_counterexamples": [],
       "controller": "pid",
       "coupled_assumptions": [],
       "envelope": {
@@ -3191,6 +3568,7 @@
           3.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "battery_voltage",
         "disturbance",
@@ -3375,6 +3753,7 @@
           "text": "wind_speed >= 0"
         }
       ],
+      "box_counterexamples": [],
       "controller": "hinf",
       "coupled_assumptions": [],
       "envelope": {
@@ -3411,6 +3790,7 @@
           15.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "attitude_meas_error",
         "battery_voltage",
@@ -3532,6 +3912,7 @@
           "text": "wind_speed >= 0"
         }
       ],
+      "box_counterexamples": [],
       "controller": "hinf",
       "coupled_assumptions": [],
       "envelope": {
@@ -3564,6 +3945,7 @@
           15.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "battery_voltage",
         "gps_hdop",
@@ -3733,6 +4115,7 @@
           "text": "wind_speed >= 0"
         }
       ],
+      "box_counterexamples": [],
       "controller": "mpc",
       "coupled_assumptions": [],
       "envelope": {
@@ -3769,6 +4152,7 @@
           8.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "attitude_meas_error",
         "battery_voltage",
@@ -3890,6 +4274,7 @@
           "text": "wind_speed >= 0"
         }
       ],
+      "box_counterexamples": [],
       "controller": "mpc",
       "coupled_assumptions": [],
       "envelope": {
@@ -3922,6 +4307,7 @@
           8.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "battery_voltage",
         "gps_hdop",
@@ -4091,6 +4477,7 @@
           "text": "wind_speed >= 0"
         }
       ],
+      "box_counterexamples": [],
       "controller": "pid",
       "coupled_assumptions": [],
       "envelope": {
@@ -4127,6 +4514,7 @@
           3.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "attitude_meas_error",
         "battery_voltage",
@@ -4248,6 +4636,7 @@
           "text": "wind_speed >= 0"
         }
       ],
+      "box_counterexamples": [],
       "controller": "pid",
       "coupled_assumptions": [],
       "envelope": {
@@ -4280,6 +4669,7 @@
           3.0
         ]
       },
+      "envelope_is_admissible_set": true,
       "input_vars": [
         "battery_voltage",
         "gps_hdop",
@@ -6220,10 +6610,11 @@
     {
       "id": "C8-ENVELOPE",
       "source": "both",
-      "text": "Envelope bounds are linear programs over the composed assumptions only. They are cross-checked against Pacti's get_variable_bounds (assumptions and guarantees), which the planner and the Wave-2 probes use; any difference is flagged as P-AGDIFF.",
+      "text": "Envelope bounds are linear programs over the composed assumptions only, one input at a time (a per-input projection). Where coupled assumptions exist the box is larger than the admissible set; points must be checked against the full composed assumptions (contracts.json composed[].assumptions, admissible.py). The bounds are cross-checked against Pacti's get_variable_bounds (assumptions and guarantees), which the planner and the Wave-2 probes use; any difference is flagged as P-AGDIFF.",
       "where": "section 1"
     }
   ],
+  "envelope_semantics": "composed[].envelope is the per-input projection of the composed assumptions: each input's [min, max] with every other input free. It equals the admissible set only when composed[].envelope_is_admissible_set is true (no coupled_assumptions). Otherwise the box is LARGER than the admissible set; composed[].box_counterexamples lists box corners that are inside every range yet violate a coupled term. The admissible set is exactly the conjunction of composed[].assumptions; check points against those terms (reference implementation: tools/contracts_offline/admissible.py), never against the box.",
   "environment": {
     "numpy": "2.4.6",
     "pacti": "0.3.1",
@@ -6344,7 +6735,7 @@
     "pacti_only": 28,
     "rows": 153
   },
-  "schema_version": "2.0.0",
+  "schema_version": "2.1.0",
   "sources": {
     "framework": {
       "module": "contracts.contract_framework",
