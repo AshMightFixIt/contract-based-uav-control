@@ -1,0 +1,32 @@
+Running Adaptive... COMPLETE  (WP: 3/4, RMS: 5.31m)
+Running PID-only... COMPLETE  (WP: 3/4, RMS: 5.04m)
+Running MPC-only... COMPLETE  (WP: 3/4, RMS: 5.04m)
+Running H-inf-only... COMPLETE  (WP: 3/4, RMS: 5.99m)
+
+====================================================================================================
+BENCHMARK RESULTS: Adaptive vs Standalone Controllers
+====================================================================================================
+Metric                                adaptive               PID               MPC              Hinf
+----------------------------------------------------------------------------------------------------
+RMS Tracking Error (m)                   5.313           5.042 *             5.044           5.988 !
+Max Tracking Error (m)                  10.548            10.542          10.542 *          11.231 !
+Waypoints Completed                          3                 3                 3                 3
+Mission Time (s)                        53.780          67.340 !            64.440          43.780 *
+Total Energy (N·s)                      29.396          36.190 !            34.738          24.394 *
+Control Effort                           1.985             1.254           1.201 *           4.018 !
+CBF Interventions                            0                 0                 0                 0
+Max Tilt (rad)                           0.287           0.226 *           0.289 !             0.234
+Control Smoothness                      10.795           3.827 *             5.365          22.508 !
+Max Speed (m/s)                          1.265           1.310 !             1.265           1.215 *
+----------------------------------------------------------------------------------------------------
+  * = best   ! = worst
+
+======================================================================
+QUALITATIVE SUMMARY
+======================================================================
+  Best tracking accuracy : PID-only (RMS 5.042m)
+  Most energy efficient  : H-inf-only (24.4 N·s)
+  Most waypoints reached : Adaptive (3/4)
+  Fastest mission time   : H-inf-only (43.8s)
+
+  Overall winner: H-inf-only (2/4 categories)
