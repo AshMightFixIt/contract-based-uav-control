@@ -11,5 +11,8 @@ Run from the repo root with either of::
 """
 
 TOOL_NAME = "tools/contracts_offline"
-TOOL_VERSION = "1.0.0"
-SCHEMA_VERSION = "1.0.0"
+TOOL_VERSION = "1.1.0"
+# Schema history:
+#   1.0.0  initial
+#   2.0.0  provenance.source_commit* removed: out/ no longer depends on git commit IDs
+SCHEMA_VERSION = "2.0.0"

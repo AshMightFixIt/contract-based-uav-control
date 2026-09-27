@@ -28,12 +28,10 @@ jobs:
     env:
       PYTHONDONTWRITEBYTECODE: "1"
     steps:
-      - name: Check out (full history)
+      # out/ records no git commit ID (only a content hash of the inputs), so a
+      # shallow checkout is enough and cherry-picks/squashes do not change out/.
+      - name: Check out
         uses: actions/checkout@v4
-        with:
-          # contracts.json records the last commit that touched the inputs,
-          # which needs the history; a shallow clone would change the output.
-          fetch-depth: 0
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
