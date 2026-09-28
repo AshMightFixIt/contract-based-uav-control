@@ -25,8 +25,13 @@ Complete guide for testing, developing, and extending the contract-based UAV con
 # Python 3.8 or higher
 python --version  # Should be >= 3.8
 
-# Install dependencies
+# Install the core package (editable) and the demo dependencies
+pip install -e ./contract_uav_core
 pip install -r requirements.txt
+
+# For the tests (make test), and optionally the pacti planner
+pip install -r requirements-test.txt
+pip install -r requirements-legacy.txt   # optional: pacti, for the horizon planner and make test-pacti
 
 # Verify installation
 python -c "import numpy; import matplotlib; print('✓ Dependencies OK')"
@@ -36,19 +41,9 @@ python -c "import numpy; import matplotlib; print('✓ Dependencies OK')"
 
 **Recommended IDE:** VSCode with Python extension
 
-**Python Path Setup:**
-```bash
-# Add to ~/.bashrc or ~/.zshrc
-export PYTHONPATH="/path/to/contract-based-uav-control/src:$PYTHONPATH"
-
-# Or set in current session
-export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
-```
-
-**Windows (PowerShell):**
-```powershell
-$env:PYTHONPATH = "$(Get-Location)\src;$env:PYTHONPATH"
-```
+**Python path:** no PYTHONPATH setup is needed. `pip install -e ./contract_uav_core`
+makes `contract_uav_core` importable from any directory, and edits to the package
+take effect without reinstalling. The same commands work in PowerShell on Windows.
 
 ---
 
@@ -57,23 +52,25 @@ $env:PYTHONPATH = "$(Get-Location)\src;$env:PYTHONPATH"
 ### Quick Test - All Components
 
 ```bash
-# Test everything
-./test_all.sh
+# Test everything: module self-tests, golden benchmark tables, node import check
+make test
 
-# Or manually:
-python src/contracts/contract_framework.py
-python src/estimation/contract_ekf.py
-python src/control/controllers.py
-python src/safety/cbf_filter.py
-python src/adaptive_control_system.py
+# Or run single module self-tests:
+python -m contract_uav_core.contracts.monitor
+python -m contract_uav_core.estimation.ekf
+python -m contract_uav_core.control.switcher
+python -m contract_uav_core.safety.cbf
+python -m contract_uav_core.core
 ```
+
+`make help` lists the other targets (`make golden`, `make test-pacti`, ...).
 
 ### Component-Level Testing
 
 #### 1. Contract Framework Test
 
 ```bash
-python src/contracts/contract_framework.py
+python -m contract_uav_core.contracts.monitor
 ```
 
 **Expected Output:**
@@ -95,7 +92,7 @@ All tests passed!
 #### 2. Extended Kalman Filter Test
 
 ```bash
-python src/estimation/contract_ekf.py
+python -m contract_uav_core.estimation.ekf
 ```
 
 **Expected Output:**
@@ -119,7 +116,7 @@ All tests passed!
 #### 3. Controller Test
 
 ```bash
-python src/control/controllers.py
+python -m contract_uav_core.control.switcher
 ```
 
 **Expected Output:**
@@ -141,7 +138,7 @@ All tests passed!
 #### 4. CBF Safety Filter Test
 
 ```bash
-python src/safety/cbf_filter.py
+python -m contract_uav_core.safety.cbf
 ```
 
 **Expected Output:**
@@ -163,7 +160,7 @@ All tests passed!
 #### 5. Complete System Integration Test
 
 ```bash
-python src/adaptive_control_system.py
+python -m contract_uav_core.core
 ```
 
 **Expected Output:**
@@ -203,33 +200,39 @@ python simulation_demo.py
 
 ### Core Modules
 
-#### `src/contracts/contract_framework.py` (506 lines)
+The core is the package `contract_uav_core` (numpy only). Paths below are
+relative to `contract_uav_core/contract_uav_core/`. Mixins let one class span several files: each
+file owns part of the class, and the class name and constructor stay the same.
 
-**Key Classes:**
-- `Contract`: Base A/G contract class
-- `ComponentContract`: Contract with metadata
-- `ContractChecker`: Runtime verification
-- `HierarchicalComposer`: Contract composition
+#### `contracts/` — assume-guarantee contracts
 
-**Main Functions:**
+- `spec.py`: `ContractStatus` (enum), `ContractMetrics` (dataclass),
+  `LinearConstraint` (`output <= sum(c*x) + k`, or `>=`) and `SimpleContract`
+  (range assumptions + linear guarantees).
+- `library.py`: `define_contracts()`, the component contracts (sensors, EKF,
+  PID, MPC, H-inf, actuators) and their named constants.
+- `preflight.py`: `compose_pipeline(controller_name)` and
+  `verify_mission_feasibility(controller_name, conditions)` for the monitor, and
+  `AdaptiveDroneController.pre_flight_check(initial_conditions, mission)`.
+- `monitor.py`: `HierarchicalContractMonitor`, with `monitor_runtime`,
+  `get_contract_status`, `should_switch_controller` and `export_metrics`.
+
+**Main methods:**
 ```python
-def check_assumptions(state) -> (bool, list):
-    """Check if contract assumptions are satisfied"""
-    
-def check_guarantees(state) -> (bool, list):
-    """Verify contract guarantees hold"""
-    
-def compose(contract1, contract2) -> Contract:
-    """Compose two contracts: G₁ ⇒ A₂"""
+SimpleContract.check_assumptions(values) -> (bool, margins)
+SimpleContract.check_guarantees(values) -> (bool, margins)
+SimpleContract.predict_guarantees(values) -> {"<output>_max": bound, ...}
+SimpleContract.compose(other) -> SimpleContract      # self feeds into other
+HierarchicalContractMonitor.verify_mission_feasibility(controller_name, conditions) -> (bool, message)
 ```
 
-#### `src/estimation/contract_ekf.py` (331 lines)
+#### `estimation/ekf.py`
 
-**Key Classes:**
-- `ContractAwareEKF`: 12-state EKF with contract checking
-- `SensorFusionMode`: Enum for GPS/IMU/Dead-reckoning
+**Key class:** `ContractAwareEKF`, a 12-state EKF. It picks its update from the
+sensor contracts: `update_full` (GPS + IMU), `update_imu_only`, or
+`propagate_only` (dead reckoning).
 
-**State Vector (12 states):**
+**State vector (12 states):**
 ```python
 x = [px, py, pz,        # Position (NED frame)
      vx, vy, vz,        # Velocity
@@ -237,79 +240,49 @@ x = [px, py, pz,        # Position (NED frame)
      p, q, r]           # Angular rates
 ```
 
-**Main Methods:**
+**Main methods:**
 ```python
-def predict(u, dt):
-    """Prediction step with process model"""
-    
-def update_gps(z_gps):
-    """GPS measurement update"""
-    
-def update_imu(z_imu):
-    """IMU measurement update"""
-    
-def check_contract():
-    """Verify estimation contract"""
+predict(dt=None)
+update(measurements, sensors, timestamp) -> (state, estimation_ok)
+check_sensor_contracts(timestamp) -> (gps_ok, imu_ok)
+get_state() -> dict
+get_covariance() -> np.ndarray
 ```
 
-#### `src/control/controllers.py` (200 lines)
+#### `control/`
 
-**Key Classes:**
-- `PIDController`: Nominal PID control
-- `HInfinityController`: Robust H∞ control
+- `base.py`: `BaseController` (abstract: `compute_control(state, setpoint)`, `reset()`).
+- `pid.py`, `mpc.py`, `hinf.py`: `PIDController`, `MPCController`,
+  `HInfinityController`. Each has `compute_control`, `reset` and
+  `get_integral_state` / `set_integral_state` (bumpless transfer).
+- `switcher.py`: `ControllerSwitcher`, which holds the three controllers under
+  the names `'PID'`, `'MPC'` and `'Hinf'` (`switch_to`, `compute_control`,
+  `get_active_controller`).
+- `supervisor.py`: `FlightMode` and `FlightModeSupervisor` (setpoints and the
+  controller choice per flight mode).
 
-**PID Implementation:**
-```python
-def compute_control(state, setpoint):
-    error = setpoint - state
-    u_p = self.kp * error
-    u_i = self.ki * integral
-    u_d = self.kd * derivative
-    return saturate(u_p + u_i + u_d)
-```
+#### `safety/`
 
-**Contract Checking:**
-```python
-def check_assumptions(state):
-    wind_ok = state['wind'] < 3.0
-    gps_ok = state['gps_available']
-    error_ok = state['position_error'] < 2.0
-    return wind_ok and gps_ok and error_ok
-```
+- `cbf.py`: `CBFSafetyFilter`, with `barrier_altitude`, `barrier_velocity`,
+  `barrier_tilt`, `barrier_rates`, `evaluate_safety(state)` and
+  `filter_control(state, nominal_control, timestamp) -> (control, intervened)`.
+- `runtime_monitor.py`: `RuntimeMonitor` (wind, GPS quality, compute delay).
 
-#### `src/safety/cbf_filter.py` (200 lines)
+#### Integration: `core.py` and its mixins
 
-**Key Classes:**
-- `ControlBarrierFunction`: Single barrier function
-- `CBFSafetyFilter`: Multi-barrier safety filter
+- `core.py`: `AdaptiveDroneController` (`__init__`, `update_sensors`,
+  `control_step(raw_sensors) -> (control, telemetry)`, mission commands).
+- `conditions.py`: `estimate_system_conditions`.
+- `switching_policy.py`: the multi-factor controller recommendation of
+  `control_step` (signals A–E, hysteresis, planner escalation).
+- `telemetry.py`: runtime and contract monitor updates, the flight log and
+  `save_flight_log`.
 
-**Barrier Functions:**
-```python
-def h_altitude_lower(state):
-    return state['z'] - 2.0  # z > 2m
+#### Other packages
 
-def h_altitude_upper(state):
-    return 50.0 - state['z']  # z < 50m
-    
-def h_velocity(state):
-    return 15.0**2 - np.linalg.norm(state['v'])**2
-    
-def h_tilt(state):
-    return 0.5 - (state['phi']**2 + state['theta']**2)
-```
-
-**Safety Filter:**
-```python
-def filter_control(u_desired, state):
-    """
-    Solve: u* = argmin ||u - u_d||²
-           s.t. ḣᵢ(x,u) ≥ -αᵢhᵢ(x)
-    """
-    if all_safe(state):
-        return u_desired  # No intervention needed
-    else:
-        return project_to_safe_set(u_desired, state)
-```
+- `planning/`: the Pacti horizon planner (needs pacti; the core runs without it).
+- `sim/`: `sensor_faults.py` and `battery_model.py` for the demos and benchmarks.
+- `viz/`: `live_visualizer.py` (needs pygame).
 
 ---
 
@@ -318,7 +291,7 @@ def filter_control(u_desired, state):
 ### Step 1: Create Controller Class
 
 ```python
-# In src/control/controllers.py
+# In contract_uav_core/contract_uav_core/control/ (a new module next to pid.py)
 
 class MyNewController:
     def __init__(self):
@@ -338,7 +311,8 @@ class MyNewController:
 ### Step 2: Define Contract
 
 ```python
-# In src/adaptive_control_system.py
+# Contracts are defined in contract_uav_core/contract_uav_core/contracts/library.py
+# (define_contracts)
 
 my_controller_contract = {
     'assumptions': {
@@ -402,7 +376,7 @@ logging.basicConfig(
 
 **Debug:**
 ```python
-# In adaptive_control_system.py, add:
+# In contract_uav_core/contract_uav_core/switching_policy.py, add:
 print(f"State: {state}")
 print(f"Assumptions: {assumptions_met}")
 print(f"Violations: {violated_assumptions}")
@@ -435,7 +409,7 @@ print(f"Switch rate: {switches_per_second} Hz")
 
 **Debug:**
 ```python
-# In cbf_filter.py:
+# In contract_uav_core/contract_uav_core/safety/cbf.py:
 for i, h in enumerate(self.barriers):
     print(f"Barrier {i}: h={h.value(state):.3f}")
 ```
@@ -556,7 +530,7 @@ for i in range(1000):
 
 **Workaround:**
 ```python
-# In controllers.py, change:
+# In contract_uav_core/contract_uav_core/control/hinf.py, change:
 if altitude < -40.0:  # Instead of -8.0
     emergency_land()
 ```
@@ -630,7 +604,7 @@ def compute_control(
 
 ## 📝 Next Steps
 
-For integration with SITL/Gazebo, see the ROS2 integration templates in `/ros2_adaptive_controller/`.
+For integration with PX4 SITL/Gazebo, see the ROS 2 bridge in `contract_uav_control/` and `docs/TESTING_MANUAL.md`.
 
 For adding fuzzy logic controller, follow the "Adding New Controllers" section.
 
