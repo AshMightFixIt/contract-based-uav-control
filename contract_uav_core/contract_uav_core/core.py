@@ -21,11 +21,15 @@ import time
 
 from .contracts.monitor import HierarchicalContractMonitor
 from .contracts.spec import ContractStatus
+from .contracts.preflight import ControllerPreflightMixin
 from .estimation.ekf import ContractAwareEKF
 from .control.switcher import ControllerSwitcher
 from .control.supervisor import FlightModeSupervisor, FlightMode
 from .safety.cbf import CBFSafetyFilter
 from .safety.runtime_monitor import RuntimeMonitor
+from .conditions import ConditionsMixin
+from .switching_policy import SwitchingPolicyMixin
+from .telemetry import TelemetryMixin
 
 # Optional: Horizon-based Pacti planner
 try:
@@ -39,7 +43,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class AdaptiveDroneController:
+class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
+                              SwitchingPolicyMixin, TelemetryMixin):
     """
     Main adaptive control system with formal contract guarantees.
 
@@ -110,55 +115,6 @@ class AdaptiveDroneController:
 
         logger.info("Adaptive Drone Controller initialized")
 
-    def pre_flight_check(self,
-                        initial_conditions: Dict[str, float],
-                        mission: Dict[str, any]) -> Tuple[bool, str]:
-        """
-        Pre-flight contract verification.
-        Uses contract composition to verify mission is feasible.
-        Sets up the supervisor with the mission target.
-        """
-        logger.info("=" * 60)
-        logger.info("PRE-FLIGHT CONTRACT VERIFICATION")
-        logger.info("=" * 60)
-
-        target = mission.get('target_position', np.array([0.0, 0.0, -5.0]))
-        waypoints = mission.get('waypoints', [target])
-
-        # Try controllers in order: PID (efficient) → MPC (optimal) → H-inf (robust)
-        controllers = [
-            ('PID', "efficient PID"),
-            ('MPC', "optimal MPC"),
-            ('Hinf', "robust H-infinity"),
-        ]
-
-        for i, (name, desc) in enumerate(controllers, 1):
-            logger.info(f"\n[{i}/{len(controllers)}] Checking {desc}...")
-            # MPC pipeline needs computation_time in conditions
-            check_conditions = initial_conditions.copy()
-            if name == 'MPC' and 'computation_time' not in check_conditions:
-                check_conditions['computation_time'] = 0.01  # typical solve time
-
-            feasible, msg = self.contract_monitor.verify_mission_feasibility(
-                name, check_conditions
-            )
-
-            if feasible:
-                logger.info(f"{name} feasible: {msg}")
-                if name != 'PID':
-                    self.controller_switcher.switch_to(
-                        name, 0.0, f"Pre-flight: conditions require {desc}")
-                self.supervisor.set_waypoints(waypoints)
-                self.mission_feasible = True
-                perf_note = "" if name == 'PID' else " (degraded performance expected)"
-                return True, f"Mission feasible with {desc}{perf_note}"
-            else:
-                logger.warning(f"{name} infeasible: {msg}")
-
-        logger.error("MISSION INFEASIBLE - all controller contracts violated!")
-        self.mission_feasible = False
-        return False, "Mission infeasible - all controller contracts violated"
-
     def update_sensors(self, raw_sensors: Dict[str, any]) -> Dict[str, np.ndarray]:
         """Process raw sensor data into measurements."""
         measurements = {}
@@ -172,87 +128,6 @@ class AdaptiveDroneController:
             measurements['imu_rates'] = raw_sensors['imu']['rates']
 
         return measurements
-
-    def estimate_system_conditions(self,
-                                   state: Dict[str, np.ndarray],
-                                   setpoint: Dict,
-                                   control: Dict[str, np.ndarray]) -> Dict[str, float]:
-        """
-        Estimate current system conditions for contract checking.
-
-        position_error: Tracking error metric, NOT distance to goal.
-            - For a drone in transit, we check if it's moving toward the target.
-            - If closing velocity is positive, tracking is fine (error = 0).
-            - If closing velocity is negative or lateral drift is high, error grows.
-
-        velocity_error: Lateral drift (velocity perpendicular to target direction).
-            - Forward velocity towards target is intentional, not an error.
-            - Only sideways drift counts as velocity error.
-
-        wind_speed: Estimated from lateral drift (unexpected motion).
-
-        disturbance: Estimated from control torques magnitude.
-        """
-        target_position = setpoint.get('position', state['position'])
-        position_diff = target_position - state['position']
-        distance_to_target = np.linalg.norm(position_diff)
-
-        # Decompose velocity into forward (intentional) and lateral (error) components
-        if distance_to_target > 0.1:
-            direction_to_target = position_diff / distance_to_target
-            closing_velocity = np.dot(state['velocity'], direction_to_target)
-            # Lateral drift (velocity perpendicular to target direction)
-            lateral_velocity = state['velocity'] - closing_velocity * direction_to_target
-            lateral_drift = np.linalg.norm(lateral_velocity)
-
-            # Tracking error: high if we're drifting or moving away
-            # Low if we're closing in on target with minimal lateral drift
-            if closing_velocity > 0.5:
-                # Moving toward target at reasonable speed - good tracking
-                tracking_error = lateral_drift * 0.5
-            elif closing_velocity > 0:
-                # Moving toward target slowly
-                tracking_error = lateral_drift + (0.5 - closing_velocity)
-            else:
-                # Moving away from target - bad tracking
-                tracking_error = lateral_drift + abs(closing_velocity) + 1.0
-
-            # Velocity error is lateral drift only (forward motion is intentional)
-            velocity_error = lateral_drift
-        else:
-            # Very close to target - use position error and total velocity
-            tracking_error = distance_to_target
-            target_velocity = setpoint.get('velocity', np.zeros(3))
-            velocity_error = np.linalg.norm(state['velocity'] - target_velocity)
-            lateral_drift = velocity_error
-
-        # Wind estimate from lateral drift (unexpected sideways motion)
-        # Use low-pass filter to prevent transient high velocities from triggering false alarms
-        raw_wind_estimate = min(max(lateral_drift - 0.5, 0.0) * 1.5, 10.0)
-        self.wind_estimate_filtered = (
-            self.wind_filter_alpha * raw_wind_estimate +
-            (1 - self.wind_filter_alpha) * self.wind_estimate_filtered
-        )
-        wind_estimate = self.wind_estimate_filtered
-
-        # Override with direct wind sensor if available (more accurate)
-        # This is accessed in control_step via self.last_wind_sensor
-        if hasattr(self, 'last_wind_sensor') and self.last_wind_sensor is not None:
-            sensor_wind = self.last_wind_sensor
-            # Use max of sensor reading and drift-based estimate
-            wind_estimate = max(wind_estimate, sensor_wind)
-
-        # Disturbance from control effort (also filtered for stability)
-        raw_disturbance = np.linalg.norm(control.get('torques', np.zeros(3)))
-        disturbance = min(raw_disturbance, 3.0)  # Cap disturbance estimate
-
-        return {
-            'position_error': tracking_error,
-            'velocity_error': velocity_error,
-            'wind_speed': wind_estimate,
-            'disturbance': disturbance,
-            'control_effort': control.get('thrust', 0.5)
-        }
 
     def control_step(self,
                     raw_sensors: Dict[str, any]) -> Tuple[Dict[str, np.ndarray], Dict[str, any]]:
@@ -327,150 +202,10 @@ class AdaptiveDroneController:
             if planner_emergency:
                 logger.warning(f"Horizon planner: EMERGENCY MODE")
 
-        # 7. Multi-factor contract-based switching: PID > MPC > H-inf
-        #
-        # Four signals evaluated jointly — wind speed is ONE of them, not the only one:
-        #
-        #   A. Assumption feasibility  — can controller X legally operate here?
-        #   B. Guarantee violation     — is the active controller meeting its promises?
-        #   C. Predictive comparison   — which controller predicts the tightest tracking error?
-        #   D. EKF uncertainty         — high covariance → prefer robust controller
-        #   E. Error trend             — diverging error → proactive escalation
-        #
-        # Escalation is forced by B or E; C is used to pick between A-feasible controllers.
-        # The horizon planner can further escalate (never downgrade) on top of this.
-
-        check_conditions = system_conditions.copy()
-        mpc_ctrl = self.controller_switcher.controllers.get('MPC')
-        if mpc_ctrl:
-            check_conditions['computation_time'] = getattr(mpc_ctrl, 'last_solve_time', 0.01)
-
-        # D: EKF position uncertainty — use as the theory-grounded position_error contract input
-        # (replaces the tracking-error proxy that was conflating input/output)
-        ekf_P = self.ekf.get_covariance()
-        pos_uncertainty = float(np.sqrt(np.trace(ekf_P[0:3, 0:3])))
-        check_conditions['position_error'] = pos_uncertainty
-
-        # Observed tracking performance (contract output, distinct from EKF estimation error)
-        observed_tracking_error = system_conditions.get('position_error', 0.0)
-
-        # E: Error trend — proactive escalation before conditions become unrecoverable
-        error_trend = (observed_tracking_error - self._prev_tracking_error) / self.dt
-        self._prev_tracking_error = observed_tracking_error
-        error_rising_fast = error_trend > 3.0   # m/s equivalent — diverging, not just noisy
-
-        # Dual-sensor failure: GPS + IMU both gone → dead-reckoning only → force H-inf
-        dual_sensor_failure = not gps_ok and not imu_ok
-
-        pid_contract = self.contract_monitor.controller_contracts.get('PID')
-        mpc_contract = self.contract_monitor.controller_contracts.get('MPC')
-
-        # A: Assumption feasibility
-        pid_ok = False
-        mpc_ok = False
-        if pid_contract:
-            pid_ok, _ = pid_contract.check_assumptions(check_conditions)
-        if mpc_contract:
-            mpc_ok, _ = mpc_contract.check_assumptions(check_conditions)
-
-        # B: Guarantee violation — check if active controller exceeds its promised bound.
-        # IMPORTANT: Guarantees are steady-state bounds. During waypoint approach the
-        # drone is deliberately closing distance, so observed_tracking_error is naturally
-        # large and transient. Checking guarantees while error_trend < 0 (approaching)
-        # causes spurious H-inf escalation. Only raise the flag when error is growing.
-        active_ctrl = self.controller_switcher.get_active_controller()
-        active_contract = self.contract_monitor.controller_contracts.get(active_ctrl)
-        guarantee_violated = False
-        if active_contract and error_trend > 0.5:   # only check when error is growing
-            guar_vals = check_conditions.copy()
-            guar_vals['tracking_error'] = observed_tracking_error   # observed output
-            g_ok, g_margins = active_contract.check_guarantees(guar_vals)
-            if not g_ok:
-                guarantee_violated = True
-                logger.warning(
-                    f"Guarantee violation: {active_ctrl} "
-                    f"tracking={observed_tracking_error:.2f}m trend={error_trend:.1f}m/s "
-                    f"margins={g_margins}"
-                )
-
-        # C: Predicted tracking error — choose quantitatively better controller
-        pid_pred_error = float('inf')
-        mpc_pred_error = float('inf')
-        if pid_ok and pid_contract:
-            preds = pid_contract.predict_guarantees(check_conditions)
-            pid_pred_error = preds.get('tracking_error_max', float('inf'))
-        if mpc_ok and mpc_contract:
-            preds = mpc_contract.predict_guarantees(check_conditions)
-            mpc_pred_error = preds.get('tracking_error_max', float('inf'))
-
-        # --- Combine all signals into a recommendation ---
-        # Policy: use the *most efficient* controller whose worst-case guarantee
-        # still falls within the mission's acceptable tracking tolerance.
-        # (Comparing raw predicted bounds always picks MPC, because MPC has
-        # provably tighter guarantee constants. The right question is:
-        # "can PID guarantee acceptable performance here?" — if yes, use PID.)
-        ACCEPTABLE_TRACKING = 3.0   # metres — mission-level tolerance
-        # Hysteresis: only downgrade when conditions drop to HYST * threshold.
-        # Prevents chattering near boundaries (e.g. wind oscillating around 3 m/s).
-        HYST = 0.70
-        HYST_TRACKING = ACCEPTABLE_TRACKING * HYST   # 2.1m — downgrade threshold
-
-        controller_priority = {'PID': 0, 'MPC': 1, 'Hinf': 2}
-        active_priority = controller_priority.get(active_ctrl, 0)
-
-        if guarantee_violated or error_rising_fast:
-            # B/E: Active controller failing or error diverging → force escalation
-            if active_priority < 1 and mpc_ok:
-                recommended = 'MPC'
-                logger.info(
-                    f"Escalating PID→MPC: "
-                    f"{'guarantee violated' if guarantee_violated else 'error trend'} "
-                    f"(tracking={observed_tracking_error:.2f}m, trend={error_trend:.1f}m/s)"
-                )
-            else:
-                recommended = 'Hinf'
-        elif pid_ok and pid_pred_error < ACCEPTABLE_TRACKING:
-            # A+C: PID can guarantee acceptable tracking — use it (most efficient)
-            recommended = 'PID'
-        elif mpc_ok and mpc_pred_error < ACCEPTABLE_TRACKING:
-            # A+C: PID can't guarantee, but MPC can
-            recommended = 'MPC'
-            logger.info(
-                f"PID→MPC: predicted PID={pid_pred_error:.2f}m exceeds tolerance "
-                f"{ACCEPTABLE_TRACKING}m, MPC predicts {mpc_pred_error:.2f}m"
-            )
-        else:
-            recommended = 'Hinf'
-
-        # Hysteresis post-filter: suppress downgrades that are still close to the threshold.
-        # Only escalation (recommended > active) passes without hysteresis check.
-        if controller_priority.get(recommended, 0) < active_priority:
-            if recommended == 'PID' and pid_pred_error > HYST_TRACKING:
-                # PID predicted error still above hysteresis band — stay at current
-                recommended = active_ctrl
-            elif recommended == 'MPC' and mpc_pred_error > HYST_TRACKING:
-                # MPC predicted error still above hysteresis band — stay at Hinf
-                recommended = active_ctrl
-
-        # D override: high EKF position uncertainty → prefer at least MPC
-        if pos_uncertainty > 2.5 and controller_priority.get(recommended, 0) < 1:
-            recommended = 'MPC'
-            logger.info(f"EKF pos uncertainty {pos_uncertainty:.2f}m → escalating to MPC")
-
-        # Emergency override: dual sensor failure → dead reckoning → must use H-inf
-        if dual_sensor_failure:
-            recommended = 'Hinf'
-            logger.warning("Dual sensor failure (GPS + IMU) → forcing H-inf")
-
-        # Horizon planner can further escalate (never downgrade)
-        if planner_emergency:
-            recommended = 'Hinf'
-        elif planner_controller:
-            planner_mapped = {'pid': 'PID', 'mpc': 'MPC', 'hinf': 'Hinf'}.get(
-                planner_controller, planner_controller)
-            if controller_priority.get(planner_mapped, 0) > controller_priority.get(recommended, 0):
-                recommended = planner_mapped
-                logger.info(f"Horizon planner: preemptive escalation to {recommended}")
+        # 7. Multi-factor contract-based switching: PID > MPC > H-inf (switching_policy.py)
+        recommended = self._recommend_controller(
+            system_conditions, gps_ok, imu_ok, planner_emergency, planner_controller
+        )
 
         # 8. Supervisor: get setpoint + controller choice
         setpoint, controller_name = self.supervisor.update(
@@ -495,49 +230,10 @@ class AdaptiveDroneController:
             state_dict, nominal_control, self.time
         )
 
-        # 11. Update runtime monitors
-        self.runtime_monitor.update_wind_estimate(
-            state_dict['velocity'],
-            setpoint.get('velocity', np.zeros(3))
+        # 11.-14. Runtime monitors, contract monitoring and the flight log (telemetry.py)
+        active_controller, flight_mode = self._record_step(
+            raw_sensors, state_dict, setpoint, control, cbf_intervened, estimation_ok, planner_info
         )
-        if 'gps' in raw_sensors:
-            gps = raw_sensors['gps']
-            self.runtime_monitor.update_gps_quality(
-                gps.get('satellites', 0), gps.get('hdop', 100.0)
-            )
-
-        # 12. Contract monitoring
-        active_controller = self.controller_switcher.get_active_controller()
-        # Re-estimate conditions with actual control output
-        system_conditions = self.estimate_system_conditions(state_dict, setpoint, control)
-        self.contract_monitor.monitor_runtime(
-            f"controller_{active_controller}",
-            system_conditions,
-            self.time
-        )
-
-        # 13. Actuator contract monitoring
-        actuator_state = {
-            'control_effort': control['thrust'],
-            'battery_voltage': raw_sensors.get('battery', {}).get('voltage', 12.0),
-            'motor_temperature': raw_sensors.get('motors', {}).get('temperature', 25.0),
-        }
-        self.contract_monitor.monitor_runtime('actuators', actuator_state, self.time)
-
-        # 14. Log data
-        flight_mode = self.supervisor.get_mode().value
-        log_entry = {
-            'time': self.time,
-            'state': state_dict.copy(),
-            'control': control.copy(),
-            'controller': active_controller,
-            'flight_mode': flight_mode,
-            'cbf_intervened': cbf_intervened,
-            'system_conditions': system_conditions.copy(),
-            'estimation_ok': estimation_ok,
-            'planner_info': planner_info.copy() if planner_info else {}
-        }
-        self.flight_log.append(log_entry)
 
         # 15. Telemetry
         telemetry = {
@@ -604,28 +300,6 @@ class AdaptiveDroneController:
         """Stop the mission."""
         self.mission_active = False
         logger.info("Mission stopped")
-
-    def save_flight_log(self, filename: str):
-        """Save flight log for analysis."""
-        import json
-
-        log_serializable = []
-        for entry in self.flight_log:
-            entry_copy = entry.copy()
-            for key in ['state', 'control', 'system_conditions']:
-                if key in entry_copy:
-                    for subkey, val in entry_copy[key].items():
-                        if isinstance(val, np.ndarray):
-                            entry_copy[key][subkey] = val.tolist()
-            log_serializable.append(entry_copy)
-
-        with open(filename, 'w') as f:
-            json.dump(log_serializable, f, indent=2)
-
-        logger.info(f"Flight log saved to {filename}")
-
-        contract_log = filename.replace('.json', '_contracts.json')
-        self.contract_monitor.export_metrics(contract_log)
 
 
 # Test the complete system
