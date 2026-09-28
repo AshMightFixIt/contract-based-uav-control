@@ -211,7 +211,7 @@ python simulation_demo.py
 
 ### Core Modules
 
-The core is the package `contract_uav_core` (numpy only). Paths below are
+The core is the package `contract_uav_core` (numpy, and PyYAML for the airframe files). Paths below are
 relative to `contract_uav_core/contract_uav_core/`. Mixins let one class span several files: each
 file owns part of the class, and the class name and constructor stay the same.
 
@@ -262,13 +262,14 @@ get_covariance() -> np.ndarray
 
 #### `control/`
 
-- `base.py`: `BaseController` (abstract: `compute_control(state, setpoint)`, `reset()`).
+- `base.py`: `BaseController` (abstract: `compute_accel_command(state, setpoint)`, `reset()`;
+  `compute_control` returns the command's legacy dict).
 - `pid.py`, `mpc.py`, `hinf.py`: `PIDController`, `MPCController`,
-  `HInfinityController`. Each has `compute_control`, `reset` and
+  `HInfinityController`. Each has `compute_accel_command`, `reset` and
   `get_integral_state` / `set_integral_state` (bumpless transfer).
 - `switcher.py`: `ControllerSwitcher`, which holds the three controllers under
-  the names `'PID'`, `'MPC'` and `'Hinf'` (`switch_to`, `compute_control`,
-  `get_active_controller`).
+  the names `'PID'`, `'MPC'` and `'Hinf'` (`switch_to(name, current_time, reason,
+  priority)`, `compute_control`, `compute_accel_command`, `get_active_controller`).
 - `supervisor.py`: `FlightMode` and `FlightModeSupervisor` (setpoints and the
   controller choice per flight mode).
 
@@ -282,7 +283,7 @@ get_covariance() -> np.ndarray
 #### Integration: `core.py` and its mixins
 
 - `core.py`: `AdaptiveDroneController` (`__init__`, `update_sensors`,
-  `control_step(raw_sensors) -> (control, telemetry)`, mission commands).
+  `control_step(raw_sensors, t=None) -> (control, telemetry)`, mission commands).
 - `conditions.py`: `estimate_system_conditions`.
 - `switching_policy.py`: the multi-factor controller recommendation of
   `control_step` (signals A–E, hysteresis, planner escalation).
@@ -292,8 +293,28 @@ get_covariance() -> np.ndarray
 #### Other packages
 
 - `planning/`: the Pacti horizon planner (needs pacti; the core runs without it).
-- `sim/`: `sensor_faults.py` and `battery_model.py` for the demos and benchmarks.
+- `sim/`: `sensor_faults.py` and `battery_model.py` for the demos and benchmarks;
+  `quadrotor.py`, the reference plant.
+- `config/`: `airframe.py` (schema and loader) and `airframes/*.yaml`.
 - `viz/`: `live_visualizer.py` (needs pygame).
+
+#### Interfaces and time
+
+`control_step(raw_sensors, t=None)`: without `t` (the scripts) the step runs at the
+accumulated `self.time` and the EKF predicts with the nominal `dt`, bit for bit as before;
+with `t` in seconds (the ROS node passes the PX4 `VehicleLocalPosition` timestamp) the EKF
+predicts with the measured step clamped to 0.5–2× `dt`, a step above 1.5× `dt` counts as an
+overrun and a repeated or older `t` as non-increasing (telemetry `timing`). Only the EKF sees
+the measured step; the controllers, supervisor and switcher keep the nominal `dt`.
+`interfaces.py` holds the shared types and documents the frame convention (NED, z down;
+ZYX Euler angles): `AccelCommand` (acceleration demand + yaw, with the legacy thrust,
+torques and attitude/rate setpoints passed through; `to_legacy_dict()`),
+`AttitudeThrustCommand` and `SwitchPriority` (recorded only until P1.5). `frames.py` holds
+the tiers' acceleration -> attitude/thrust/torque mappings, moved unchanged (still
+yaw-blind). `sim/quadrotor.py` (the reference plant, driven by `AttitudeThrustCommand`) and
+`config/airframes/` (PX4 v1.16.2 values with provenance, `load_airframe('x500_sitl')`) are not
+used by the legacy scripts yet. Their tests are in `tests/core`, `tests/sim` and
+`tests/config`.
 
 ---
 

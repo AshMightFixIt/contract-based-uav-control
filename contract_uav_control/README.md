@@ -45,7 +45,7 @@ step-by-step testing & tuning guide written for the whole team.
 - [`Micro-XRCE-DDS-Agent`](https://docs.px4.io/main/en/middleware/uxrce_dds.html)
 - PX4 (SITL for testing, or DEXI flight controller for hardware)
 - The core controller package, `contract_uav_core/` in this repo (next to this
-  package). It is plain Python — numpy only.
+  package). It is plain Python — numpy and PyYAML (apt: `python3-numpy`, `python3-yaml`).
 
 ## Build
 
