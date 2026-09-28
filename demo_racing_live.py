@@ -25,10 +25,6 @@ Adaptive panel switches controller automatically; forced panels show the cost of
 Controls:  close the window or press Esc to exit.
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
 import logging
 logging.disable(logging.CRITICAL)
 
@@ -37,7 +33,7 @@ import numpy as np
 # ── Import simulation modules BEFORE touching matplotlib.
 # benchmark_racing.py calls matplotlib.use('Agg') at module level; we let it
 # run first, then switch to an interactive backend before creating any figure.
-from adaptive_control_system import AdaptiveDroneController
+from contract_uav_core.core import AdaptiveDroneController
 from benchmark_racing import (
     RacingDroneSimulation, WAYPOINTS,
     INITIAL_CONDITIONS, DT, MAX_STEPS,

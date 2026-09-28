@@ -19,11 +19,7 @@ from typing import Dict, Tuple, Optional, List
 from dataclasses import dataclass
 import logging
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from planning.horizon_planner import (
+from .horizon_planner import (
     HorizonPlanner, AdaptiveRePlanner, Plan, PlanStatus, PlannerConfig
 )
 

@@ -10,12 +10,8 @@ Tests:
 6. Critical/depleted detection
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
 import numpy as np
-from utils.battery_model import BatteryModel, BatteryConfig, ControllerPowerProfile
+from contract_uav_core.sim.battery_model import BatteryModel, BatteryConfig, ControllerPowerProfile
 
 
 CONTROLLERS = ['PID', 'MPC', 'Hinf']

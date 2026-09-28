@@ -19,16 +19,16 @@ from typing import Dict, Tuple, Optional, List
 import logging
 import time
 
-from contracts.contract_framework import HierarchicalContractMonitor, ContractStatus
-from estimation.contract_ekf import ContractAwareEKF
-from control.controllers import ControllerSwitcher
-from control.flight_mode_supervisor import FlightModeSupervisor, FlightMode
-from safety.cbf_filter import CBFSafetyFilter, RuntimeMonitor
+from .contracts.library import HierarchicalContractMonitor, ContractStatus
+from .estimation.ekf import ContractAwareEKF
+from .control.pid import ControllerSwitcher
+from .control.supervisor import FlightModeSupervisor, FlightMode
+from .safety.cbf import CBFSafetyFilter, RuntimeMonitor
 
 # Optional: Horizon-based Pacti planner
 try:
-    from planning.integrated_planner import IntegratedPlanner
-    from planning.horizon_planner import PlannerConfig
+    from .planning.integrated_planner import IntegratedPlanner
+    from .planning.horizon_planner import PlannerConfig
     HORIZON_PLANNER_AVAILABLE = True
 except ImportError:
     HORIZON_PLANNER_AVAILABLE = False

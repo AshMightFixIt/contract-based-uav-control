@@ -13,9 +13,7 @@ Validates that contracts, EKF fusion modes, controller switching,
 and CBF safety work together to maintain safe flight.
 """
 
-import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,12 +23,12 @@ import logging
 
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
 
-from adaptive_control_system import AdaptiveDroneController
-from control.flight_mode_supervisor import FlightMode
-from utils.sensor_faults import SensorFaultInjector, create_standard_degradation_schedule
+from contract_uav_core.core import AdaptiveDroneController
+from contract_uav_core.control.supervisor import FlightMode
+from contract_uav_core.sim.sensor_faults import SensorFaultInjector, create_standard_degradation_schedule
 
 try:
-    from visualization.live_visualizer import LiveVisualizer
+    from contract_uav_core.viz.live_visualizer import LiveVisualizer
     HAS_VISUALIZER = True
 except ImportError:
     HAS_VISUALIZER = False

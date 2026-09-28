@@ -10,9 +10,7 @@ Runs the same wind/waypoint scenario with 4 configurations:
 Produces comparison metrics table + benchmark_results.png
 """
 
-import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 import numpy as np
 import matplotlib
@@ -23,7 +21,7 @@ import copy
 
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
 
-from adaptive_control_system import AdaptiveDroneController
+from contract_uav_core.core import AdaptiveDroneController
 
 
 # ---------------------------------------------------------------------------
