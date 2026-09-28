@@ -137,7 +137,7 @@ Seven formal contracts defined:
 ```bash
 git clone https://github.com/AshMightFixIt/contract-based-uav-control.git
 cd contract-based-uav-control
-pip install -e ./contract_uav_core    # the core package (numpy only)
+pip install -e ./contract_uav_core    # the core package (numpy, PyYAML)
 pip install -r requirements.txt       # matplotlib and pygame for the demos and benchmarks
 ```
 
@@ -271,6 +271,11 @@ contract-based-uav-control/
 │       ├── conditions.py               # System-condition estimation
 │       ├── switching_policy.py         # Contract-based controller recommendation
 │       ├── telemetry.py                # Monitor updates and flight log
+│       ├── interfaces.py               # AccelCommand and other shared types (NED frame)
+│       ├── frames.py                   # Acceleration -> attitude/thrust/torque mappings
+│       ├── config/
+│       │   ├── airframe.py             # Airframe file schema and loader
+│       │   └── airframes/              # x500_sitl.yaml, dexi.yaml (PX4 v1.16.2 values)
 │       ├── contracts/
 │       │   ├── spec.py                 # A/G contract types (SimpleContract, LinearConstraint)
 │       │   ├── library.py              # Component contract definitions
@@ -292,14 +297,15 @@ contract-based-uav-control/
 │       │   └── runtime_monitor.py      # Runtime condition monitors
 │       ├── sim/
 │       │   ├── sensor_faults.py        # Fault injection module
-│       │   └── battery_model.py        # Battery model
+│       │   ├── battery_model.py        # Battery model
+│       │   └── quadrotor.py            # Reference plant (not used by the scripts yet)
 │       └── viz/
 │           └── live_visualizer.py      # Pygame 3D live visualizer
 │
 ├── contract_uav_control/               # ROS 2 / PX4 offboard bridge (ament_python)
 ├── contract_uav_msgs/                  # ROS 2 telemetry message (ament_cmake)
 ├── docs/                               # ROS 2 testing manual and hardware procedure
-├── tests/                              # make test: smoke, golden and node-import tests
+├── tests/                              # make test: smoke, golden, unit and ROS-node tests
 ├── tools/contracts_offline/            # Offline Pacti contract reconciliation
 │
 ├── simulation_demo.py                  # Main demonstration
@@ -315,6 +321,15 @@ contract-based-uav-control/
 ├── README.md                           # This file
 └── DEVELOPMENT.md                      # Testing & development guide
 ```
+
+**Time and interfaces.** `AdaptiveDroneController.control_step(raw_sensors, t=None)` has two
+time modes: without `t` (all the scripts) it steps its own clock by the nominal `dt`, exactly as
+before; with `t` in seconds (the ROS node passes the PX4 timestamp) the EKF predicts with the
+measured step, clamped to 0.5–2× `dt`, and the telemetry's `timing` entry counts overruns.
+`interfaces.py` (the NED frame convention, `AccelCommand`), `frames.py` (the tiers'
+acceleration-to-attitude mapping, unchanged) and each tier's `compute_accel_command` are the
+interfaces the next refactors build on. The reference plant `sim/quadrotor.py` and the airframe
+files `config/airframes/` are not used by the scripts yet.
 
 ---
 

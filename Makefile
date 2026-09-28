@@ -26,7 +26,7 @@ help:
 	@echo "make test                 default suite: module smoke tests + requirements-only goldens (~1 min)"
 	@echo "make golden               only the requirements-only golden tests"
 	@echo "make golden-update        rewrite the requirements-only goldens (reviewed behaviour change only)"
-	@echo "make test-pacti           slow opt-in: pacti reproduction of RESULTS.md section 1 (~9 min)"
+	@echo "make test-pacti           opt-in: pacti reproduction of RESULTS.md section 1 (~30-90 s)"
 	@echo "make golden-update-pacti  rewrite the pacti golden (reviewed behaviour change only)"
 	@echo "make test-all             everything, slow tests included (needs pacti)"
 	@echo "Options: PYTHON=<interpreter> (default python3), PYTEST_ARGS=<extra pytest args>"
