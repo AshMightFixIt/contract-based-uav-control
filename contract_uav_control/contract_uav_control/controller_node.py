@@ -150,6 +150,17 @@ class ContractControllerNode(Node):
     def _now_us(self):
         return int(self.get_clock().now().nanoseconds / 1000)
 
+    def _control_time_s(self):
+        """Time of this control step for the core, in seconds.
+
+        The timestamp of the latest VehicleLocalPosition (microseconds, PX4 clock):
+        the loop only runs once that message has arrived, and it carries the
+        position and velocity the EKF fuses this step. The core measures its EKF
+        step from consecutive values, so a message that has not been refreshed
+        since the last tick counts there as a non-increasing time.
+        """
+        return self.local_pos.timestamp / 1e6
+
     # ---------- subscription callbacks ----------
     def _cb_local_pos(self, msg): self.local_pos = msg
     def _cb_attitude(self, msg): self.attitude = msg
@@ -267,7 +278,7 @@ class ContractControllerNode(Node):
             self.local_pos, self.attitude, self.ang_vel,
             self.sensor_gps, self.battery)
 
-        control, telemetry = self.ctrl.control_step(raw_sensors)
+        control, telemetry = self.ctrl.control_step(raw_sensors, t=self._control_time_s())
         self._publish_attitude_setpoint(control)
         self._publish_state(control, telemetry)
 
