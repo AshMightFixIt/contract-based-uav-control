@@ -38,33 +38,43 @@ env/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Testing
+# Testing and tool caches
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
+.mypy_cache/
+.ruff_cache/
 
 # Logs and databases
 *.log
 *.sql
 *.sqlite
-*.json
 
-# Simulation outputs
-*.png
-*.pdf
-*.csv
+# Generated outputs. Only these names are ignored, not every png/pdf/json/csv,
+# so committed data (e.g. tools/contracts_offline/out/) stays visible to git.
+# Plots saved next to the scripts:
+/benchmark_results.png
+/benchmark_racing.png
+/benchmark_sensor_degradation.png
+/sensor_degradation_results.png
+/waypoint_mission_results.png
+/simulation_results.png
+# Flight logs (simulation_demo.py) and the contract metrics that
+# AdaptiveDroneController.save_flight_log writes next to them:
 flight_log*.json
+*_contracts.json
+# LaTeX build output
+/LaTeX_Database/main.pdf
 
 # OS
 Thumbs.db
 .DS_Store
 
 # Project specific
-# Track the ROS 2 package source + docs under ros2_ws/, but never the
-# colcon artifacts (build/install/log, ignored just below) or the
-# externally-cloned px4_msgs dependency.
-ros2_ws/src/px4_msgs/
+# The repository root is also the colcon workspace: never track the colcon
+# artifacts (build/install/log) or the externally-cloned px4_msgs dependency.
+/px4_msgs/
 build/
 install/
 log/

@@ -1,4 +1,5 @@
-# The repo-root .gitignore ignores *.json and *.csv. The generated outputs are
-# committed on purpose (CI regenerates them and fails on any difference).
+# The generated outputs are committed on purpose (CI regenerates them and fails
+# on any difference). These rules keep them tracked even if a broader ignore
+# rule for *.json or *.csv comes back to the repo-root .gitignore.
 !out/contracts.json
 !out/reconciliation.csv
