@@ -49,11 +49,14 @@ Architecture:
     print("-" * 70)
     initial_conditions = {
         'gps_satellites': 12.0,
-        'imu_temperature_stable': 1.0,
+        'gps_hdop': 1.0,
+        'imu_temperature': 25.0,
+        'imu_calibrated': 1.0,
         'battery_voltage': 12.4,
         'motor_temperature': 30.0,
         'wind_speed': 0.5,
         'disturbance': 0.2,
+        'computation_time': 0.01,
     }
 
     waypoints = [
