@@ -27,8 +27,8 @@ Everything flies **on the drone's onboard computer**. The laptop only monitors.
 
 ```
 DEXI Drone (onboard computer)              Laptop
-  - src/  (the algorithm)                    - QGroundControl (monitor + arm)
-  - ros2_ws/ (the ROS 2 bridge)              - SSH terminal (to start controller)
+  - contract_uav_core/ (the algorithm)       - QGroundControl (monitor + arm)
+  - contract_uav_control/ (ROS 2 bridge)     - SSH terminal (to start controller)
   - MicroXRCEAgent (DDS bridge)
         | wired link inside the drone
   PX4 Flight Controller (Pixhawk)
@@ -63,7 +63,7 @@ SSH into the drone from the laptop, then open three terminals (or use `tmux`).
 In each terminal first run:
 ```bash
 source /opt/ros/humble/setup.bash
-source ~/contract-based-uav-control/ros2_ws/install/setup.bash
+source ~/contract-based-uav-control/install/setup.bash
 ```
 
 **Terminal 1 — DDS bridge** (connects ROS 2 to PX4 over the internal serial link)
@@ -75,7 +75,6 @@ MicroXRCEAgent serial --dev /dev/ttyAMA0 -b 921600
 
 **Terminal 2 — the controller**
 ```bash
-export CONTRACT_UAV_ROOT=~/contract-based-uav-control
 ros2 launch contract_uav_control contract_control.launch.py
 ```
 You should see log lines like `[track] ctrl=PID cbf=False thrust=0.50`.
@@ -189,7 +188,7 @@ current one is rock-solid. Record a bag every time.
 | Won't enter Offboard | Heartbeat must stream >2 Hz before switching; confirm Terminal 2 is publishing |
 | GPS topic missing | Some PX4 versions use `/fmu/out/sensor_gps` vs `/fmu/out/vehicle_gps_position` — update the subscription name in `controller_node.py` |
 | Drifts / oscillates unlike SITL | Gains were tuned in sim — re-tune on hardware (see `TESTING_MANUAL.md` §6) |
-| `cbf_intervened` constantly true | Limits may be too tight for the real airframe — review `src/safety/cbf_filter.py` |
+| `cbf_intervened` constantly true | Limits may be too tight for the real airframe — review `contract_uav_core/contract_uav_core/safety/cbf.py` |
 
 ---
 

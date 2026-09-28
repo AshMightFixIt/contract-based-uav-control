@@ -137,7 +137,8 @@ Seven formal contracts defined:
 ```bash
 git clone https://github.com/AshMightFixIt/contract-based-uav-control.git
 cd contract-based-uav-control
-pip install -r requirements.txt
+pip install -e ./contract_uav_core    # the core package (numpy only)
+pip install -r requirements.txt       # matplotlib and pygame for the demos and benchmarks
 ```
 
 **Requirements:** Python 3.8+, NumPy, Matplotlib
@@ -222,12 +223,12 @@ python demo_horizon_planner.py
 
 ### Test Components
 ```bash
-python src/contracts/contract_framework.py    # Contract framework
-python src/estimation/contract_ekf.py         # Extended Kalman Filter
-python src/control/controllers.py             # Controllers
-python src/safety/cbf_filter.py              # CBF safety filter
-python src/planning/integrated_planner.py     # Horizon planner
-python src/adaptive_control_system.py         # Complete system
+python -m contract_uav_core.contracts.monitor            # Contract framework
+python -m contract_uav_core.estimation.ekf               # Extended Kalman Filter
+python -m contract_uav_core.control.switcher             # Controllers
+python -m contract_uav_core.safety.cbf                   # CBF safety filter
+python -m contract_uav_core.planning.integrated_planner  # Horizon planner
+python -m contract_uav_core.core                         # Complete system
 ```
 
 ---
@@ -263,25 +264,43 @@ If G₁ ⇒ A₂, the pipeline is formally verified!
 ```
 contract-based-uav-control/
 │
-├── src/                                # Source code (2,700+ lines)
-│   ├── contracts/
-│   │   └── contract_framework.py       # A/G contracts (506 lines)
-│   ├── estimation/
-│   │   └── contract_ekf.py            # Contract-aware EKF (331 lines)
-│   ├── control/
-│   │   ├── controllers.py             # PID, MPC & H-infinity (330 lines)
-│   │   └── flight_mode_supervisor.py  # Mission mode management (220 lines)
-│   ├── planning/                       # Horizon-based planning
-│   │   ├── pacti_contracts.py         # Pacti contract library (150 lines)
-│   │   ├── horizon_planner.py         # N-step contract cascade (250 lines)
-│   │   └── integrated_planner.py      # Control system integration (300 lines)
-│   ├── safety/
-│   │   └── cbf_filter.py             # CBF filter (200 lines)
-│   ├── utils/
-│   │   └── sensor_faults.py          # Fault injection module (235 lines)
-│   ├── visualization/
-│   │   └── live_visualizer.py         # Pygame 3D live visualizer (525 lines)
-│   └── adaptive_control_system.py     # Integration (350 lines)
+├── contract_uav_core/                  # Core package: pip install -e ./contract_uav_core (also ament_python)
+│   ├── setup.py, setup.cfg, package.xml
+│   └── contract_uav_core/
+│       ├── core.py                     # Integration: AdaptiveDroneController
+│       ├── conditions.py               # System-condition estimation
+│       ├── switching_policy.py         # Contract-based controller recommendation
+│       ├── telemetry.py                # Monitor updates and flight log
+│       ├── contracts/
+│       │   ├── spec.py                 # A/G contract types (SimpleContract, LinearConstraint)
+│       │   ├── library.py              # Component contract definitions
+│       │   ├── preflight.py            # Pipeline composition and pre-flight check
+│       │   └── monitor.py              # HierarchicalContractMonitor (runtime)
+│       ├── estimation/
+│       │   └── ekf.py                  # Contract-aware EKF
+│       ├── control/
+│       │   ├── base.py                 # Controller base class
+│       │   ├── pid.py, mpc.py, hinf.py # PID, MPC & H-infinity
+│       │   ├── switcher.py             # Controller switching
+│       │   └── supervisor.py           # Mission mode management
+│       ├── planning/                   # Horizon-based planning
+│       │   ├── pacti_contracts.py      # Pacti contract library
+│       │   ├── horizon_planner.py      # N-step contract cascade
+│       │   └── integrated_planner.py   # Control system integration
+│       ├── safety/
+│       │   ├── cbf.py                  # CBF filter
+│       │   └── runtime_monitor.py      # Runtime condition monitors
+│       ├── sim/
+│       │   ├── sensor_faults.py        # Fault injection module
+│       │   └── battery_model.py        # Battery model
+│       └── viz/
+│           └── live_visualizer.py      # Pygame 3D live visualizer
+│
+├── contract_uav_control/               # ROS 2 / PX4 offboard bridge (ament_python)
+├── contract_uav_msgs/                  # ROS 2 telemetry message (ament_cmake)
+├── docs/                               # ROS 2 testing manual and hardware procedure
+├── tests/                              # make test: smoke, golden and node-import tests
+├── tools/contracts_offline/            # Offline Pacti contract reconciliation
 │
 ├── simulation_demo.py                  # Main demonstration
 ├── demo_waypoint_mission.py           # Three-tier wind demo (PID→MPC→H-inf)
@@ -292,6 +311,7 @@ contract-based-uav-control/
 ├── benchmark_controllers.py           # Controller performance benchmark
 ├── benchmark_sensor_degradation.py    # Sensor degradation benchmark
 ├── requirements.txt                    # Dependencies
+├── Makefile                            # make test
 ├── README.md                           # This file
 └── DEVELOPMENT.md                      # Testing & development guide
 ```
