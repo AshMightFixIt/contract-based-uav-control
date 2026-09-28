@@ -22,7 +22,7 @@ Known legacy behaviour that these types carry unchanged (fixed in batch 3):
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, Mapping
 
 import numpy as np
 
@@ -67,6 +67,27 @@ class AccelCommand:
             'desired_attitude': self.desired_attitude,
             'desired_rates': self.desired_rates,
         }
+
+
+@dataclass(frozen=True, eq=False)
+class AttitudeThrustCommand:
+    """An attitude setpoint plus normalised collective thrust.
+
+    What the ROS node sends to PX4 (VehicleAttitudeSetpoint: q_d from the
+    attitude, thrust_body = [0, 0, -thrust]) and what the reference plant
+    sim/quadrotor.py takes.
+
+    attitude: shape (3,), [roll, pitch, yaw] in rad (ZYX, FRD body, NED world).
+    thrust: normalised collective thrust; physically along body -z (up).
+    """
+    attitude: np.ndarray
+    thrust: float
+
+    @classmethod
+    def from_legacy(cls, control: Mapping[str, Any]) -> 'AttitudeThrustCommand':
+        """From a legacy control dict, read as the node reads it: desired_attitude and thrust."""
+        return cls(attitude=np.asarray(control.get('desired_attitude', np.zeros(3)), dtype=float),
+                   thrust=float(control.get('thrust', 0.0)))
 
 
 class SwitchPriority(Enum):
