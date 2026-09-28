@@ -1,11 +1,14 @@
 """
 Pre-flight contract verification.
 
-ContractPreflightMixin gives HierarchicalContractMonitor (monitor.py) its
-compose_pipeline and verify_mission_feasibility, moved unchanged from
-contract_framework.py.
+- ContractPreflightMixin gives HierarchicalContractMonitor (monitor.py) its
+  compose_pipeline and verify_mission_feasibility, moved unchanged from
+  contract_framework.py.
+- ControllerPreflightMixin gives AdaptiveDroneController (core.py) its
+  pre_flight_check, moved unchanged from adaptive_control_system.py.
 """
 
+import numpy as np
 from typing import Dict, Tuple
 import logging
 
@@ -72,3 +75,56 @@ class ContractPreflightMixin:
 
         return True, (f"Mission feasible with {controller_name} "
                       f"(margin: {min_margin:.2f}, predicted: {pred_str})")
+
+
+class ControllerPreflightMixin:
+    """Pre-flight check of AdaptiveDroneController: picks the first feasible controller."""
+
+    def pre_flight_check(self,
+                        initial_conditions: Dict[str, float],
+                        mission: Dict[str, any]) -> Tuple[bool, str]:
+        """
+        Pre-flight contract verification.
+        Uses contract composition to verify mission is feasible.
+        Sets up the supervisor with the mission target.
+        """
+        logger.info("=" * 60)
+        logger.info("PRE-FLIGHT CONTRACT VERIFICATION")
+        logger.info("=" * 60)
+
+        target = mission.get('target_position', np.array([0.0, 0.0, -5.0]))
+        waypoints = mission.get('waypoints', [target])
+
+        # Try controllers in order: PID (efficient) → MPC (optimal) → H-inf (robust)
+        controllers = [
+            ('PID', "efficient PID"),
+            ('MPC', "optimal MPC"),
+            ('Hinf', "robust H-infinity"),
+        ]
+
+        for i, (name, desc) in enumerate(controllers, 1):
+            logger.info(f"\n[{i}/{len(controllers)}] Checking {desc}...")
+            # MPC pipeline needs computation_time in conditions
+            check_conditions = initial_conditions.copy()
+            if name == 'MPC' and 'computation_time' not in check_conditions:
+                check_conditions['computation_time'] = 0.01  # typical solve time
+
+            feasible, msg = self.contract_monitor.verify_mission_feasibility(
+                name, check_conditions
+            )
+
+            if feasible:
+                logger.info(f"{name} feasible: {msg}")
+                if name != 'PID':
+                    self.controller_switcher.switch_to(
+                        name, 0.0, f"Pre-flight: conditions require {desc}")
+                self.supervisor.set_waypoints(waypoints)
+                self.mission_feasible = True
+                perf_note = "" if name == 'PID' else " (degraded performance expected)"
+                return True, f"Mission feasible with {desc}{perf_note}"
+            else:
+                logger.warning(f"{name} infeasible: {msg}")
+
+        logger.error("MISSION INFEASIBLE - all controller contracts violated!")
+        self.mission_feasible = False
+        return False, "Mission infeasible - all controller contracts violated"
