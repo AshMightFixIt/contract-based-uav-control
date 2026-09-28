@@ -194,16 +194,31 @@ def test_row_count_and_f_a1_09_rollup(built):
     assert roll["agrees_with_f_a1_09"]
 
 
+def _loc_of(relpath, needle):
+    """Return "relpath:N" for the single line of relpath containing needle.
+
+    Looking the line up by content keeps these checks exact without
+    breaking whenever unrelated edits shift line numbers.
+    """
+    lines = (REPO_ROOT / relpath).read_text(encoding="utf-8").splitlines()
+    hits = [i for i, line in enumerate(lines, 1) if needle in line]
+    assert len(hits) == 1, f"{needle!r} found {len(hits)} times in {relpath}"
+    return f"{relpath}:{hits[0]}"
+
+
 def test_wind_rows_carry_all_three_copies(built):
     _, _, rows = built
     r = _rows(rows)
     mpc = r["MPC|wind_speed|A.upper"]
     assert (mpc["framework_value"], mpc["pacti_value"], mpc["status"]) == (15.0, 8.0, "mismatch")
-    assert mpc["framework_loc"] == "src/contracts/contract_framework.py:695"
-    assert mpc["pacti_loc"] == "src/planning/pacti_contracts.py:154"
+    assert mpc["framework_loc"] == _loc_of(
+        "src/contracts/contract_framework.py", '"wind_speed": (0.0, 15.0)')
+    assert mpc["pacti_loc"] == _loc_of(
+        "src/planning/pacti_contracts.py", "'wind_speed <= 8'")
     assert mpc["third_copy_value"] == "8" and mpc["third_copy_matches"] == "pacti_library"
-    assert "src/planning/horizon_planner.py:368" in mpc["third_copy_loc"]
-    assert "src/planning/integrated_planner.py:210" in mpc["third_copy_loc"]
+    wind_limits = "wind_limits = {'pid': 3.0, 'mpc': 8.0, 'hinf': 15.0}"
+    assert _loc_of("src/planning/horizon_planner.py", wind_limits) in mpc["third_copy_loc"]
+    assert _loc_of("src/planning/integrated_planner.py", wind_limits) in mpc["third_copy_loc"]
     assert r["HINF|wind_speed|A.upper"]["third_copy_matches"] == "pacti_library"
     assert r["PID|wind_speed|A.upper"]["third_copy_matches"] == "both"
 
