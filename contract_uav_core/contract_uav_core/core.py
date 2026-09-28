@@ -14,6 +14,7 @@ Key Innovation:
   Supervisor manages flight modes, CBF filter enforces hard safety constraints
 """
 
+import math
 import numpy as np
 from typing import Dict, Tuple, Optional, List
 import logging
@@ -54,9 +55,24 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
                            ctrl pick)    H-inf)       filter)
     """
 
+    # control_step(raw_sensors, t): bounds on the measured step, as multiples of the
+    # nominal dt. The EKF predicts with the raw step clamped to [DT_MIN, DT_MAX] x dt;
+    # a raw step above OVERRUN x dt counts as an overrun.
+    DT_MIN_FACTOR = 0.5
+    DT_MAX_FACTOR = 2.0
+    OVERRUN_FACTOR = 1.5
+
     def __init__(self, dt: float = 0.02, use_horizon_planner: bool = True):
         self.dt = dt
         self.time = 0.0
+
+        # Step timing, reported in the telemetry dict under 'timing' (see control_step)
+        self.step_count = 0
+        self.overrun_count = 0
+        self.nonincreasing_count = 0
+        self.last_dt_raw = None
+        self.last_dt_clamped = None
+        self._last_t = None
 
         # Contract monitor
         logger.info("Initializing Contract Monitor...")
@@ -130,7 +146,8 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
         return measurements
 
     def control_step(self,
-                    raw_sensors: Dict[str, any]) -> Tuple[Dict[str, np.ndarray], Dict[str, any]]:
+                    raw_sensors: Dict[str, any],
+                    t: Optional[float] = None) -> Tuple[Dict[str, np.ndarray], Dict[str, any]]:
         """
         Main control loop step.
 
@@ -144,11 +161,37 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
         7. CBF filter -> safe control
         8. Contract monitoring + logging
 
+        Time, two modes:
+        - t is None (the top-level scripts): the step runs at the accumulated
+          self.time and the EKF predicts with the nominal self.dt; self.time += self.dt
+          at the end. This is the unchanged legacy path.
+        - t given (seconds, from the caller's clock; the ROS node passes the PX4
+          timestamp): self.time = t for this step and is not advanced at the end.
+          The raw step is t minus the previous t (the nominal dt on the first timed
+          call). The EKF predicts with the raw step clamped to
+          [DT_MIN_FACTOR, DT_MAX_FACTOR] x dt. A raw step above OVERRUN_FACTOR x dt
+          counts in overrun_count. A non-increasing t (raw step <= 0: a repeated or
+          older timestamp) counts in nonincreasing_count and is clamped like any
+          other step, so the EKF still predicts DT_MIN_FACTOR x dt; self.time still
+          follows t, so it can go backwards. A non-finite t raises ValueError.
+          Only the EKF sees the measured step: the controllers, supervisor and
+          switcher keep their nominal dt. Do not mix the two modes on one controller.
+        The telemetry dict reports both modes under 'timing'.
+
         Returns: (control_output, telemetry)
         """
         if not self.mission_feasible:
             logger.error("Mission not feasible - cannot run control loop!")
             return {'thrust': 0.0, 'torques': np.zeros(3)}, {}
+
+        # 0. Step time (see the docstring)
+        if t is None:
+            dt_raw = dt_predict = self.dt
+        else:
+            dt_raw, dt_predict = self._advance_clock(t)
+        self.step_count += 1
+        self.last_dt_raw = dt_raw
+        self.last_dt_clamped = dt_predict
 
         # 1. Process sensors
         measurements = self.update_sensors(raw_sensors)
@@ -160,7 +203,7 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
             self.last_wind_sensor = None
 
         # 2. State estimation (predict + update)
-        self.ekf.predict(self.dt)  # Propagate state forward
+        self.ekf.predict(dt_predict)  # Propagate state forward (self.dt when t is None)
         state, estimation_ok = self.ekf.update(measurements, raw_sensors, self.time)
         state_dict = self.ekf.get_state()
 
@@ -263,11 +306,36 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
                 'horizon': planner_info.get('horizon', 0),
                 'plan_status': planner_info.get('plan_status', 'none'),
                 'replanned': planner_info.get('replanned', False),
-            }
+            },
+            # Step timing (control_step's docstring)
+            'timing': {
+                'time_source': 'accumulated' if t is None else 'caller',
+                'step_count': self.step_count,
+                'overrun_count': self.overrun_count,
+                'nonincreasing_count': self.nonincreasing_count,
+                'dt_raw': dt_raw,
+                'dt_clamped': dt_predict,
+            },
         }
 
-        self.time += self.dt
+        if t is None:
+            self.time += self.dt
         return control, telemetry
+
+    def _advance_clock(self, t: float) -> Tuple[float, float]:
+        """control_step with a caller time t: set self.time, count, return (raw, clamped) dt."""
+        t = float(t)
+        if not math.isfinite(t):
+            raise ValueError(f"control_step: t must be a finite time in seconds, got {t!r}")
+        dt_raw = self.dt if self._last_t is None else t - self._last_t
+        if dt_raw > self.OVERRUN_FACTOR * self.dt:
+            self.overrun_count += 1
+        if dt_raw <= 0.0:
+            self.nonincreasing_count += 1
+        dt_clamped = min(max(dt_raw, self.DT_MIN_FACTOR * self.dt), self.DT_MAX_FACTOR * self.dt)
+        self._last_t = t
+        self.time = t
+        return dt_raw, dt_clamped
 
     # --- Mission convenience methods ---
 
