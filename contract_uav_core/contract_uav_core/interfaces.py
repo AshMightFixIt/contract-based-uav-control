@@ -21,6 +21,7 @@ Known legacy behaviour that these types carry unchanged (fixed in batch 3):
 """
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Dict
 
 import numpy as np
@@ -66,3 +67,14 @@ class AccelCommand:
             'desired_attitude': self.desired_attitude,
             'desired_rates': self.desired_rates,
         }
+
+
+class SwitchPriority(Enum):
+    """Priority of a controller switch request (ControllerSwitcher.switch_to).
+
+    Recorded in the switcher's switch_history only. Today every priority
+    switches exactly as NORMAL does, cooldown included: the semantics for
+    EMERGENCY (e.g. bypassing the cooldown) arrive in P1.5 (K14).
+    """
+    NORMAL = "normal"
+    EMERGENCY = "emergency"

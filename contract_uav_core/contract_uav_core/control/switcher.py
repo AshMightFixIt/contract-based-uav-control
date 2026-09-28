@@ -1,26 +1,42 @@
 """
 ControllerSwitcher: holds the PID, MPC and H-infinity controllers and switches
-between them (moved unchanged from controllers.py, with its self-test).
+between them (moved from controllers.py, with its self-test).
+
+Time is explicit: switch_to takes the caller's current_time (the core passes
+its self.time); the switcher reads no clock of its own. switch_to also takes a
+SwitchPriority, recorded in switch_history; its semantics arrive in P1.5.
 
 Self-test: python -m contract_uav_core.control.switcher
 """
 
 import numpy as np
-from typing import Dict
+from collections import deque
+from typing import Dict, NamedTuple
 import logging
 
 from .pid import PIDController
 from .mpc import MPCController
 from .hinf import HInfinityController
-from ..interfaces import AccelCommand
+from ..interfaces import AccelCommand, SwitchPriority
 
 logger = logging.getLogger(__name__)
+
+
+class SwitchRecord(NamedTuple):
+    """One performed switch, as kept in ControllerSwitcher.switch_history."""
+    time: float
+    from_controller: str
+    to_controller: str
+    reason: str
+    priority: SwitchPriority
 
 
 class ControllerSwitcher:
     """
     Manages switching between controllers based on contracts
     """
+
+    SWITCH_HISTORY_LEN = 1000  # switch_history keeps the newest this many switches
     
     def __init__(self, dt: float = 0.02):
         self.controllers = {
@@ -35,11 +51,22 @@ class ControllerSwitcher:
         # Cooldown to prevent chattering (≥ PID settling time ~16s; 5s is a practical minimum)
         self.switch_cooldown = 5.0  # seconds
         self.last_switch_time = -self.switch_cooldown  # Allow immediate switch at t=0
+
+        # Performed switches, newest last (bounded; refused requests are not recorded)
+        self.switch_history = deque(maxlen=self.SWITCH_HISTORY_LEN)
         
         logger.info("Controller Switcher initialized")
     
-    def switch_to(self, controller_name: str, current_time: float, reason: str = ""):
-        """Switch to a different controller"""
+    def switch_to(self, controller_name: str, current_time: float, reason: str = "",
+                  priority: SwitchPriority = SwitchPriority.NORMAL):
+        """Switch to a different controller.
+
+        current_time: the caller's time in seconds (the cooldown is measured on it).
+        priority: recorded in switch_history. It does not change the decision yet:
+            every priority obeys the same rules as NORMAL (semantics arrive in P1.5).
+        Returns True if the switch happened.
+        """
+        priority = SwitchPriority(priority)
         
         if controller_name not in self.controllers:
             logger.error(f"Controller {controller_name} not found!")
@@ -55,6 +82,7 @@ class ControllerSwitcher:
         
         # Bumpless transfer: capture integral state from outgoing controller before switch
         outgoing_integral = self.controllers[self.active_controller].get_integral_state()
+        previous = self.active_controller
 
         # Perform switch
         self.controllers[self.active_controller].deactivate()
@@ -66,6 +94,8 @@ class ControllerSwitcher:
         self.controllers[self.active_controller].set_integral_state(outgoing_integral)
 
         self.last_switch_time = current_time
+        self.switch_history.append(
+            SwitchRecord(current_time, previous, controller_name, reason, priority))
 
         logger.warning(f"CONTROLLER SWITCH: {reason} "
                        f"(integral transferred: {outgoing_integral.round(3)})")
