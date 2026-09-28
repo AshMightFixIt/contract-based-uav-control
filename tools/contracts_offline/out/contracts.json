@@ -1260,7 +1260,7 @@
       "contract": "gps",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:54",
+      "loc": "src/planning/pacti_contracts.py:65",
       "source": "pacti_library",
       "variable": "gps_hdop",
       "via": {}
@@ -1272,7 +1272,7 @@
       "contract": "gps",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:55",
+      "loc": "src/planning/pacti_contracts.py:66",
       "source": "pacti_library",
       "variable": "gps_hdop",
       "via": {}
@@ -1284,7 +1284,7 @@
       "contract": "gps",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:52",
+      "loc": "src/planning/pacti_contracts.py:63",
       "source": "pacti_library",
       "variable": "gps_satellites",
       "via": {}
@@ -1296,7 +1296,7 @@
       "contract": "gps",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:53",
+      "loc": "src/planning/pacti_contracts.py:64",
       "source": "pacti_library",
       "variable": "gps_satellites",
       "via": {}
@@ -1308,7 +1308,7 @@
       "contract": "gps",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:58",
+      "loc": "src/planning/pacti_contracts.py:69",
       "source": "pacti_library",
       "variable": "position_meas_error",
       "via": {}
@@ -1322,7 +1322,7 @@
       "contract": "gps",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:59",
+      "loc": "src/planning/pacti_contracts.py:70",
       "source": "pacti_library",
       "variable": "position_meas_error",
       "via": {}
@@ -1334,7 +1334,7 @@
       "contract": "gps",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:60",
+      "loc": "src/planning/pacti_contracts.py:71",
       "source": "pacti_library",
       "variable": "velocity_meas_error",
       "via": {}
@@ -1348,7 +1348,7 @@
       "contract": "gps",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:61",
+      "loc": "src/planning/pacti_contracts.py:72",
       "source": "pacti_library",
       "variable": "velocity_meas_error",
       "via": {}
@@ -1360,7 +1360,7 @@
       "contract": "imu",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:70",
+      "loc": "src/planning/pacti_contracts.py:81",
       "source": "pacti_library",
       "variable": "imu_temp_deviation",
       "via": {}
@@ -1372,7 +1372,7 @@
       "contract": "imu",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:71",
+      "loc": "src/planning/pacti_contracts.py:82",
       "source": "pacti_library",
       "variable": "imu_temp_deviation",
       "via": {}
@@ -1384,7 +1384,7 @@
       "contract": "imu",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:74",
+      "loc": "src/planning/pacti_contracts.py:85",
       "source": "pacti_library",
       "variable": "attitude_meas_error",
       "via": {}
@@ -1398,7 +1398,7 @@
       "contract": "imu",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:75",
+      "loc": "src/planning/pacti_contracts.py:86",
       "source": "pacti_library",
       "variable": "attitude_meas_error",
       "via": {}
@@ -1410,7 +1410,7 @@
       "contract": "imu",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:76",
+      "loc": "src/planning/pacti_contracts.py:87",
       "source": "pacti_library",
       "variable": "rate_meas_error",
       "via": {}
@@ -1424,7 +1424,7 @@
       "contract": "imu",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:77",
+      "loc": "src/planning/pacti_contracts.py:88",
       "source": "pacti_library",
       "variable": "rate_meas_error",
       "via": {}
@@ -1436,7 +1436,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:95",
+      "loc": "src/planning/pacti_contracts.py:106",
       "source": "pacti_library",
       "variable": "attitude_meas_error",
       "via": {}
@@ -1448,7 +1448,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:96",
+      "loc": "src/planning/pacti_contracts.py:107",
       "source": "pacti_library",
       "variable": "attitude_meas_error",
       "via": {}
@@ -1460,7 +1460,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:91",
+      "loc": "src/planning/pacti_contracts.py:102",
       "source": "pacti_library",
       "variable": "position_meas_error",
       "via": {}
@@ -1472,7 +1472,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:92",
+      "loc": "src/planning/pacti_contracts.py:103",
       "source": "pacti_library",
       "variable": "position_meas_error",
       "via": {}
@@ -1484,7 +1484,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:97",
+      "loc": "src/planning/pacti_contracts.py:108",
       "source": "pacti_library",
       "variable": "rate_meas_error",
       "via": {}
@@ -1496,7 +1496,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:98",
+      "loc": "src/planning/pacti_contracts.py:109",
       "source": "pacti_library",
       "variable": "rate_meas_error",
       "via": {}
@@ -1508,7 +1508,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:93",
+      "loc": "src/planning/pacti_contracts.py:104",
       "source": "pacti_library",
       "variable": "velocity_meas_error",
       "via": {}
@@ -1520,7 +1520,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:94",
+      "loc": "src/planning/pacti_contracts.py:105",
       "source": "pacti_library",
       "variable": "velocity_meas_error",
       "via": {}
@@ -1532,7 +1532,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:106",
+      "loc": "src/planning/pacti_contracts.py:117",
       "source": "pacti_library",
       "variable": "attitude_est_error",
       "via": {}
@@ -1546,7 +1546,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:107",
+      "loc": "src/planning/pacti_contracts.py:118",
       "source": "pacti_library",
       "variable": "attitude_est_error",
       "via": {}
@@ -1558,7 +1558,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:102",
+      "loc": "src/planning/pacti_contracts.py:113",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1572,7 +1572,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:103",
+      "loc": "src/planning/pacti_contracts.py:114",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1584,7 +1584,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:108",
+      "loc": "src/planning/pacti_contracts.py:119",
       "source": "pacti_library",
       "variable": "rate_est_error",
       "via": {}
@@ -1598,7 +1598,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:109",
+      "loc": "src/planning/pacti_contracts.py:120",
       "source": "pacti_library",
       "variable": "rate_est_error",
       "via": {}
@@ -1610,7 +1610,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:104",
+      "loc": "src/planning/pacti_contracts.py:115",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1624,7 +1624,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:105",
+      "loc": "src/planning/pacti_contracts.py:116",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1636,7 +1636,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:129",
+      "loc": "src/planning/pacti_contracts.py:140",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1648,7 +1648,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:130",
+      "loc": "src/planning/pacti_contracts.py:141",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1660,7 +1660,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:123",
+      "loc": "src/planning/pacti_contracts.py:134",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1672,7 +1672,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:124",
+      "loc": "src/planning/pacti_contracts.py:135",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1684,7 +1684,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:125",
+      "loc": "src/planning/pacti_contracts.py:136",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1696,7 +1696,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:126",
+      "loc": "src/planning/pacti_contracts.py:137",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1708,7 +1708,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:127",
+      "loc": "src/planning/pacti_contracts.py:138",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -1720,7 +1720,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:128",
+      "loc": "src/planning/pacti_contracts.py:139",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -1732,7 +1732,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:136",
+      "loc": "src/planning/pacti_contracts.py:147",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -1744,7 +1744,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:137",
+      "loc": "src/planning/pacti_contracts.py:148",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -1756,7 +1756,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:138",
+      "loc": "src/planning/pacti_contracts.py:149",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -1768,7 +1768,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:139",
+      "loc": "src/planning/pacti_contracts.py:150",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -1780,7 +1780,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:133",
+      "loc": "src/planning/pacti_contracts.py:144",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -1795,7 +1795,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:135",
+      "loc": "src/planning/pacti_contracts.py:146",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -1807,7 +1807,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:155",
+      "loc": "src/planning/pacti_contracts.py:166",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1819,7 +1819,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:156",
+      "loc": "src/planning/pacti_contracts.py:167",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1831,7 +1831,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:149",
+      "loc": "src/planning/pacti_contracts.py:160",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1843,7 +1843,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:150",
+      "loc": "src/planning/pacti_contracts.py:161",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1855,7 +1855,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:151",
+      "loc": "src/planning/pacti_contracts.py:162",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1867,7 +1867,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:152",
+      "loc": "src/planning/pacti_contracts.py:163",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1879,7 +1879,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:153",
+      "loc": "src/planning/pacti_contracts.py:164",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -1891,7 +1891,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:154",
+      "loc": "src/planning/pacti_contracts.py:165",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -1903,7 +1903,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:162",
+      "loc": "src/planning/pacti_contracts.py:173",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -1915,7 +1915,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:163",
+      "loc": "src/planning/pacti_contracts.py:174",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -1927,7 +1927,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:164",
+      "loc": "src/planning/pacti_contracts.py:175",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -1939,7 +1939,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:165",
+      "loc": "src/planning/pacti_contracts.py:176",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -1951,7 +1951,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:159",
+      "loc": "src/planning/pacti_contracts.py:170",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -1966,7 +1966,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:161",
+      "loc": "src/planning/pacti_contracts.py:172",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -1978,7 +1978,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:182",
+      "loc": "src/planning/pacti_contracts.py:193",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1990,7 +1990,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:183",
+      "loc": "src/planning/pacti_contracts.py:194",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -2002,7 +2002,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:176",
+      "loc": "src/planning/pacti_contracts.py:187",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -2014,7 +2014,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:177",
+      "loc": "src/planning/pacti_contracts.py:188",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -2026,7 +2026,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:178",
+      "loc": "src/planning/pacti_contracts.py:189",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -2038,7 +2038,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:179",
+      "loc": "src/planning/pacti_contracts.py:190",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -2050,7 +2050,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:180",
+      "loc": "src/planning/pacti_contracts.py:191",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -2062,7 +2062,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:181",
+      "loc": "src/planning/pacti_contracts.py:192",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -2074,7 +2074,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:189",
+      "loc": "src/planning/pacti_contracts.py:200",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2086,7 +2086,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:190",
+      "loc": "src/planning/pacti_contracts.py:201",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2098,7 +2098,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:191",
+      "loc": "src/planning/pacti_contracts.py:202",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -2110,7 +2110,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:192",
+      "loc": "src/planning/pacti_contracts.py:203",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -2122,7 +2122,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:186",
+      "loc": "src/planning/pacti_contracts.py:197",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -2137,7 +2137,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:188",
+      "loc": "src/planning/pacti_contracts.py:199",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -2149,7 +2149,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:206",
+      "loc": "src/planning/pacti_contracts.py:217",
       "source": "pacti_library",
       "variable": "battery_voltage",
       "via": {}
@@ -2161,7 +2161,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:207",
+      "loc": "src/planning/pacti_contracts.py:218",
       "source": "pacti_library",
       "variable": "battery_voltage",
       "via": {}
@@ -2173,7 +2173,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:204",
+      "loc": "src/planning/pacti_contracts.py:215",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2185,7 +2185,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:205",
+      "loc": "src/planning/pacti_contracts.py:216",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2197,7 +2197,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:208",
+      "loc": "src/planning/pacti_contracts.py:219",
       "source": "pacti_library",
       "variable": "motor_temp",
       "via": {}
@@ -2209,7 +2209,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:209",
+      "loc": "src/planning/pacti_contracts.py:220",
       "source": "pacti_library",
       "variable": "motor_temp",
       "via": {}
@@ -2221,7 +2221,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:213",
+      "loc": "src/planning/pacti_contracts.py:224",
       "source": "pacti_library",
       "variable": "thrust_accuracy",
       "via": {}
@@ -2233,7 +2233,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:214",
+      "loc": "src/planning/pacti_contracts.py:225",
       "source": "pacti_library",
       "variable": "thrust_accuracy",
       "via": {}
@@ -2245,7 +2245,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:215",
+      "loc": "src/planning/pacti_contracts.py:226",
       "source": "pacti_library",
       "variable": "torque_accuracy",
       "via": {}
@@ -2257,7 +2257,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:216",
+      "loc": "src/planning/pacti_contracts.py:227",
       "source": "pacti_library",
       "variable": "torque_accuracy",
       "via": {}
@@ -2269,7 +2269,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:231",
+      "loc": "src/planning/pacti_contracts.py:242",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2281,7 +2281,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:232",
+      "loc": "src/planning/pacti_contracts.py:243",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2293,7 +2293,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:235",
+      "loc": "src/planning/pacti_contracts.py:246",
       "source": "pacti_library",
       "variable": "dt",
       "via": {}
@@ -2305,7 +2305,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:236",
+      "loc": "src/planning/pacti_contracts.py:247",
       "source": "pacti_library",
       "variable": "dt",
       "via": {}
@@ -2317,7 +2317,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:229",
+      "loc": "src/planning/pacti_contracts.py:240",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -2329,7 +2329,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:230",
+      "loc": "src/planning/pacti_contracts.py:241",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -2341,7 +2341,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:233",
+      "loc": "src/planning/pacti_contracts.py:244",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -2353,7 +2353,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:234",
+      "loc": "src/planning/pacti_contracts.py:245",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -2365,7 +2365,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:239",
+      "loc": "src/planning/pacti_contracts.py:250",
       "source": "pacti_library",
       "variable": "next_tracking_error",
       "via": {}
@@ -2380,7 +2380,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:242",
+      "loc": "src/planning/pacti_contracts.py:253",
       "source": "pacti_library",
       "variable": "next_tracking_error",
       "via": {}
@@ -2392,7 +2392,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:243",
+      "loc": "src/planning/pacti_contracts.py:254",
       "source": "pacti_library",
       "variable": "position_change",
       "via": {}
@@ -2406,7 +2406,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:244",
+      "loc": "src/planning/pacti_contracts.py:255",
       "source": "pacti_library",
       "variable": "position_change",
       "via": {}
@@ -6679,7 +6679,7 @@
       },
       {
         "path": "src/planning/horizon_planner.py",
-        "sha256": "5661498ce63a3fea45ba68d00684454e9b7b329b584080f0934c7fa59dfca734"
+        "sha256": "491b642dcde46c9fbe63c4c870d042c9efca40be8bf8d4de611315a91bb88fe7"
       },
       {
         "path": "src/planning/integrated_planner.py",
@@ -6687,10 +6687,10 @@
       },
       {
         "path": "src/planning/pacti_contracts.py",
-        "sha256": "4d9fc06b7c179d4da00844d819059881f649bab9c44076898250729fe7e770db"
+        "sha256": "1549b3f24bdcd41d0f4d694a7bc857345411d1462d609d523cc8483b089c9f49"
       }
     ],
-    "inputs_sha256": "5a173bfa29be2b05e5f7d9386fa4ee12ae6fc771172478d3bdc65c82a997cbf2"
+    "inputs_sha256": "4a8b8da0cc450b1158bbcf567ff376519fd5182f58c3391c4b37897d600df303"
   },
   "reconciliation": {
     "both_present": 101,
@@ -6788,7 +6788,7 @@
     {
       "direction": "upper",
       "function": "check_and_replan",
-      "line": 368,
+      "line": 373,
       "path": "src/planning/horizon_planner.py",
       "values": {
         "hinf": 15.0,
@@ -6866,7 +6866,7 @@
     },
     {
       "component_bound": 10.0,
-      "component_loc": "src/planning/pacti_contracts.py:55",
+      "component_loc": "src/planning/pacti_contracts.py:66",
       "composed_bound": 5.428571429,
       "composed_terms": [
         "gps_hdop <= 5.428571429",
