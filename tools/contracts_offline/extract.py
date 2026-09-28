@@ -1,8 +1,9 @@
 """Read both contract libraries read-only and normalise every bound.
 
-* Values come from the imported runtime objects (``src`` is put on ``sys.path``
-  inside this process only; bytecode writing is switched off so nothing is
-  written under ``src/``).
+* Values come from the imported runtime objects of the installed core package
+  ``contract_uav_core``, which must be this repo's (``pip install -e
+  ./contract_uav_core``). Bytecode writing is switched off so nothing is
+  written into the package.
 * File:line locations come from parsing the same source files with ``ast``.
 * The planner's hard-coded ``wind_limits`` dicts are local variables inside
   methods, so they can only be read from the source (``ast``), not imported.
@@ -17,10 +18,13 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from .model import (
+    CORE_PACKAGE_PATH,
     FRAMEWORK_CONTRACT_COMPONENT,
+    FRAMEWORK_MODULE,
     FRAMEWORK_PATH,
     FRAMEWORK_SENSOR_CONTRACT,
     PACTI_CONTRACT_COMPONENT,
+    PACTI_LIB_MODULE,
     PACTI_LIB_PATH,
     SENSOR_VAR_COMPONENT,
     THIRD_COPY_PATHS,
@@ -35,32 +39,26 @@ class ExtractionError(RuntimeError):
 # --------------------------------------------------------------------------
 # Imports (read-only)
 # --------------------------------------------------------------------------
-def _ensure_src_on_path(repo_root: Path) -> Path:
-    src = (repo_root / "src").resolve()
-    sys.dont_write_bytecode = True  # never write __pycache__ under src/
-    if str(src) not in sys.path:
-        sys.path.insert(0, str(src))
-    return src
-
-
-def _import_from_src(repo_root: Path, module: str):
-    src = _ensure_src_on_path(repo_root)
+def _import_core_module(repo_root: Path, module: str):
+    package_dir = (repo_root / CORE_PACKAGE_PATH).resolve()
+    sys.dont_write_bytecode = True  # never write __pycache__ into the package
     mod = importlib.import_module(module)
     path = Path(mod.__file__).resolve()
-    if src not in path.parents:
-        raise ExtractionError(f"{module} was imported from {path}, not from {src}")
+    if package_dir not in path.parents:
+        raise ExtractionError(f"{module} was imported from {path}, not from {package_dir}; "
+                              "install the core from this repo: pip install -e ./contract_uav_core")
     return mod
 
 
 def import_framework(repo_root: Path):
-    mod = _import_from_src(repo_root, "contracts.contract_framework")
+    mod = _import_core_module(repo_root, FRAMEWORK_MODULE)
     monitor = mod.HierarchicalContractMonitor()
     monitor.define_contracts()
     return mod, monitor
 
 
 def import_pacti_library(repo_root: Path):
-    mod = _import_from_src(repo_root, "planning.pacti_contracts")
+    mod = _import_core_module(repo_root, PACTI_LIB_MODULE)
     return mod, mod.PactiContractLibrary()
 
 

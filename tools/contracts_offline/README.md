@@ -20,17 +20,20 @@ decision (decision DC).
 
 ## What it reads
 
-Both libraries are imported read-only from `src/`. `src` is added to `sys.path`
-inside the tool only, and bytecode writing is switched off, so nothing is written
-under `src/`.
+Both libraries are imported read-only from the installed core package
+`contract_uav_core`. The tool checks that the package is this repo's
+`contract_uav_core/contract_uav_core/` (an editable install), and switches
+bytecode writing off, so nothing is written into the package. Paths below are
+relative to `contract_uav_core/contract_uav_core/`.
 
-- The framework: `src/contracts/contract_framework.py`, i.e.
-  `HierarchicalContractMonitor().define_contracts()`, with `SimpleContract` and
-  `LinearConstraint`.
-- The Pacti library: `src/planning/pacti_contracts.py`, i.e.
+- The framework: `contracts/library.py` (the contract definitions), i.e.
+  `HierarchicalContractMonitor().define_contracts()` with `HierarchicalContractMonitor`
+  from `contracts/monitor.py`, and `SimpleContract` and `LinearConstraint` from
+  `contracts/spec.py`.
+- The Pacti library: `planning/pacti_contracts.py`, i.e.
   `PactiContractLibrary().contracts`.
 - The third copy of the wind limits: the `wind_limits` dicts in
-  `src/planning/horizon_planner.py` and `src/planning/integrated_planner.py`.
+  `planning/horizon_planner.py` and `planning/integrated_planner.py`.
   These are local variables inside methods, so they are read from the source
   with `ast`.
 
@@ -69,7 +72,7 @@ byte-identical on 3.10, 3.11, 3.12 and 3.13, and CI runs 3.10 and 3.11. Run
 from the repo root:
 
 ```bash
-python -m pip install -r tools/contracts_offline/requirements.txt   # in a venv
+python -m pip install -r tools/contracts_offline/requirements.txt -e ./contract_uav_core   # in a venv
 python -B tools/contracts_offline/run.py          # or: python -B -m tools.contracts_offline
 python -B tools/contracts_offline/run.py --check  # exit 1 if out/ is stale; writes nothing
 python -B -m pytest -p no:cacheprovider tools/contracts_offline/tests

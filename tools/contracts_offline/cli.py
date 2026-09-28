@@ -145,9 +145,9 @@ def _bound_record(b) -> dict:
 def build(repo_root: Path) -> Tuple[Dict[str, bytes], dict, List[dict]]:
     """Compute everything; return ({file name: bytes}, contracts.json document, rows)."""
     from . import compose, extract, provenance, reconcile, render
-    from .model import (ALIASES, COMPONENT_ORDER, FRAMEWORK_CONTRACT_COMPONENT, FRAMEWORK_PATH,
-                        FRAMEWORK_SENSOR_CONTRACT, NOT_ALIASED, PACTI_CONTRACT_COMPONENT, PACTI_LIB_PATH,
-                        SIG_DIGITS, rnd)
+    from .model import (ALIASES, COMPONENT_ORDER, FRAMEWORK_CONTRACT_COMPONENT, FRAMEWORK_MODULE,
+                        FRAMEWORK_PATH, FRAMEWORK_SENSOR_CONTRACT, NOT_ALIASED, PACTI_CONTRACT_COMPONENT,
+                        PACTI_LIB_MODULE, PACTI_LIB_PATH, SIG_DIGITS, rnd)
 
     repo_root = repo_root.resolve()
     prev_disable = logging.root.manager.disable
@@ -231,9 +231,9 @@ def build(repo_root: Path) -> Tuple[Dict[str, bytes], dict, List[dict]]:
                 "sum(coefficients[v] * v) <= constant; numbers are rounded to 10 significant digits, so "
                 "compare with a relative tolerance of about 1e-9"),
             "sources": {
-                "framework": {"path": FRAMEWORK_PATH, "module": "contracts.contract_framework",
+                "framework": {"path": FRAMEWORK_PATH, "module": FRAMEWORK_MODULE,
                               "objects": "HierarchicalContractMonitor().define_contracts()"},
-                "pacti_library": {"path": PACTI_LIB_PATH, "module": "planning.pacti_contracts",
+                "pacti_library": {"path": PACTI_LIB_PATH, "module": PACTI_LIB_MODULE,
                                   "objects": "PactiContractLibrary().contracts"},
             },
             "variable_aliases": [{"component": c, "pacti_library": p, "framework": f, "reason": w}
@@ -271,6 +271,14 @@ def main(argv=None) -> int:
     if importlib.util.find_spec("pacti") is None:
         print("contracts_offline: pacti is not installed. Install the tool's requirements:\n"
               "  python -m pip install -r tools/contracts_offline/requirements.txt", file=sys.stderr)
+        return 2
+    try:  # find_spec raises when a parent package is missing
+        core_found = importlib.util.find_spec("contract_uav_core.contracts.monitor") is not None
+    except ModuleNotFoundError:
+        core_found = False
+    if not core_found:
+        print("contracts_offline: the core package is not installed. From the repo root:\n"
+              "  python -m pip install -e ./contract_uav_core", file=sys.stderr)
         return 2
 
     files, doc, _ = build(args.repo_root)

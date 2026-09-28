@@ -8,7 +8,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:465",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:133",
       "source": "framework",
       "variable": "gps_hdop",
       "via": {}
@@ -20,7 +20,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:465",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:133",
       "source": "framework",
       "variable": "gps_hdop",
       "via": {}
@@ -32,7 +32,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:464",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:132",
       "source": "framework",
       "variable": "gps_satellites",
       "via": {}
@@ -44,7 +44,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:464",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:132",
       "source": "framework",
       "variable": "gps_satellites",
       "via": {}
@@ -56,7 +56,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:475",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:143",
       "source": "framework",
       "variable": "position_meas_error",
       "via": {}
@@ -70,12 +70,12 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:473-474",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:141-142",
       "source": "framework",
       "variable": "position_meas_error",
       "via": {
         "coef[gps_hdop]": [
-          "UERE (:384)"
+          "UERE (:52)"
         ]
       }
     },
@@ -86,7 +86,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:480",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:148",
       "source": "framework",
       "variable": "velocity_meas_error",
       "via": {}
@@ -98,12 +98,12 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:479",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:147",
       "source": "framework",
       "variable": "velocity_meas_error",
       "via": {
         "const": [
-          "SIGMA_DOPPLER (:385)"
+          "SIGMA_DOPPLER (:53)"
         ]
       }
     },
@@ -114,7 +114,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:467",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:135",
       "source": "framework",
       "variable": "imu_calibrated",
       "via": {}
@@ -126,7 +126,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:467",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:135",
       "source": "framework",
       "variable": "imu_calibrated",
       "via": {}
@@ -138,7 +138,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:466",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:134",
       "source": "framework",
       "variable": "imu_temperature",
       "via": {}
@@ -150,7 +150,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:466",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:134",
       "source": "framework",
       "variable": "imu_temperature",
       "via": {}
@@ -162,7 +162,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:495",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:163",
       "source": "framework",
       "variable": "attitude_meas_error",
       "via": {}
@@ -176,15 +176,15 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:493-494",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:161-162",
       "source": "framework",
       "variable": "attitude_meas_error",
       "via": {
         "coef[imu_temperature]": [
-          "IMU_ATT_TC (:393)"
+          "IMU_ATT_TC (:61)"
         ],
         "const": [
-          "IMU_ATT_BASE (:394)"
+          "IMU_ATT_BASE (:62)"
         ]
       }
     },
@@ -195,7 +195,7 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:488",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:156",
       "source": "framework",
       "variable": "rate_meas_error",
       "via": {}
@@ -209,15 +209,15 @@
       "contract": "GPS_IMU_Sensors",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:486-487",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:154-155",
       "source": "framework",
       "variable": "rate_meas_error",
       "via": {
         "coef[imu_temperature]": [
-          "IMU_RATE_TC (:391)"
+          "IMU_RATE_TC (:59)"
         ],
         "const": [
-          "IMU_RATE_BASE (:392)"
+          "IMU_RATE_BASE (:60)"
         ]
       }
     },
@@ -228,7 +228,7 @@
       "contract": "EKF_Estimator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:523",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:191",
       "source": "framework",
       "variable": "attitude_meas_error",
       "via": {}
@@ -240,7 +240,7 @@
       "contract": "EKF_Estimator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:523",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:191",
       "source": "framework",
       "variable": "attitude_meas_error",
       "via": {}
@@ -252,7 +252,7 @@
       "contract": "EKF_Estimator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:520",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:188",
       "source": "framework",
       "variable": "position_meas_error",
       "via": {}
@@ -264,12 +264,12 @@
       "contract": "EKF_Estimator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:520",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:188",
       "source": "framework",
       "variable": "position_meas_error",
       "via": {
         "bound": [
-          "UERE (:384)"
+          "UERE (:52)"
         ]
       }
     },
@@ -280,7 +280,7 @@
       "contract": "EKF_Estimator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:522",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:190",
       "source": "framework",
       "variable": "rate_meas_error",
       "via": {}
@@ -292,7 +292,7 @@
       "contract": "EKF_Estimator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:522",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:190",
       "source": "framework",
       "variable": "rate_meas_error",
       "via": {}
@@ -304,7 +304,7 @@
       "contract": "EKF_Estimator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:521",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:189",
       "source": "framework",
       "variable": "velocity_meas_error",
       "via": {}
@@ -316,7 +316,7 @@
       "contract": "EKF_Estimator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:521",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:189",
       "source": "framework",
       "variable": "velocity_meas_error",
       "via": {}
@@ -328,7 +328,7 @@
       "contract": "EKF_Estimator",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:543",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:211",
       "source": "framework",
       "variable": "attitude_error",
       "via": {}
@@ -342,15 +342,15 @@
       "contract": "EKF_Estimator",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:541-542",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:209-210",
       "source": "framework",
       "variable": "attitude_error",
       "via": {
         "coef[attitude_meas_error]": [
-          "ALPHA_ATT (:403)"
+          "ALPHA_ATT (:71)"
         ],
         "const": [
-          "BETA_ATT (:404)"
+          "BETA_ATT (:72)"
         ]
       }
     },
@@ -361,12 +361,12 @@
       "contract": "EKF_Estimator",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:547",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:215",
       "source": "framework",
       "variable": "nees_bound",
       "via": {
         "const": [
-          "NEES_BOUND (:406)"
+          "NEES_BOUND (:74)"
         ]
       }
     },
@@ -377,12 +377,12 @@
       "contract": "EKF_Estimator",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:549",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:217",
       "source": "framework",
       "variable": "nis_bound",
       "via": {
         "const": [
-          "NIS_BOUND (:407)"
+          "NIS_BOUND (:75)"
         ]
       }
     },
@@ -393,7 +393,7 @@
       "contract": "EKF_Estimator",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:531",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:199",
       "source": "framework",
       "variable": "position_error",
       "via": {}
@@ -407,15 +407,15 @@
       "contract": "EKF_Estimator",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:529-530",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:197-198",
       "source": "framework",
       "variable": "position_error",
       "via": {
         "coef[position_meas_error]": [
-          "ALPHA_POS (:399)"
+          "ALPHA_POS (:67)"
         ],
         "const": [
-          "BETA_POS (:400)"
+          "BETA_POS (:68)"
         ]
       }
     },
@@ -426,7 +426,7 @@
       "contract": "EKF_Estimator",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:537",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:205",
       "source": "framework",
       "variable": "velocity_error",
       "via": {}
@@ -440,15 +440,15 @@
       "contract": "EKF_Estimator",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:535-536",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:203-204",
       "source": "framework",
       "variable": "velocity_error",
       "via": {
         "coef[velocity_meas_error]": [
-          "ALPHA_VEL (:401)"
+          "ALPHA_VEL (:69)"
         ],
         "const": [
-          "BETA_VEL (:402)"
+          "BETA_VEL (:70)"
         ]
       }
     },
@@ -459,7 +459,7 @@
       "contract": "PID_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:576",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:244",
       "source": "framework",
       "variable": "disturbance",
       "via": {}
@@ -471,7 +471,7 @@
       "contract": "PID_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:576",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:244",
       "source": "framework",
       "variable": "disturbance",
       "via": {}
@@ -483,7 +483,7 @@
       "contract": "PID_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:573",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:241",
       "source": "framework",
       "variable": "position_error",
       "via": {}
@@ -495,7 +495,7 @@
       "contract": "PID_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:573",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:241",
       "source": "framework",
       "variable": "position_error",
       "via": {}
@@ -507,7 +507,7 @@
       "contract": "PID_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:574",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:242",
       "source": "framework",
       "variable": "velocity_error",
       "via": {}
@@ -519,7 +519,7 @@
       "contract": "PID_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:574",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:242",
       "source": "framework",
       "variable": "velocity_error",
       "via": {}
@@ -531,7 +531,7 @@
       "contract": "PID_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:575",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:243",
       "source": "framework",
       "variable": "wind_speed",
       "via": {}
@@ -543,7 +543,7 @@
       "contract": "PID_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:575",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:243",
       "source": "framework",
       "variable": "wind_speed",
       "via": {}
@@ -555,7 +555,7 @@
       "contract": "PID_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:601",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:269",
       "source": "framework",
       "variable": "control_effort",
       "via": {}
@@ -570,7 +570,7 @@
       "contract": "PID_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:599-600",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:267-268",
       "source": "framework",
       "variable": "control_effort",
       "via": {}
@@ -582,7 +582,7 @@
       "contract": "PID_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:605",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:273",
       "source": "framework",
       "variable": "max_tilt",
       "via": {}
@@ -594,12 +594,12 @@
       "contract": "PID_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:604",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:272",
       "source": "framework",
       "variable": "max_tilt",
       "via": {
         "const": [
-          "TILT_LIMIT (:417)"
+          "TILT_LIMIT (:85)"
         ]
       }
     },
@@ -610,7 +610,7 @@
       "contract": "PID_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:595",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:263",
       "source": "framework",
       "variable": "settling_time",
       "via": {}
@@ -625,12 +625,12 @@
       "contract": "PID_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:592-594",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:260-262",
       "source": "framework",
       "variable": "settling_time",
       "via": {
         "const": [
-          "T_SETTLE_BASE (:415)"
+          "T_SETTLE_BASE (:83)"
         ]
       }
     },
@@ -641,7 +641,7 @@
       "contract": "PID_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:587",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:255",
       "source": "framework",
       "variable": "tracking_error",
       "via": {}
@@ -656,15 +656,15 @@
       "contract": "PID_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:584-586",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:252-254",
       "source": "framework",
       "variable": "tracking_error",
       "via": {
         "coef[wind_speed]": [
-          "GAMMA_WIND_PID (:426)"
+          "GAMMA_WIND_PID (:94)"
         ],
         "const": [
-          "E_FLOOR_PID (:418)"
+          "E_FLOOR_PID (:86)"
         ]
       }
     },
@@ -675,7 +675,7 @@
       "contract": "MPC_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:696",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:364",
       "source": "framework",
       "variable": "computation_time",
       "via": {}
@@ -687,12 +687,12 @@
       "contract": "MPC_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:696",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:364",
       "source": "framework",
       "variable": "computation_time",
       "via": {
         "bound": [
-          "COMPUTE_TIME_MAX (:440)"
+          "COMPUTE_TIME_MAX (:108)"
         ]
       }
     },
@@ -703,7 +703,7 @@
       "contract": "MPC_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:693",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:361",
       "source": "framework",
       "variable": "position_error",
       "via": {}
@@ -715,7 +715,7 @@
       "contract": "MPC_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:693",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:361",
       "source": "framework",
       "variable": "position_error",
       "via": {}
@@ -727,7 +727,7 @@
       "contract": "MPC_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:694",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:362",
       "source": "framework",
       "variable": "velocity_error",
       "via": {}
@@ -739,7 +739,7 @@
       "contract": "MPC_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:694",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:362",
       "source": "framework",
       "variable": "velocity_error",
       "via": {}
@@ -751,7 +751,7 @@
       "contract": "MPC_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:695",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:363",
       "source": "framework",
       "variable": "wind_speed",
       "via": {}
@@ -763,7 +763,7 @@
       "contract": "MPC_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:695",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:363",
       "source": "framework",
       "variable": "wind_speed",
       "via": {}
@@ -775,7 +775,7 @@
       "contract": "MPC_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:718",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:386",
       "source": "framework",
       "variable": "control_effort",
       "via": {}
@@ -790,7 +790,7 @@
       "contract": "MPC_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:716-717",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:384-385",
       "source": "framework",
       "variable": "control_effort",
       "via": {}
@@ -802,7 +802,7 @@
       "contract": "MPC_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:712",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:380",
       "source": "framework",
       "variable": "settling_time",
       "via": {}
@@ -817,7 +817,7 @@
       "contract": "MPC_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:710-711",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:378-379",
       "source": "framework",
       "variable": "settling_time",
       "via": {}
@@ -829,7 +829,7 @@
       "contract": "MPC_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:706",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:374",
       "source": "framework",
       "variable": "tracking_error",
       "via": {}
@@ -844,18 +844,18 @@
       "contract": "MPC_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:702-705",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:370-373",
       "source": "framework",
       "variable": "tracking_error",
       "via": {
         "coef[position_error]": [
-          "ALPHA_MPC (:437)"
+          "ALPHA_MPC (:105)"
         ],
         "coef[wind_speed]": [
-          "BETA_MPC (:438)"
+          "BETA_MPC (:106)"
         ],
         "const": [
-          "E_FLOOR_MPC (:439)"
+          "E_FLOOR_MPC (:107)"
         ]
       }
     },
@@ -866,7 +866,7 @@
       "contract": "Hinf_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:633",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:301",
       "source": "framework",
       "variable": "disturbance",
       "via": {}
@@ -878,7 +878,7 @@
       "contract": "Hinf_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:633",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:301",
       "source": "framework",
       "variable": "disturbance",
       "via": {}
@@ -890,7 +890,7 @@
       "contract": "Hinf_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:630",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:298",
       "source": "framework",
       "variable": "position_error",
       "via": {}
@@ -902,7 +902,7 @@
       "contract": "Hinf_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:630",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:298",
       "source": "framework",
       "variable": "position_error",
       "via": {}
@@ -914,7 +914,7 @@
       "contract": "Hinf_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:631",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:299",
       "source": "framework",
       "variable": "velocity_error",
       "via": {}
@@ -926,7 +926,7 @@
       "contract": "Hinf_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:631",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:299",
       "source": "framework",
       "variable": "velocity_error",
       "via": {}
@@ -938,7 +938,7 @@
       "contract": "Hinf_Controller",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:632",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:300",
       "source": "framework",
       "variable": "wind_speed",
       "via": {}
@@ -950,7 +950,7 @@
       "contract": "Hinf_Controller",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:632",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:300",
       "source": "framework",
       "variable": "wind_speed",
       "via": {}
@@ -962,7 +962,7 @@
       "contract": "Hinf_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:661",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:329",
       "source": "framework",
       "variable": "control_effort",
       "via": {}
@@ -977,7 +977,7 @@
       "contract": "Hinf_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:659-660",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:327-328",
       "source": "framework",
       "variable": "control_effort",
       "via": {}
@@ -989,12 +989,12 @@
       "contract": "Hinf_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:665-666",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:333-334",
       "source": "framework",
       "variable": "rate_damping",
       "via": {
         "const": [
-          "K_RATE_DAMP (:432)"
+          "K_RATE_DAMP (:100)"
         ]
       }
     },
@@ -1005,7 +1005,7 @@
       "contract": "Hinf_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:649",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:317",
       "source": "framework",
       "variable": "stabilization_time",
       "via": {}
@@ -1020,7 +1020,7 @@
       "contract": "Hinf_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:647-648",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:315-316",
       "source": "framework",
       "variable": "stabilization_time",
       "via": {}
@@ -1032,7 +1032,7 @@
       "contract": "Hinf_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:656",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:324",
       "source": "framework",
       "variable": "tilt_angle",
       "via": {}
@@ -1047,12 +1047,12 @@
       "contract": "Hinf_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:653-655",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:321-323",
       "source": "framework",
       "variable": "tilt_angle",
       "via": {
         "coef[disturbance]": [
-          "K_ATT_GAIN (:433)"
+          "K_ATT_GAIN (:101)"
         ]
       }
     },
@@ -1063,7 +1063,7 @@
       "contract": "Hinf_Controller",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:643",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:311",
       "source": "framework",
       "variable": "tracking_error",
       "via": {}
@@ -1078,15 +1078,15 @@
       "contract": "Hinf_Controller",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:639-642",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:307-310",
       "source": "framework",
       "variable": "tracking_error",
       "via": {
         "coef[wind_speed]": [
-          "GAMMA_WIND_HINF (:430)"
+          "GAMMA_WIND_HINF (:98)"
         ],
         "const": [
-          "E_BASE_HINF (:431)"
+          "E_BASE_HINF (:99)"
         ]
       }
     },
@@ -1097,7 +1097,7 @@
       "contract": "Actuators",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:742",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:410",
       "source": "framework",
       "variable": "battery_voltage",
       "via": {}
@@ -1109,7 +1109,7 @@
       "contract": "Actuators",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:742",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:410",
       "source": "framework",
       "variable": "battery_voltage",
       "via": {}
@@ -1121,7 +1121,7 @@
       "contract": "Actuators",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:741",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:409",
       "source": "framework",
       "variable": "control_effort",
       "via": {}
@@ -1133,7 +1133,7 @@
       "contract": "Actuators",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:741",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:409",
       "source": "framework",
       "variable": "control_effort",
       "via": {}
@@ -1145,7 +1145,7 @@
       "contract": "Actuators",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:743",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:411",
       "source": "framework",
       "variable": "motor_temperature",
       "via": {}
@@ -1157,7 +1157,7 @@
       "contract": "Actuators",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/contracts/contract_framework.py:743",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:411",
       "source": "framework",
       "variable": "motor_temperature",
       "via": {}
@@ -1169,7 +1169,7 @@
       "contract": "Actuators",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:763",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:431",
       "source": "framework",
       "variable": "response_time",
       "via": {}
@@ -1184,12 +1184,12 @@
       "contract": "Actuators",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:760-762",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:428-430",
       "source": "framework",
       "variable": "response_time",
       "via": {
         "const": [
-          "TAU_MOTOR (:443)"
+          "TAU_MOTOR (:111)"
         ]
       }
     },
@@ -1203,15 +1203,15 @@
       "contract": "Actuators",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:749-752",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:417-420",
       "source": "framework",
       "variable": "thrust_accuracy",
       "via": {
         "coef[battery_voltage]": [
-          "K_V_THRUST (:444)"
+          "K_V_THRUST (:112)"
         ],
         "coef[motor_temperature]": [
-          "K_T_DERATE (:445)"
+          "K_T_DERATE (:113)"
         ]
       }
     },
@@ -1225,15 +1225,15 @@
       "contract": "Actuators",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:754-756",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:422-424",
       "source": "framework",
       "variable": "thrust_accuracy",
       "via": {
         "coef[battery_voltage]": [
-          "K_V_THRUST (:444)"
+          "K_V_THRUST (:112)"
         ],
         "coef[motor_temperature]": [
-          "K_T_DERATE (:445)"
+          "K_T_DERATE (:113)"
         ]
       }
     },
@@ -1244,12 +1244,12 @@
       "contract": "Actuators",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/contracts/contract_framework.py:767-769",
+      "loc": "contract_uav_core/contract_uav_core/contracts/library.py:435-437",
       "source": "framework",
       "variable": "thrust_bandwidth",
       "via": {
         "const": [
-          "TAU_MOTOR (:443)"
+          "TAU_MOTOR (:111)"
         ]
       }
     },
@@ -1260,7 +1260,7 @@
       "contract": "gps",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:65",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:65",
       "source": "pacti_library",
       "variable": "gps_hdop",
       "via": {}
@@ -1272,7 +1272,7 @@
       "contract": "gps",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:66",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:66",
       "source": "pacti_library",
       "variable": "gps_hdop",
       "via": {}
@@ -1284,7 +1284,7 @@
       "contract": "gps",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:63",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:63",
       "source": "pacti_library",
       "variable": "gps_satellites",
       "via": {}
@@ -1296,7 +1296,7 @@
       "contract": "gps",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:64",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:64",
       "source": "pacti_library",
       "variable": "gps_satellites",
       "via": {}
@@ -1308,7 +1308,7 @@
       "contract": "gps",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:69",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:69",
       "source": "pacti_library",
       "variable": "position_meas_error",
       "via": {}
@@ -1322,7 +1322,7 @@
       "contract": "gps",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:70",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:70",
       "source": "pacti_library",
       "variable": "position_meas_error",
       "via": {}
@@ -1334,7 +1334,7 @@
       "contract": "gps",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:71",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:71",
       "source": "pacti_library",
       "variable": "velocity_meas_error",
       "via": {}
@@ -1348,7 +1348,7 @@
       "contract": "gps",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:72",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:72",
       "source": "pacti_library",
       "variable": "velocity_meas_error",
       "via": {}
@@ -1360,7 +1360,7 @@
       "contract": "imu",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:81",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:81",
       "source": "pacti_library",
       "variable": "imu_temp_deviation",
       "via": {}
@@ -1372,7 +1372,7 @@
       "contract": "imu",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:82",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:82",
       "source": "pacti_library",
       "variable": "imu_temp_deviation",
       "via": {}
@@ -1384,7 +1384,7 @@
       "contract": "imu",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:85",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:85",
       "source": "pacti_library",
       "variable": "attitude_meas_error",
       "via": {}
@@ -1398,7 +1398,7 @@
       "contract": "imu",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:86",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:86",
       "source": "pacti_library",
       "variable": "attitude_meas_error",
       "via": {}
@@ -1410,7 +1410,7 @@
       "contract": "imu",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:87",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:87",
       "source": "pacti_library",
       "variable": "rate_meas_error",
       "via": {}
@@ -1424,7 +1424,7 @@
       "contract": "imu",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:88",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:88",
       "source": "pacti_library",
       "variable": "rate_meas_error",
       "via": {}
@@ -1436,7 +1436,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:106",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:106",
       "source": "pacti_library",
       "variable": "attitude_meas_error",
       "via": {}
@@ -1448,7 +1448,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:107",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:107",
       "source": "pacti_library",
       "variable": "attitude_meas_error",
       "via": {}
@@ -1460,7 +1460,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:102",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:102",
       "source": "pacti_library",
       "variable": "position_meas_error",
       "via": {}
@@ -1472,7 +1472,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:103",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:103",
       "source": "pacti_library",
       "variable": "position_meas_error",
       "via": {}
@@ -1484,7 +1484,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:108",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:108",
       "source": "pacti_library",
       "variable": "rate_meas_error",
       "via": {}
@@ -1496,7 +1496,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:109",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:109",
       "source": "pacti_library",
       "variable": "rate_meas_error",
       "via": {}
@@ -1508,7 +1508,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:104",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:104",
       "source": "pacti_library",
       "variable": "velocity_meas_error",
       "via": {}
@@ -1520,7 +1520,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:105",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:105",
       "source": "pacti_library",
       "variable": "velocity_meas_error",
       "via": {}
@@ -1532,7 +1532,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:117",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:117",
       "source": "pacti_library",
       "variable": "attitude_est_error",
       "via": {}
@@ -1546,7 +1546,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:118",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:118",
       "source": "pacti_library",
       "variable": "attitude_est_error",
       "via": {}
@@ -1558,7 +1558,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:113",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:113",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1572,7 +1572,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:114",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:114",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1584,7 +1584,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:119",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:119",
       "source": "pacti_library",
       "variable": "rate_est_error",
       "via": {}
@@ -1598,7 +1598,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:120",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:120",
       "source": "pacti_library",
       "variable": "rate_est_error",
       "via": {}
@@ -1610,7 +1610,7 @@
       "contract": "ekf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:115",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:115",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1624,7 +1624,7 @@
       "contract": "ekf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:116",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:116",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1636,7 +1636,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:140",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:140",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1648,7 +1648,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:141",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:141",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1660,7 +1660,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:134",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:134",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1672,7 +1672,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:135",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:135",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1684,7 +1684,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:136",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:136",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1696,7 +1696,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:137",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:137",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1708,7 +1708,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:138",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:138",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -1720,7 +1720,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:139",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:139",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -1732,7 +1732,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:147",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:147",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -1744,7 +1744,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:148",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:148",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -1756,7 +1756,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:149",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:149",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -1768,7 +1768,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:150",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:150",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -1780,7 +1780,7 @@
       "contract": "pid",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:144",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:144",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -1795,7 +1795,7 @@
       "contract": "pid",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:146",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:146",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -1807,7 +1807,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:166",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:166",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1819,7 +1819,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:167",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:167",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1831,7 +1831,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:160",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:160",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1843,7 +1843,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:161",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:161",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -1855,7 +1855,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:162",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:162",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1867,7 +1867,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:163",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:163",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -1879,7 +1879,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:164",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:164",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -1891,7 +1891,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:165",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:165",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -1903,7 +1903,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:173",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:173",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -1915,7 +1915,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:174",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:174",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -1927,7 +1927,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:175",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:175",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -1939,7 +1939,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:176",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:176",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -1951,7 +1951,7 @@
       "contract": "mpc",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:170",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:170",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -1966,7 +1966,7 @@
       "contract": "mpc",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:172",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:172",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -1978,7 +1978,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:193",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:193",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -1990,7 +1990,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:194",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:194",
       "source": "pacti_library",
       "variable": "initial_tracking_error",
       "via": {}
@@ -2002,7 +2002,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:187",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:187",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -2014,7 +2014,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:188",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:188",
       "source": "pacti_library",
       "variable": "position_est_error",
       "via": {}
@@ -2026,7 +2026,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:189",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:189",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -2038,7 +2038,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:190",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:190",
       "source": "pacti_library",
       "variable": "velocity_est_error",
       "via": {}
@@ -2050,7 +2050,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:191",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:191",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -2062,7 +2062,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:192",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:192",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -2074,7 +2074,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:200",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:200",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2086,7 +2086,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:201",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:201",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2098,7 +2098,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:202",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:202",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -2110,7 +2110,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:203",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:203",
       "source": "pacti_library",
       "variable": "settling_time",
       "via": {}
@@ -2122,7 +2122,7 @@
       "contract": "hinf",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:197",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:197",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -2137,7 +2137,7 @@
       "contract": "hinf",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:199",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:199",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -2149,7 +2149,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:217",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:217",
       "source": "pacti_library",
       "variable": "battery_voltage",
       "via": {}
@@ -2161,7 +2161,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:218",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:218",
       "source": "pacti_library",
       "variable": "battery_voltage",
       "via": {}
@@ -2173,7 +2173,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:215",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:215",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2185,7 +2185,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:216",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:216",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2197,7 +2197,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:219",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:219",
       "source": "pacti_library",
       "variable": "motor_temp",
       "via": {}
@@ -2209,7 +2209,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:220",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:220",
       "source": "pacti_library",
       "variable": "motor_temp",
       "via": {}
@@ -2221,7 +2221,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:224",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:224",
       "source": "pacti_library",
       "variable": "thrust_accuracy",
       "via": {}
@@ -2233,7 +2233,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:225",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:225",
       "source": "pacti_library",
       "variable": "thrust_accuracy",
       "via": {}
@@ -2245,7 +2245,7 @@
       "contract": "actuator",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:226",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:226",
       "source": "pacti_library",
       "variable": "torque_accuracy",
       "via": {}
@@ -2257,7 +2257,7 @@
       "contract": "actuator",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:227",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:227",
       "source": "pacti_library",
       "variable": "torque_accuracy",
       "via": {}
@@ -2269,7 +2269,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:242",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:242",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2281,7 +2281,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:243",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:243",
       "source": "pacti_library",
       "variable": "control_effort",
       "via": {}
@@ -2293,7 +2293,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:246",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:246",
       "source": "pacti_library",
       "variable": "dt",
       "via": {}
@@ -2305,7 +2305,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:247",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:247",
       "source": "pacti_library",
       "variable": "dt",
       "via": {}
@@ -2317,7 +2317,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:240",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:240",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -2329,7 +2329,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:241",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:241",
       "source": "pacti_library",
       "variable": "tracking_error",
       "via": {}
@@ -2341,7 +2341,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:244",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:244",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -2353,7 +2353,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "A",
-      "loc": "src/planning/pacti_contracts.py:245",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:245",
       "source": "pacti_library",
       "variable": "wind_speed",
       "via": {}
@@ -2365,7 +2365,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:250",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:250",
       "source": "pacti_library",
       "variable": "next_tracking_error",
       "via": {}
@@ -2380,7 +2380,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:253",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:253",
       "source": "pacti_library",
       "variable": "next_tracking_error",
       "via": {}
@@ -2392,7 +2392,7 @@
       "contract": "dynamics",
       "direction": "lower",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:254",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:254",
       "source": "pacti_library",
       "variable": "position_change",
       "via": {}
@@ -2406,7 +2406,7 @@
       "contract": "dynamics",
       "direction": "upper",
       "kind": "G",
-      "loc": "src/planning/pacti_contracts.py:255",
+      "loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:255",
       "source": "pacti_library",
       "variable": "position_change",
       "via": {}
@@ -6617,19 +6617,19 @@
       "id": "C3-MULTI",
       "source": "framework",
       "text": "13 guarantees have coefficients on several inputs. Each became ONE half-space over all of its inputs, which is the relational meaning of LinearConstraint when every input is present. Flag: SimpleContract.evaluate_bound treats a missing input as 0 (F-A1-04) while Pacti quantifies over it, so the two differ only when an input is missing at run time. No input was dropped, split or bounded separately.",
-      "where": "cf:584-586, cf:592-594, cf:599-600, cf:639-642, cf:647-648, cf:653-655, cf:659-660, cf:702-705, cf:710-711, cf:716-717, cf:749-752, cf:754-756, cf:760-762"
+      "where": "cf:252-254, cf:260-262, cf:267-268, cf:307-310, cf:315-316, cf:321-323, cf:327-328, cf:370-373, cf:378-379, cf:384-385, cf:417-420, cf:422-424, cf:428-430"
     },
     {
       "id": "C4-EQUALITY",
       "source": "framework",
       "text": "IMU assumes `imu_calibrated` in [1, 1], a degenerate interval. Converted to two inequalities (an equality). It stays a box bound in the envelope.",
-      "where": "cf:467"
+      "where": "cf:135"
     },
     {
       "id": "C5-SENSORS",
       "source": "framework",
       "text": "The framework has one sensor contract for GPS and IMU. It is composed as one stage, as compose_pipeline does; its rows are split into GPS and IMU by variable for the table.",
-      "where": "GPS_IMU_Sensors (cf:461)"
+      "where": "GPS_IMU_Sensors (cf:129)"
     },
     {
       "id": "C6-PIPELINE",
@@ -6674,23 +6674,23 @@
     "hash_rule": "sha256 over '<path>\\0<sha256 of the file with CRLF normalised to LF>\\n' for the input files sorted by path",
     "inputs": [
       {
-        "path": "src/contracts/contract_framework.py",
-        "sha256": "87aead05be2760dc1aaaa9d714e524d66cf6668d31b312f0b7f10e9b94bf6b9d"
+        "path": "contract_uav_core/contract_uav_core/contracts/library.py",
+        "sha256": "bfd194904a9a818fc70fb2732ee7bb3601e15dd02818029fadb0a3a047150f74"
       },
       {
-        "path": "src/planning/horizon_planner.py",
-        "sha256": "491b642dcde46c9fbe63c4c870d042c9efca40be8bf8d4de611315a91bb88fe7"
+        "path": "contract_uav_core/contract_uav_core/planning/horizon_planner.py",
+        "sha256": "93273513902e95129dd1671e7144391e50da26c4fb1e05c1d827ddec74eda131"
       },
       {
-        "path": "src/planning/integrated_planner.py",
-        "sha256": "cf4b4f43d796ce11197e9f1c10267e936793edaf3a09ef99ab9517ab7977c042"
+        "path": "contract_uav_core/contract_uav_core/planning/integrated_planner.py",
+        "sha256": "8e85888649374630b0c351909ea4c3d26b18d149b28ffce41a9c3795afd2214b"
       },
       {
-        "path": "src/planning/pacti_contracts.py",
+        "path": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py",
         "sha256": "1549b3f24bdcd41d0f4d694a7bc857345411d1462d609d523cc8483b089c9f49"
       }
     ],
-    "inputs_sha256": "4a8b8da0cc450b1158bbcf567ff376519fd5182f58c3391c4b37897d600df303"
+    "inputs_sha256": "e18d53fa8393adc0ea540704ec37b32426b5e4535111c8e7fe7d464f0d801be4"
   },
   "reconciliation": {
     "both_present": 101,
@@ -6774,22 +6774,22 @@
   "schema_version": "2.2.0",
   "sources": {
     "framework": {
-      "module": "contracts.contract_framework",
+      "module": "contract_uav_core.contracts.monitor",
       "objects": "HierarchicalContractMonitor().define_contracts()",
-      "path": "src/contracts/contract_framework.py"
+      "path": "contract_uav_core/contract_uav_core/contracts/library.py"
     },
     "pacti_library": {
-      "module": "planning.pacti_contracts",
+      "module": "contract_uav_core.planning.pacti_contracts",
       "objects": "PactiContractLibrary().contracts",
-      "path": "src/planning/pacti_contracts.py"
+      "path": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py"
     }
   },
   "third_copy": [
     {
       "direction": "upper",
       "function": "check_and_replan",
-      "line": 373,
-      "path": "src/planning/horizon_planner.py",
+      "line": 370,
+      "path": "contract_uav_core/contract_uav_core/planning/horizon_planner.py",
       "values": {
         "hinf": 15.0,
         "mpc": 8.0,
@@ -6800,8 +6800,8 @@
     {
       "direction": "upper",
       "function": "_safety_critical",
-      "line": 210,
-      "path": "src/planning/integrated_planner.py",
+      "line": 206,
+      "path": "contract_uav_core/contract_uav_core/planning/integrated_planner.py",
       "values": {
         "hinf": 15.0,
         "mpc": 8.0,
@@ -6813,7 +6813,7 @@
   "tightenings": [
     {
       "component_bound": 5.0,
-      "component_loc": "src/contracts/contract_framework.py:465",
+      "component_loc": "contract_uav_core/contract_uav_core/contracts/library.py:133",
       "composed_bound": 2.761904762,
       "composed_terms": [
         "gps_hdop <= 2.761904762",
@@ -6826,7 +6826,7 @@
     },
     {
       "component_bound": 5.0,
-      "component_loc": "src/contracts/contract_framework.py:465",
+      "component_loc": "contract_uav_core/contract_uav_core/contracts/library.py:133",
       "composed_bound": 4.666666667,
       "composed_terms": [
         "gps_hdop <= 4.666666667",
@@ -6840,7 +6840,7 @@
     },
     {
       "component_bound": 15.0,
-      "component_loc": "src/contracts/contract_framework.py:695",
+      "component_loc": "contract_uav_core/contract_uav_core/contracts/library.py:363",
       "composed_bound": 9.609375,
       "composed_terms": [
         "wind_speed >= 0",
@@ -6853,7 +6853,7 @@
     },
     {
       "component_bound": 25.0,
-      "component_loc": "src/contracts/contract_framework.py:632",
+      "component_loc": "contract_uav_core/contract_uav_core/contracts/library.py:300",
       "composed_bound": 20.0,
       "composed_terms": [
         "wind_speed >= 0",
@@ -6866,7 +6866,7 @@
     },
     {
       "component_bound": 10.0,
-      "component_loc": "src/planning/pacti_contracts.py:66",
+      "component_loc": "contract_uav_core/contract_uav_core/planning/pacti_contracts.py:66",
       "composed_bound": 5.428571429,
       "composed_terms": [
         "gps_hdop <= 5.428571429",
