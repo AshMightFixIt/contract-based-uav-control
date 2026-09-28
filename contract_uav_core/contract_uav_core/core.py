@@ -40,7 +40,6 @@ try:
 except ImportError:
     HORIZON_PLANNER_AVAILABLE = False
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -372,6 +371,8 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
 
 # Test the complete system
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     print("\n" + "=" * 60)
     print("ADAPTIVE DRONE CONTROL SYSTEM TEST")
     print("=" * 60)
