@@ -19,7 +19,8 @@ from typing import Dict, Tuple, Optional, List
 import logging
 import time
 
-from .contracts.library import HierarchicalContractMonitor, ContractStatus
+from .contracts.monitor import HierarchicalContractMonitor
+from .contracts.spec import ContractStatus
 from .estimation.ekf import ContractAwareEKF
 from .control.pid import ControllerSwitcher
 from .control.supervisor import FlightModeSupervisor, FlightMode

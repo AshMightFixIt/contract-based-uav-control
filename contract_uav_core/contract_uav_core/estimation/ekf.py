@@ -11,7 +11,8 @@ Key Innovation:
 import numpy as np
 from typing import Dict, Tuple, Optional
 import logging
-from ..contracts.library import HierarchicalContractMonitor, ContractMetrics
+from ..contracts.monitor import HierarchicalContractMonitor
+from ..contracts.spec import ContractMetrics
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
