@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Controller effort model — derived directly from contract_framework.py
+# Controller effort model — derived directly from contracts/library.py
 # control_effort <= wind_coeff * wind_speed + baseline  (upper bound)
 # control_effort >= effort_min                          (lower bound)
 # ---------------------------------------------------------------------------
@@ -237,7 +237,7 @@ class ControllerPowerProfile:
     Maps (controller, wind_speed) → expected power draw and energy cost
     over a planning horizon.
 
-    Control effort estimates come from contract_framework.py upper bounds:
+    Control effort estimates come from contracts/library.py upper bounds:
         effort_upper(wind) = wind_coeff * wind + baseline
 
     Used by the horizon planner to rank controllers by energy cost when
@@ -250,7 +250,7 @@ class ControllerPowerProfile:
     def effort_estimate(self, controller: str, wind_speed: float) -> float:
         """
         Upper-bound control effort for a controller at given wind speed.
-        Derived from contract guarantees in contract_framework.py.
+        Derived from contract guarantees in contracts/library.py.
         """
         params = CONTROLLER_EFFORT_PARAMS.get(controller)
         if params is None:
@@ -300,7 +300,7 @@ class ControllerPowerProfile:
     def rank_by_time(self, controllers: list, wind_speed: float) -> list:
         """
         Sort controllers by ascending settling time (min-time objective).
-        Settling time upper bounds from contract_framework.py:
+        Settling time upper bounds from contracts/library.py:
             PID:  5s, MPC: 7s, H-inf: 10s
         """
         # From controller contract settling_time upper bounds

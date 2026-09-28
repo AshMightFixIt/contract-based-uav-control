@@ -2,7 +2,7 @@
 Live 3D drone visualizer using Pygame with manual perspective projection.
 
 Usage:
-    from visualization.live_visualizer import LiveVisualizer
+    from contract_uav_core.viz.live_visualizer import LiveVisualizer
     viz = LiveVisualizer(waypoints)
     for step in sim_loop:
         ...
