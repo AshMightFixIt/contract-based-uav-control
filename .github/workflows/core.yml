@@ -75,6 +75,11 @@ jobs:
       - name: Record the working tree after the install
         run: git status --porcelain --ignored | tee ../status-before-tests.txt
 
+      # Git Bash on the Windows runners may not ship GNU make; Chocolatey does.
+      - name: Make sure GNU make is available (Windows)
+        if: runner.os == 'Windows'
+        run: command -v make || choco install make --no-progress -y
+
       - name: Test (make test)
         run: make test PYTHON=python
 
