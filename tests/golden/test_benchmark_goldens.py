@@ -2,7 +2,8 @@
 
 These pin the *current* behaviour so refactors can be shown to preserve it.
 Each test runs a benchmark script unchanged, as a child process from a copy of
-the repository, and compares its printed results with a pinned text file.
+the top-level scripts (the core comes from the installed contract_uav_core),
+and compares its printed results with a pinned text file.
 
 What is compared: the results block of stdout, from the first ``Running ...``
 status line up to (not including) ``Generating comparison plots...``. That is
@@ -22,12 +23,13 @@ To regenerate after a reviewed, intentional behaviour change:
   make golden-update-pacti   (the pacti golden; needs requirements-legacy.txt)
 
 Known host dependence (review note N2): the Adaptive column depends on the
-MPC's wall-clock solve time (time.perf_counter() in src/control/controllers.py)
-staying under the 50 ms contract bound it is checked against
-(src/adaptive_control_system.py:344), so a heavily loaded CI runner could in
-principle flip a switching decision. A golden diff confined to the Adaptive
-column that does not reproduce on re-run points to this, not to a behaviour
-change.
+MPC's wall-clock solve time (time.perf_counter() in
+contract_uav_core/contract_uav_core/control/mpc.py) staying under the 50 ms
+contract bound it is checked against (check_conditions['computation_time'] in
+contract_uav_core/contract_uav_core/switching_policy.py), so a heavily loaded
+CI runner could in principle flip a switching decision. A golden diff confined
+to the Adaptive column that does not reproduce on re-run points to this, not to
+a behaviour change.
 """
 from __future__ import annotations
 

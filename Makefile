@@ -1,6 +1,7 @@
-# Test entry points. Set up an environment first:
-#   python -m pip install -r requirements-test.txt                      (make test)
-#   python -m pip install -r requirements-test.txt -r requirements-legacy.txt  (make test-pacti)
+# Test entry points. Set up an environment first, from the repository root:
+#   python -m pip install -e ./contract_uav_core -r requirements-test.txt                             (make test)
+#   python -m pip install -e ./contract_uav_core -r requirements-test.txt -r requirements-legacy.txt  (make test-pacti)
+# The tests check that contract_uav_core resolves to this checkout (editable install).
 # Every target exits non-zero when a test fails. The pacti targets (test-pacti,
 # golden-update-pacti, test-all) also exit non-zero when pacti is missing, so
 # they cannot pass by skipping the reproduction.

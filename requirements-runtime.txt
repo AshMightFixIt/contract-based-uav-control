@@ -1,7 +1,10 @@
-# Minimal runtime set: the numpy-only core, i.e. everything under src/ except
-# src/planning/* (needs pacti, see requirements-legacy.txt) and
-# src/visualization/* (needs pygame, see requirements-viz.txt).
-# Example: PYTHONPATH=src python src/adaptive_control_system.py
+# Minimal runtime set: the numpy-only core, i.e. everything in the
+# contract_uav_core package except contract_uav_core/planning/* (needs pacti, see
+# requirements-legacy.txt) and contract_uav_core/viz/* (needs pygame, see
+# requirements-viz.txt). contract_uav_core/setup.py declares the same numpy pin.
+# The package itself is installed separately:
+#   python -m pip install -e ./contract_uav_core
+# Example: python -m contract_uav_core.core
 #
 # Python floor: 3.7
 #   - numpy 1.20.0, the lowest version allowed below, declares

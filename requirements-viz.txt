@@ -1,6 +1,6 @@
 # Visualisation extras, on top of the runtime set: matplotlib for the plotting
 # scripts (benchmark_*.py, demo_*.py, simulation_demo*.py) and pygame for
-# src/visualization/live_visualizer.py (used by demo_waypoint_mission.py and
+# contract_uav_core/viz/live_visualizer.py (used by demo_waypoint_mission.py and
 # demo_sensor_degradation.py).
 #
 # Python floor: 3.7
