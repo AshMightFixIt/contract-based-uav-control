@@ -4,13 +4,14 @@ There is no ROS here. A child process replaces rclpy, px4_msgs and
 contract_uav_msgs with stub modules injected into ``sys.modules`` (no stub
 files on disk, no ``sys.path`` edits). contract_uav_control is not installed:
 the child loads it by file path with ``importlib.util.spec_from_file_location``.
-The child runs from pytest's temp dir with CONTRACT_UAV_ROOT and PYTHONPATH
-unset, so only the installed contract_uav_core can satisfy the node's import.
-Building with colcon is not covered.
+The child runs from pytest's temp dir with PYTHONPATH and every ``CONTRACT_UAV_*``
+environment variable unset, so only the installed contract_uav_core can satisfy
+the node's import. Building with colcon is not covered.
 """
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -20,9 +21,12 @@ CHILD = r'''
 import importlib
 import importlib.util
 import json
+import os
 import sys
 import types
 from pathlib import Path
+
+assert not [k for k in os.environ if k.startswith("CONTRACT_UAV")], "CONTRACT_UAV_* variables must be unset"
 
 
 def stub(name, **attrs):
@@ -72,7 +76,8 @@ print(json.dumps({
 
 
 def test_node_resolves_core_from_installed_package(core_package, tmp_path, run_python, monkeypatch):
-    monkeypatch.delenv("CONTRACT_UAV_ROOT", raising=False)
+    for name in [k for k in os.environ if k.startswith("CONTRACT_UAV")]:
+        monkeypatch.delenv(name)
     proc = run_python(["-c", CHILD, NODE_PACKAGE_DIR], cwd=tmp_path, timeout=300)
     assert proc.returncode == 0, (
         f"--- stdout (tail) ---\n{proc.stdout[-3000:]}\n--- stderr (tail) ---\n{proc.stderr[-3000:]}"
