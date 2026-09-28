@@ -17,8 +17,32 @@ DEFAULT_OUT = PACKAGE_DIR / "out"
 OUT_FILES = ("contracts.json", "reconciliation.csv", "reconciliation.md")
 
 
-def _static_notes(fw_bounds, flags: List[dict]) -> List[dict]:
-    from .model import FRAMEWORK_PATH, fmt
+def _line_of(repo_root: Path, relpath: str, needle: str) -> int:
+    """1-based number of the single line of relpath that contains needle."""
+    lines = (repo_root / relpath).read_text(encoding="utf-8").splitlines()
+    hits = [i for i, line in enumerate(lines, 1) if needle in line]
+    if len(hits) != 1:
+        raise RuntimeError(f"expected one line containing {needle!r} in {relpath}, found {len(hits)}")
+    return hits[0]
+
+
+def _def_range(repo_root: Path, relpath: str, cls: str, func: str) -> Tuple[int, int]:
+    """First and last line of method cls.func in relpath, read from the source."""
+    import ast
+    tree = ast.parse((repo_root / relpath).read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == cls:
+            for item in node.body:
+                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name == func:
+                    return item.lineno, item.end_lineno
+    raise RuntimeError(f"{cls}.{func} not found in {relpath}")
+
+
+def _static_notes(repo_root: Path, fw_bounds, flags: List[dict]) -> List[dict]:
+    from .model import FRAMEWORK_PATH, PACTI_LIB_PATH, fmt
+    # Cited locations are read from the source so they stay right when lines move.
+    sensors_line = _line_of(repo_root, FRAMEWORK_PATH, "self.sensor_contract = SimpleContract(")
+    pipe_first, pipe_last = _def_range(repo_root, PACTI_LIB_PATH, "PactiContractLibrary", "compose_pipeline")
 
     notes = [
         {"id": "C1-IO", "source": "framework", "where": "all contracts",
@@ -53,10 +77,10 @@ def _static_notes(fw_bounds, flags: List[dict]) -> List[dict]:
                               "Converted to two inequalities (an equality). It stays a box bound in the "
                               "envelope."})
     notes += [
-        {"id": "C5-SENSORS", "source": "framework", "where": "GPS_IMU_Sensors (cf:461)",
+        {"id": "C5-SENSORS", "source": "framework", "where": f"GPS_IMU_Sensors (cf:{sensors_line})",
          "text": "The framework has one sensor contract for GPS and IMU. It is composed as one stage, as "
                  "compose_pipeline does; its rows are split into GPS and IMU by variable for the table."},
-        {"id": "C6-PIPELINE", "source": "pacti_library", "where": "pc:252-290",
+        {"id": "C6-PIPELINE", "source": "pacti_library", "where": f"pc:{pipe_first}-{pipe_last}",
          "text": "The Pacti-library pipeline is built here as (gps || imu) -> ekf -> controller -> "
                  "actuator, to match the framework's sensors -> estimator -> controller -> actuators. "
                  "PactiContractLibrary.compose_pipeline leaves imu out (F-A1-25); that variant is kept "
@@ -223,7 +247,7 @@ def build(repo_root: Path) -> Tuple[Dict[str, bytes], dict, List[dict]]:
             "third_copy": third,
             "reconciliation": {**summary, "files": ["reconciliation.csv", "reconciliation.md"],
                                "columns": list(render.CSV_COLUMNS)},
-            "conversion_notes": _static_notes(fw_bounds, flags),
+            "conversion_notes": _static_notes(repo_root, fw_bounds, flags),
         }
         files = {
             "contracts.json": render.contracts_json(doc),

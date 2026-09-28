@@ -217,10 +217,27 @@ def test_wind_rows_carry_all_three_copies(built):
         "src/planning/pacti_contracts.py", "'wind_speed <= 8'")
     assert mpc["third_copy_value"] == "8" and mpc["third_copy_matches"] == "pacti_library"
     wind_limits = "wind_limits = {'pid': 3.0, 'mpc': 8.0, 'hinf': 15.0}"
-    assert _loc_of("src/planning/horizon_planner.py", wind_limits) in mpc["third_copy_loc"]
-    assert _loc_of("src/planning/integrated_planner.py", wind_limits) in mpc["third_copy_loc"]
+    third = [loc.strip() for loc in mpc["third_copy_loc"].split(";")]
+    assert _loc_of("src/planning/horizon_planner.py", wind_limits) in third
+    assert _loc_of("src/planning/integrated_planner.py", wind_limits) in third
     assert r["HINF|wind_speed|A.upper"]["third_copy_matches"] == "pacti_library"
     assert r["PID|wind_speed|A.upper"]["third_copy_matches"] == "both"
+
+
+def test_conversion_notes_cite_current_source_lines(built):
+    _, doc, _ = built
+    notes = {n["id"]: n["where"] for n in doc["conversion_notes"]}
+    sensors = _loc_of("src/contracts/contract_framework.py", "self.sensor_contract = SimpleContract(")
+    assert notes["C5-SENSORS"] == f"GPS_IMU_Sensors (cf:{sensors.rsplit(':', 1)[1]})"
+    first = int(_loc_of("src/planning/pacti_contracts.py", "def compose_pipeline(").rsplit(":", 1)[1])
+    cited_first, cited_last = (int(x) for x in notes["C6-PIPELINE"].removeprefix("pc:").split("-"))
+    assert cited_first == first
+    lines = (REPO_ROOT / "src/planning/pacti_contracts.py").read_text(encoding="utf-8").splitlines()
+    body = lines[cited_first - 1:cited_last]
+    # The cited range holds the whole method and nothing after it.
+    assert sum(line.lstrip().startswith("def ") for line in body) == 1
+    after = next((line for line in lines[cited_last:] if line.strip()), "")
+    assert after.lstrip().startswith("def ") or not after.startswith(" " * 8)
 
 
 def test_effect_column_semantics(built):

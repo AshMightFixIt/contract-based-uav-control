@@ -6635,7 +6635,7 @@
       "id": "C6-PIPELINE",
       "source": "pacti_library",
       "text": "The Pacti-library pipeline is built here as (gps || imu) -> ekf -> controller -> actuator, to match the framework's sensors -> estimator -> controller -> actuators. PactiContractLibrary.compose_pipeline leaves imu out (F-A1-25); that variant is kept in contracts.json as a cross-check. The dynamics contract is in neither pipeline; its rows are Pacti-only with no effect on the composed assumptions.",
-      "where": "pc:252-290"
+      "where": "pc:302-340"
     },
     {
       "id": "C7-ALIAS",
