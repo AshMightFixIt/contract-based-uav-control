@@ -14,7 +14,6 @@ from abc import ABC, abstractmethod
 
 from ..interfaces import AccelCommand
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

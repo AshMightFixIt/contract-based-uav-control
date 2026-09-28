@@ -11,7 +11,6 @@ import numpy as np
 from typing import Dict, Tuple, Optional
 import logging
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -215,6 +214,8 @@ class CBFSafetyFilter:
 
 # Example usage
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     print("=" * 60)
     print("CBF Safety Filter Test")
     print("=" * 60)

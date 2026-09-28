@@ -14,7 +14,6 @@ import logging
 from ..contracts.monitor import HierarchicalContractMonitor
 from ..contracts.spec import ContractMetrics
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -262,7 +261,7 @@ class ContractAwareEKF:
             timestamp=timestamp
         )
         
-        logger.info(f"EKF update: {estimation_quality}, contract: {metrics.assumptions_met}")
+        logger.debug(f"EKF update: {estimation_quality}, contract: {metrics.assumptions_met}")
         
         return self.x.copy(), metrics.guarantees_met
     
@@ -282,6 +281,8 @@ class ContractAwareEKF:
 
 # Test the contract-aware EKF
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     print("=" * 60)
     print("Contract-Aware EKF Test")
     print("=" * 60)
