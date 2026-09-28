@@ -78,3 +78,8 @@ Thumbs.db
 build/
 install/
 log/
+
+# Claude Code: per-user settings and session worktrees stay local.
+# (A shared .claude/settings.json can still be committed.)
+.claude/settings.local.json
+.claude/worktrees/
