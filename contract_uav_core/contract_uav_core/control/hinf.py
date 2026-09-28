@@ -7,6 +7,8 @@ from typing import Dict
 import logging
 
 from .base import BaseController
+from ..frames import accel_to_attitude, hinf_attitude_torques
+from ..interfaces import AccelCommand
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +68,9 @@ class HInfinityController(BaseController):
                 integral[i] = effective_accel[i] / self.k_int[i]
         self.pos_integral = np.clip(integral, -self.int_limit, self.int_limit)
 
-    def compute_control(self,
-                       state: Dict[str, np.ndarray],
-                       setpoint: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    def compute_accel_command(self,
+                              state: Dict[str, np.ndarray],
+                              setpoint: Dict[str, np.ndarray]) -> AccelCommand:
         """
         Robust stabilization control
 
@@ -76,6 +78,11 @@ class HInfinityController(BaseController):
         1. Damp angular rates (prevent tumbling)
         2. Level attitude (prevent crashing)
         3. Hold altitude from setpoint
+
+        Returns the AccelCommand: accel is the lateral acceleration demand (its
+        z is always 0; the thrust comes from the altitude hold below), yaw is
+        the current yaw (the H-inf holds heading and ignores the setpoint's
+        yaw). compute_control (base.py) returns its legacy dict.
         """
 
         position = state['position']
@@ -97,21 +104,12 @@ class HInfinityController(BaseController):
                          self.k_vel * vel_error +
                          self.k_int * self.pos_integral)
 
-        # Map lateral acceleration to desired tilt (conservative limits)
-        desired_pitch = np.clip(-desired_accel[0] / 9.81, -self.max_tilt, self.max_tilt)
-        desired_roll = np.clip(desired_accel[1] / 9.81, -self.max_tilt, self.max_tilt)
-        target_attitude = np.array([desired_roll, desired_pitch, attitude[2]])
+        # Map lateral acceleration to desired tilt (conservative limits; frames.py)
+        target_attitude = accel_to_attitude(desired_accel, attitude[2], self.max_tilt)
 
-        # === RATE DAMPING (Highest Priority) ===
-        rate_damping_torque = -self.k_rate_damping * rates
-
-        # === ATTITUDE STABILIZATION ===
-        att_error = target_attitude - attitude
-        att_error[2] = np.arctan2(np.sin(att_error[2]), np.cos(att_error[2]))
-
-        attitude_torque = self.k_attitude * att_error
-
-        torques = rate_damping_torque + attitude_torque
+        # === RATE DAMPING (Highest Priority) + ATTITUDE STABILIZATION (frames.py) ===
+        torques = hinf_attitude_torques(target_attitude, attitude, rates,
+                                        self.k_rate_damping, self.k_attitude)
 
         # === ALTITUDE HOLD (from setpoint) ===
         # Thrust = hover_thrust + corrections for altitude tracking
@@ -123,11 +121,11 @@ class HInfinityController(BaseController):
         desired_thrust = self.hover_thrust + thrust_correction
         desired_thrust = np.clip(desired_thrust, 0.1, 0.9)
 
-        control = {
-            'thrust': desired_thrust,
-            'torques': torques,
-            'desired_attitude': target_attitude,
-            'desired_rates': np.zeros(3)
-        }
-
-        return control
+        return AccelCommand(
+            accel=desired_accel,
+            yaw=attitude[2],
+            thrust=desired_thrust,
+            torques=torques,
+            desired_attitude=target_attitude,
+            desired_rates=np.zeros(3),
+        )

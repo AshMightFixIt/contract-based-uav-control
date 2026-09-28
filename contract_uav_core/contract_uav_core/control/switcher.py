@@ -12,6 +12,7 @@ import logging
 from .pid import PIDController
 from .mpc import MPCController
 from .hinf import HInfinityController
+from ..interfaces import AccelCommand
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,12 @@ class ControllerSwitcher:
         control = controller.compute_control(state, setpoint)
         
         return control
+
+    def compute_accel_command(self,
+                              state: Dict[str, np.ndarray],
+                              setpoint: Dict[str, np.ndarray]) -> AccelCommand:
+        """The active controller's AccelCommand (instead of compute_control, not in addition)."""
+        return self.controllers[self.active_controller].compute_accel_command(state, setpoint)
     
     def get_active_controller(self) -> str:
         """Get name of active controller"""

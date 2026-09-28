@@ -18,6 +18,8 @@ from typing import Dict
 import logging
 
 from .base import BaseController
+from ..frames import accel_to_attitude, attitude_to_rates_torques
+from ..interfaces import AccelCommand
 
 logger = logging.getLogger(__name__)
 
@@ -80,15 +82,20 @@ class PIDController(BaseController):
                          0.0)
         self.integral_error = np.clip(ratio, -self.integral_limit, self.integral_limit)
 
-    def compute_control(self,
-                       state: Dict[str, np.ndarray],
-                       setpoint: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    def compute_accel_command(self,
+                              state: Dict[str, np.ndarray],
+                              setpoint: Dict[str, np.ndarray]) -> AccelCommand:
         """
         Cascaded PID control
         
         Outer loop: Position → desired attitude
         Inner loop: Attitude → desired rates
         Innermost loop: Rates → motor commands
+
+        Returns the AccelCommand: accel is the PID acceleration demand (all
+        three axes; its z is not used, the thrust comes from the altitude law
+        below), yaw is the setpoint's yaw. compute_control (base.py) returns its
+        legacy dict.
         """
         
         # Extract state
@@ -125,31 +132,13 @@ class PIDController(BaseController):
         # - Positive roll (right wing down) -> rightward (positive Y)
         # So to accelerate forward (pos X), need negative pitch
         # And to accelerate right (pos Y), need positive roll
-        desired_pitch = -desired_accel[0] / 9.81  # Negative: forward accel needs nose down
-        desired_roll = desired_accel[1] / 9.81    # Positive: right accel needs right roll
-        desired_yaw = target_yaw
+        # (frames.py: accel_to_attitude, yaw-blind; limit tilt angles)
+        desired_attitude = accel_to_attitude(desired_accel, target_yaw, self.max_tilt)
         
-        # Limit tilt angles
-        desired_roll = np.clip(desired_roll, -self.max_tilt, self.max_tilt)
-        desired_pitch = np.clip(desired_pitch, -self.max_tilt, self.max_tilt)
-        
-        desired_attitude = np.array([desired_roll, desired_pitch, desired_yaw])
-        
-        # === INNER LOOP: Attitude Control ===
-        att_error = desired_attitude - attitude
-        
-        # Normalize yaw error to [-pi, pi]
-        att_error[2] = np.arctan2(np.sin(att_error[2]), np.cos(att_error[2]))
-        
-        # PD control for desired rates
-        desired_rates = self.kp_att * att_error - self.kd_att * rates
-        desired_rates = np.clip(desired_rates, -self.max_rate, self.max_rate)
-        
-        # === INNERMOST LOOP: Rate Control ===
-        rate_error = desired_rates - rates
-        
-        # P control for torques
-        torques = self.kp_rate * rate_error
+        # === INNER LOOPS: Attitude -> rates -> torques (frames.py) ===
+        desired_rates, torques = attitude_to_rates_torques(
+            desired_attitude, attitude, rates,
+            self.kp_att, self.kd_att, self.max_rate, self.kp_rate)
         
         # === THRUST CONTROL ===
         # Desired thrust = hover thrust + altitude correction
@@ -163,12 +152,11 @@ class PIDController(BaseController):
         desired_thrust = self.hover_thrust + thrust_correction
         desired_thrust = np.clip(desired_thrust, self.min_thrust, self.max_thrust)
         
-        # Return control output
-        control = {
-            'thrust': desired_thrust,
-            'torques': torques,  # [roll_torque, pitch_torque, yaw_torque]
-            'desired_attitude': desired_attitude,
-            'desired_rates': desired_rates
-        }
-        
-        return control
+        return AccelCommand(
+            accel=desired_accel,
+            yaw=target_yaw,
+            thrust=desired_thrust,
+            torques=torques,  # [roll_torque, pitch_torque, yaw_torque]
+            desired_attitude=desired_attitude,
+            desired_rates=desired_rates,
+        )
