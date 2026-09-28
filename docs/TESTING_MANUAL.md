@@ -41,8 +41,9 @@ the DEXI onboard computer for hardware).
 # the controller repo (this project)
 git clone <your-repo-url> contract-based-uav-control
 
-# PX4 message definitions (needed to talk to the flight controller)
-cd contract-based-uav-control/ros2_ws/src
+# PX4 message definitions (needed to talk to the flight controller). The repo
+# root is also the colcon workspace; px4_msgs/ is gitignored there.
+cd contract-based-uav-control
 git clone https://github.com/PX4/px4_msgs.git
 ```
 
@@ -55,21 +56,18 @@ MicroXRCEAgent --help
 
 ### 1.4 Build the workspace
 ```bash
-cd contract-based-uav-control/ros2_ws
+cd contract-based-uav-control
 
-# tell the controller where the core Python code lives (the folder with src/)
-export CONTRACT_UAV_ROOT=$(cd .. && pwd)
-
-colcon build --packages-select px4_msgs contract_uav_msgs contract_uav_control
+# contract_uav_core is the core Python code; the node imports it once it is built
+colcon build --packages-select px4_msgs contract_uav_msgs contract_uav_core contract_uav_control
 source install/setup.bash
 ```
 You should see "Finished" with no errors. If `px4_msgs` fails, build it alone first,
 then build the others.
 
-> **Tip:** add these two lines to your `~/.bashrc` so you don't retype them:
+> **Tip:** add this line to your `~/.bashrc` so you don't retype it:
 > ```bash
-> export CONTRACT_UAV_ROOT=/full/path/to/contract-based-uav-control
-> source /full/path/to/contract-based-uav-control/ros2_ws/install/setup.bash
+> source /full/path/to/contract-based-uav-control/install/setup.bash
 > ```
 
 ---
@@ -79,7 +77,7 @@ then build the others.
 You need **four terminals**. In every terminal, first run:
 ```bash
 source /opt/ros/humble/setup.bash
-source ~/contract-based-uav-control/ros2_ws/install/setup.bash
+source ~/contract-based-uav-control/install/setup.bash
 ```
 
 **Terminal 1 — the DDS bridge**
@@ -96,7 +94,6 @@ Wait until you see `Ready for takeoff!`.
 
 **Terminal 3 — the controller**
 ```bash
-export CONTRACT_UAV_ROOT=~/contract-based-uav-control
 ros2 launch contract_uav_control contract_control.launch.py
 ```
 You should see log lines like `[track] ctrl=PID cbf=False thrust=0.50`.
@@ -105,7 +102,7 @@ You should see log lines like `[track] ctrl=PID cbf=False thrust=0.50`.
 
 ### Arming in the simulator
 For SITL you may let the controller arm itself. Edit
-`ros2_ws/src/contract_uav_control/config/params.yaml` and set `auto_arm: true`,
+`contract_uav_control/config/params.yaml` and set `auto_arm: true`,
 rebuild, and relaunch. The drone should arm, switch to OFFBOARD, and start flying
 the waypoints. **Keep `auto_arm: false` for hardware (Section 5).**
 
@@ -207,7 +204,7 @@ Then start the controller exactly as in Terminal 3 above.
 
 Change **one thing at a time**, re-fly the same mission, and compare the recorded
 data. The controller gains live in the core code, not in ROS:
-`src/control/controllers.py`.
+`contract_uav_core/contract_uav_core/control/` (`pid.py`, `mpc.py`, `hinf.py`).
 
 | Symptom you see in the data | What to try |
 |-----------------------------|-------------|
@@ -216,11 +213,13 @@ data. The controller gains live in the core code, not in ROS:
 | Slowly creeps to target then sits with small steady error | Increase integral gain `ki_pos` a little |
 | Altitude sags or climbs (`cmd_thrust` not near 0.5 at hover) | Adjust `hover_thrust` |
 | Tilt is jerky (`attitude_error` noisy) | Lower attitude gains `kp_att` |
-| `cbf_intervened` is true a lot in normal flight | Limits may be too tight — review `src/safety/cbf_filter.py` |
-| Switches controllers too often (`active_controller` flickers) | Increase the hysteresis margin in `src/adaptive_control_system.py` |
+| `cbf_intervened` is true a lot in normal flight | Limits may be too tight — review `contract_uav_core/contract_uav_core/safety/cbf.py` |
+| Switches controllers too often (`active_controller` flickers) | Increase the hysteresis margin in `contract_uav_core/contract_uav_core/switching_policy.py` |
 
-After each change: rebuild is **not** needed for the core Python (it is loaded at
-runtime), just restart the controller node (Terminal 3).
+After each change, rebuild the core (`colcon build --packages-select contract_uav_core`)
+and restart the controller node (Terminal 3). If you built with
+`colcon build --symlink-install`, edits to the core Python apply without a rebuild;
+just restart the node.
 
 ---
 
@@ -229,7 +228,7 @@ runtime), just restart the controller node (Terminal 3).
 | Problem | Check this |
 |---------|-----------|
 | Controller prints nothing / no `/contract_uav/state` | Is the DDS agent (Terminal 1) running? Is PX4 publishing? `ros2 topic list` |
-| "Could not locate the core" error | `CONTRACT_UAV_ROOT` is not set or points to the wrong folder |
+| `No module named 'contract_uav_core'` error | The core is not built or not sourced: `colcon build --packages-select contract_uav_core`, then `source install/setup.bash` |
 | Topics exist but no data | QoS mismatch — confirm you built the latest node; PX4 uses best-effort QoS |
 | Drone won't arm | Look at QGroundControl messages; PX4 needs the offboard heartbeat streaming first |
 | GPS topic missing | Some PX4 versions use `/fmu/out/sensor_gps` instead of `/fmu/out/vehicle_gps_position` — update the subscription name in `controller_node.py` |

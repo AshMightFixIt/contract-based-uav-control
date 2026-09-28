@@ -35,7 +35,7 @@ ros2 run plotjuggler plotjuggler              # live graphs (subscribe to the to
 ros2 bag record /contract_uav/state -o flight # record a run for offline analysis
 ```
 
-See [`ros2_ws/TESTING_MANUAL.md`](../../TESTING_MANUAL.md) for the full
+See [`docs/TESTING_MANUAL.md`](../docs/TESTING_MANUAL.md) for the full
 step-by-step testing & tuning guide written for the whole team.
 
 ## Prerequisites
@@ -44,23 +44,24 @@ step-by-step testing & tuning guide written for the whole team.
 - [`px4_msgs`](https://github.com/PX4/px4_msgs) built in your workspace
 - [`Micro-XRCE-DDS-Agent`](https://docs.px4.io/main/en/middleware/uxrce_dds.html)
 - PX4 (SITL for testing, or DEXI flight controller for hardware)
-- The core controller repo (this repo). Its `src/` is plain Python — numpy only.
+- The core controller package, `contract_uav_core/` in this repo (next to this
+  package). It is plain Python — numpy only.
 
 ## Build
 
 ```bash
-# Point the node at the core controller repo (dir containing src/)
-export CONTRACT_UAV_ROOT=/path/to/contract-based-uav-control
-
-cd ros2_ws
-colcon build --packages-select px4_msgs contract_uav_msgs contract_uav_control
+# The repo root is also the colcon workspace; clone px4_msgs into it first
+# (git clone https://github.com/PX4/px4_msgs.git; it is gitignored there).
+cd /path/to/contract-based-uav-control
+colcon build --packages-select px4_msgs contract_uav_msgs contract_uav_core contract_uav_control
 source install/setup.bash
 ```
 
-> The core controller is imported at runtime via `CONTRACT_UAV_ROOT`. If unset,
-> the node falls back to the repo-relative dev path
-> (`ros2_ws/../` → repo root). Make sure `numpy` (and optionally `pacti`) are on
-> the same Python the node runs with.
+> The node imports the core controller from the `contract_uav_core` package,
+> which colcon builds and installs next to this one (`exec_depend` in
+> `package.xml`), so no environment variable is needed. Outside colcon,
+> `pip install -e ./contract_uav_core` makes it importable too. Make sure
+> `numpy` (and optionally `pacti`) are on the same Python the node runs with.
 
 ## Run (PX4 SITL first — always validate in sim before flight)
 
@@ -72,7 +73,6 @@ MicroXRCEAgent udp4 -p 8888
 make px4_sitl gz_x500
 
 # Terminal 3 — the controller
-export CONTRACT_UAV_ROOT=/path/to/contract-based-uav-control
 ros2 launch contract_uav_control contract_control.launch.py
 ```
 
