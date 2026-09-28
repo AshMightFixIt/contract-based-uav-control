@@ -45,6 +45,17 @@ python -c "import numpy; import matplotlib; print('✓ Dependencies OK')"
 makes `contract_uav_core` importable from any directory, and edits to the package
 take effect without reinstalling. The same commands work in PowerShell on Windows.
 
+**Package layout: keep `contract_uav_core/contract_uav_core/__init__.py` docstring-only.**
+The package sits one folder down (`contract_uav_core/contract_uav_core/`, the ROS 2
+convention). With the default editable install, a Python started in the repository
+root imports the outer project folder `contract_uav_core/` as a namespace package:
+the inner `__init__.py` is not executed there, although every submodule
+(`contract_uav_core.core`, ...) still resolves to the real package. Code in that
+`__init__.py` would therefore run or not depending on the working directory, so the
+file holds only a docstring, and `tests/test_package_layout.py` fails otherwise.
+Installing with `pip install -e ./contract_uav_core --config-settings editable_mode=compat`
+(a plain path entry instead of an import hook) removes the effect.
+
 ---
 
 ## 🧪 Testing
