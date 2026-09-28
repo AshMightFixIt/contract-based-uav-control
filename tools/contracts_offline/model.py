@@ -10,12 +10,19 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 
 # --------------------------------------------------------------------------
-# Input files (repo-relative, POSIX separators)
+# Input files (repo-relative, POSIX separators) and the modules they are in
 # --------------------------------------------------------------------------
-FRAMEWORK_PATH = "src/contracts/contract_framework.py"
-PACTI_LIB_PATH = "src/planning/pacti_contracts.py"
-HORIZON_PLANNER_PATH = "src/planning/horizon_planner.py"
-INTEGRATED_PLANNER_PATH = "src/planning/integrated_planner.py"
+# The core is the package contract_uav_core, installed from this repo
+# (pip install -e ./contract_uav_core); extract.py checks that it is.
+CORE_PACKAGE_PATH = "contract_uav_core/contract_uav_core"
+FRAMEWORK_PATH = "contract_uav_core/contract_uav_core/contracts/library.py"
+PACTI_LIB_PATH = "contract_uav_core/contract_uav_core/planning/pacti_contracts.py"
+HORIZON_PLANNER_PATH = "contract_uav_core/contract_uav_core/planning/horizon_planner.py"
+INTEGRATED_PLANNER_PATH = "contract_uav_core/contract_uav_core/planning/integrated_planner.py"
+# HierarchicalContractMonitor is in contracts/monitor.py; its define_contracts
+# (FRAMEWORK_PATH) is in contracts/library.py.
+FRAMEWORK_MODULE = "contract_uav_core.contracts.monitor"
+PACTI_LIB_MODULE = "contract_uav_core.planning.pacti_contracts"
 THIRD_COPY_PATHS = (HORIZON_PLANNER_PATH, INTEGRATED_PLANNER_PATH)
 INPUT_PATHS = tuple(sorted((FRAMEWORK_PATH, PACTI_LIB_PATH) + THIRD_COPY_PATHS))
 

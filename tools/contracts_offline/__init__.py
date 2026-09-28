@@ -2,7 +2,7 @@
 
 Composes the repo's two contract libraries soundly with Pacti and reports where
 they disagree. It is an offline design tool: nothing here runs on the robot, and
-it never modifies ``src/``.
+it never modifies the core package (``contract_uav_core/``).
 
 Run from the repo root with either of::
 

@@ -1,9 +1,11 @@
 """Tests for tools/contracts_offline.
 
 Run from the repo root:  python -m pytest -p no:cacheprovider tools/contracts_offline/tests
+It needs the core package installed from this repo (pip install -e ./contract_uav_core).
 The whole module is skipped when pacti is not installed.
 """
 
+import importlib.util
 import json
 import os
 import re
@@ -18,8 +20,14 @@ pytest.importorskip("pacti", reason="pacti is not installed; pip install -r tool
 TOOL_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = TOOL_DIR.parents[1]
 sys.dont_write_bytecode = True
-if str(TOOL_DIR.parent) not in sys.path:
-    sys.path.insert(0, str(TOOL_DIR.parent))
+if "contracts_offline" not in sys.modules:
+    # Load this folder as the package ``contracts_offline`` from its location, as
+    # run.py does, so neither tools/__init__.py nor a sys.path entry is needed.
+    _spec = importlib.util.spec_from_file_location(
+        "contracts_offline", TOOL_DIR / "__init__.py", submodule_search_locations=[str(TOOL_DIR)])
+    _package = importlib.util.module_from_spec(_spec)
+    sys.modules["contracts_offline"] = _package
+    _spec.loader.exec_module(_package)
 
 from contracts_offline import SCHEMA_VERSION, cli  # noqa: E402
 from contracts_offline import admissible as adm  # noqa: E402
@@ -212,14 +220,14 @@ def test_wind_rows_carry_all_three_copies(built):
     mpc = r["MPC|wind_speed|A.upper"]
     assert (mpc["framework_value"], mpc["pacti_value"], mpc["status"]) == (15.0, 8.0, "mismatch")
     assert mpc["framework_loc"] == _loc_of(
-        "src/contracts/contract_framework.py", '"wind_speed": (0.0, 15.0)')
+        "contract_uav_core/contract_uav_core/contracts/library.py", '"wind_speed": (0.0, 15.0)')
     assert mpc["pacti_loc"] == _loc_of(
-        "src/planning/pacti_contracts.py", "'wind_speed <= 8'")
+        "contract_uav_core/contract_uav_core/planning/pacti_contracts.py", "'wind_speed <= 8'")
     assert mpc["third_copy_value"] == "8" and mpc["third_copy_matches"] == "pacti_library"
     wind_limits = "wind_limits = {'pid': 3.0, 'mpc': 8.0, 'hinf': 15.0}"
     third = [loc.strip() for loc in mpc["third_copy_loc"].split(";")]
-    assert _loc_of("src/planning/horizon_planner.py", wind_limits) in third
-    assert _loc_of("src/planning/integrated_planner.py", wind_limits) in third
+    assert _loc_of("contract_uav_core/contract_uav_core/planning/horizon_planner.py", wind_limits) in third
+    assert _loc_of("contract_uav_core/contract_uav_core/planning/integrated_planner.py", wind_limits) in third
     assert r["HINF|wind_speed|A.upper"]["third_copy_matches"] == "pacti_library"
     assert r["PID|wind_speed|A.upper"]["third_copy_matches"] == "both"
 
@@ -227,12 +235,15 @@ def test_wind_rows_carry_all_three_copies(built):
 def test_conversion_notes_cite_current_source_lines(built):
     _, doc, _ = built
     notes = {n["id"]: n["where"] for n in doc["conversion_notes"]}
-    sensors = _loc_of("src/contracts/contract_framework.py", "self.sensor_contract = SimpleContract(")
+    sensors = _loc_of("contract_uav_core/contract_uav_core/contracts/library.py",
+                      "self.sensor_contract = SimpleContract(")
     assert notes["C5-SENSORS"] == f"GPS_IMU_Sensors (cf:{sensors.rsplit(':', 1)[1]})"
-    first = int(_loc_of("src/planning/pacti_contracts.py", "def compose_pipeline(").rsplit(":", 1)[1])
+    first = int(_loc_of("contract_uav_core/contract_uav_core/planning/pacti_contracts.py",
+                        "def compose_pipeline(").rsplit(":", 1)[1])
     cited_first, cited_last = (int(x) for x in notes["C6-PIPELINE"].removeprefix("pc:").split("-"))
     assert cited_first == first
-    lines = (REPO_ROOT / "src/planning/pacti_contracts.py").read_text(encoding="utf-8").splitlines()
+    lines = (REPO_ROOT / "contract_uav_core/contract_uav_core/planning/pacti_contracts.py").read_text(
+        encoding="utf-8").splitlines()
     body = lines[cited_first - 1:cited_last]
     # The cited range holds the whole method and nothing after it.
     assert sum(line.lstrip().startswith("def ") for line in body) == 1
