@@ -164,8 +164,9 @@ class HorizonPlanner:
         steps = []
         min_margin = float('inf')
 
-        # Get initial tracking error
-        tracking_error = current_state.get('tracking_error', 0.0)
+        # Get initial tracking error — kept fixed so _propagate_error computes
+        # the correct closed-form 0.9^t * e_0 + (1-0.9^t) * e_ss at each step t.
+        initial_tracking_error = current_state.get('tracking_error', 0.0)
 
         # Get environment parameters
         wind_speed = environment.get('wind_speed', 0.0)
@@ -190,7 +191,7 @@ class HorizonPlanner:
             'position_est_error': current_state.get('position_est_error', 0.5),
             'velocity_est_error': current_state.get('velocity_est_error', 0.1),
             'wind_speed': wind_speed,
-            'initial_tracking_error': tracking_error,
+            'initial_tracking_error': initial_tracking_error,
         }
 
         # Check if assumptions are satisfied
@@ -211,9 +212,8 @@ class HorizonPlanner:
             # Build step contract by composing controller with dynamics
             step_contract = self._build_step_contract(controller, t)
 
-            # Compute tracking error bound at this step
-            # Using the dynamics contract: next_error <= 0.9 * error + 0.1 * wind
-            error_bound = self._propagate_error(tracking_error, wind_speed, t)
+            # Closed-form bound: e_t = 0.9^t * e_0 + (1 - 0.9^t) * e_ss(wind, ctrl)
+            error_bound = self._propagate_error(initial_tracking_error, wind_speed, t, controller)
 
             # Compute safety margin
             margin = self.config.safety_limit - error_bound
@@ -228,9 +228,6 @@ class HorizonPlanner:
             steps.append(step)
 
             min_margin = min(min_margin, margin)
-
-            # Update tracking error for next step
-            tracking_error = error_bound
 
         # Determine plan status
         if min_margin >= self.config.margin_threshold:
@@ -282,8 +279,13 @@ class HorizonPlanner:
                              controller: str,
                              timestep: int) -> Optional[PolyhedralIoContract]:
         """
-        Build contract for one step: Controller -> Dynamics
+        Return the pre-cached ctrl ∘ dynamics contract.
+        Falls back to on-demand composition if the cache entry is missing.
         """
+        cached = self.contracts.get_step_contract(controller)
+        if cached is not None:
+            return cached
+        # Fallback: compose on demand (cache missed at init)
         try:
             ctrl = self.contracts.get_contract(controller)
             dyn = self.contracts.get_contract('dynamics')
@@ -296,19 +298,22 @@ class HorizonPlanner:
     def _propagate_error(self,
                          initial_error: float,
                          wind_speed: float,
-                         steps: int) -> float:
+                         steps: int,
+                         controller: str) -> float:
         """
-        Propagate tracking error through dynamics contract.
+        Propagate tracking error over N steps using controller-specific steady-state bounds.
 
-        Dynamics: next_error <= 0.9 * error + 0.1 * wind
+        Dynamics decay: 0.9 per step (from dynamics contract).
+        Steady-state target: e_ss = wind_coeff * wind + constant (from controller contract).
 
-        Over N steps: error_N <= 0.9^N * error_0 + 0.1 * wind * sum(0.9^i)
-                                = 0.9^N * error_0 + 0.1 * wind * (1 - 0.9^N) / 0.1
-                                = 0.9^N * error_0 + wind * (1 - 0.9^N)
+        Formula: e_N = 0.9^N * e_0 + (1 - 0.9^N) * e_ss(wind, controller)
+
+        This gives different bounds per controller:
+          MPC (wind_coeff=0.15) is tightest, H-inf (0.50 + 1.0) is most conservative.
         """
-        decay = 0.9 ** steps
-        error_bound = decay * initial_error + wind_speed * (1 - decay)
-        return error_bound
+        decay_n = 0.9 ** steps
+        e_ss = self.contracts.get_controller_ss_error(controller, wind_speed)
+        return decay_n * initial_error + (1 - decay_n) * e_ss
 
     def replan(self,
                current_state: Dict[str, float],
