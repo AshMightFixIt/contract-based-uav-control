@@ -1,7 +1,7 @@
-# Minimal runtime set: the numpy-only core, i.e. everything in the
-# contract_uav_core package except contract_uav_core/planning/* (needs pacti, see
+# Minimal runtime set: the core, i.e. everything in the contract_uav_core
+# package except contract_uav_core/planning/* (needs pacti, see
 # requirements-legacy.txt) and contract_uav_core/viz/* (needs pygame, see
-# requirements-viz.txt). contract_uav_core/setup.py declares the same numpy pin.
+# requirements-viz.txt). contract_uav_core/setup.py declares the same pins.
 # The package itself is installed separately:
 #   python -m pip install -e ./contract_uav_core
 # Example: python -m contract_uav_core.core
@@ -12,3 +12,8 @@
 #   - The code itself needs 3.7 (dataclasses; static check with `vermin`).
 #   Python below 3.10 has not been exercised; CI covers 3.10 and 3.11.
 numpy>=1.20.0
+# PyYAML reads the airframe files (contract_uav_core/config/airframes/*.yaml).
+# The floor is Ubuntu 22.04's apt python3-yaml (5.4.1), so the ROS 2 Humble
+# package (package.xml: python3-yaml) and pip agree. PyYAML 5.4.1 declares
+# Requires-Python >=2.7,!=3.0.*,...,!=3.5.*, so the Python floor stays 3.7.
+PyYAML>=5.4.1

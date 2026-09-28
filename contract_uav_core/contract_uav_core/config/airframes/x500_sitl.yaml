@@ -1,0 +1,112 @@
+# Holybro X500 as simulated by PX4 SITL with Gazebo (gz_x500, SYS_AUTOSTART 4001).
+# Schema and loader: contract_uav_core/config/airframe.py. Not read by the legacy
+# scripts or the control path yet.
+#
+# Every number carries {value, unit, status, source}: status is px4_airframe
+# (set in the PX4 airframe file), px4_param_default (PX4's default when the
+# airframe does not set it), model_sdf (Gazebo model), assumed (no PX4 source;
+# plant section only) or unknown (value null, with a note). Sources are PX4
+# v1.16.2 files on raw.githubusercontent.com; "#Ln" is the line.
+# The Gazebo models are the PX4-gazebo-models commit that PX4 v1.16.2 pins as
+# its Tools/simulation/gz submodule: e05f4312d3f28aa621157610584a4870406cb6d3.
+schema_version: 1
+name: x500_sitl
+description: Holybro X500 in PX4 v1.16.2 SITL (Gazebo gz_x500)
+px4:
+  version: v1.16.2
+  airframe: 4001_gz_x500
+  airframe_url: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500
+
+vehicle:
+  mass:
+    value: 2.0643
+    unit: kg
+    status: model_sdf
+    source: https://raw.githubusercontent.com/PX4/PX4-gazebo-models/e05f4312d3f28aa621157610584a4870406cb6d3/models/x500_base/model.sdf#L9
+    note: base_link 2.0 kg (L9) plus four rotor links of 0.016076923076923075 kg (L318, L390, L462, L534), rounded to 0.1 g
+  hover_thrust:
+    value: 0.60
+    unit: norm
+    status: px4_airframe
+    param: MPC_THR_HOVER
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d-posix/airframes/4001_gz_x500#L50
+  max_thrust:
+    value: 1.0
+    unit: norm
+    status: px4_param_default
+    param: MPC_THR_MAX
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/src/modules/mc_pos_control/multicopter_position_control_limits_params.c#L140
+    note: whether PX4 applies MPC_THR_MAX to offboard attitude setpoints is not verified (open question 4)
+  min_thrust:
+    value: 0.12
+    unit: norm
+    status: px4_param_default
+    param: MPC_THR_MIN
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/src/modules/mc_pos_control/multicopter_position_control_limits_params.c#L126
+  motor_constant:
+    value: 8.54858e-06
+    unit: N s^2/rad^2
+    status: model_sdf
+    source: https://raw.githubusercontent.com/PX4/PX4-gazebo-models/e05f4312d3f28aa621157610584a4870406cb6d3/models/x500/model.sdf#L14
+    note: MulticopterMotorModel motorConstant, the same for all four motors (thrust = motor_constant * omega^2)
+  max_rot_velocity:
+    value: 1000.0
+    unit: rad/s
+    status: model_sdf
+    source: https://raw.githubusercontent.com/PX4/PX4-gazebo-models/e05f4312d3f28aa621157610584a4870406cb6d3/models/x500/model.sdf#L13
+  moment_constant:
+    value: 0.016
+    unit: m
+    status: model_sdf
+    source: https://raw.githubusercontent.com/PX4/PX4-gazebo-models/e05f4312d3f28aa621157610584a4870406cb6d3/models/x500/model.sdf#L15
+
+battery:
+  n_cells:
+    value: 4
+    unit: cells
+    status: px4_param_default
+    param: BAT1_N_CELLS
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d-posix/rcS#L163
+    note: set-default of the SITL startup script, applied to every SITL airframe (the module default is 0, unknown); SITL simulates the battery (battery_simulator)
+  v_empty_cell:
+    value: 3.6
+    unit: V
+    status: px4_param_default
+    param: BAT1_V_EMPTY
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/src/lib/battery/module.yaml#L24
+  v_charged_cell:
+    value: 4.05
+    unit: V
+    status: px4_param_default
+    param: BAT1_V_CHARGED
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/src/lib/battery/module.yaml#L40
+  capacity:
+    value: null
+    unit: mAh
+    status: unknown
+    param: BAT1_CAPACITY
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/src/lib/battery/module.yaml#L102
+    note: PX4 default is -1 (not configured) and neither the airframe nor rcS sets it
+
+# Reference-plant parameters (sim/quadrotor.py). No PX4 source: assumed.
+plant:
+  attitude_time_constant:
+    value: 0.15
+    unit: s
+    status: assumed
+    source: null
+    note: >-
+      First-order attitude response of the reference plant. About 1/MC_ROLL_P, taking
+      the PX4 default MC_ROLL_P = 6.5 1/s (src/modules/mc_att_control/mc_att_control_params.c#L53
+      at v1.16.2) and a much faster rate loop; not measured. Larger values make the
+      plant tilt more slowly, so lateral responses lag and overshoot more.
+  drag_coefficient:
+    value: 0.05
+    unit: kg/m
+    status: assumed
+    source: null
+    note: >-
+      k in F = -k |v_rel| v_rel, from 0.5 * rho * Cd * A with rho = 1.225 kg/m^3 and an
+      assumed Cd * A of about 0.08 m^2; order of magnitude only, not measured. It scales
+      the wind force linearly (5 N at 10 m/s relative wind, about 2.4 m/s^2 on 2.06 kg)
+      and sets the top speed.

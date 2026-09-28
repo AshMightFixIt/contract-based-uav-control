@@ -1,6 +1,7 @@
-# Default install (`pip install -r requirements.txt`). It resolves the same
-# three requirements as before the dependency sets were split out:
-# numpy>=1.20.0, matplotlib>=3.3.0, pygame>=2.0.0.
+# Default install (`pip install -r requirements.txt`). It resolves the three
+# requirements from before the dependency sets were split out
+# (numpy>=1.20.0, matplotlib>=3.3.0, pygame>=2.0.0) plus PyYAML>=5.4.1 for the
+# airframe files (requirements-runtime.txt).
 # The core package is installed separately, from the repository root:
 #   python -m pip install -e ./contract_uav_core
 #

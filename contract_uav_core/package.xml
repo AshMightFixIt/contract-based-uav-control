@@ -6,13 +6,15 @@
   <description>
     Plain-Python core of the contract-based three-tier (PID/MPC/H-inf) adaptive
     UAV controller: assume-guarantee contracts, contract-aware EKF, CBF safety
-    filter, flight-mode supervisor. Needs only numpy; the optional horizon
-    planner also needs pacti. Also installable with `pip install -e`.
+    filter, flight-mode supervisor. Needs numpy and PyYAML (airframe files);
+    the optional horizon planner also needs pacti. Also installable with
+    `pip install -e`.
   </description>
   <maintainer email="aswatths@umich.edu">Aswatth Sunil</maintainer>
   <license>MIT</license>
 
   <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
 
   <test_depend>python3-pytest</test_depend>
 

@@ -1,0 +1,119 @@
+# DroneBlocks DEXI 5 (PX4 airframe 4601_droneblocks_dexi_5).
+# Schema and loader: contract_uav_core/config/airframe.py. Not read by the legacy
+# scripts or the control path yet.
+#
+# Every number carries {value, unit, status, source}: status is px4_airframe
+# (set in the PX4 airframe file), px4_param_default (PX4's default when the
+# airframe does not set it), model_sdf (Gazebo model), assumed (no PX4 source;
+# plant section only) or unknown (value null, with a note). Sources are PX4
+# v1.16.2 files on raw.githubusercontent.com; "#Ln" is the line.
+# These are PX4's defaults for the airframe, not measurements of a vehicle:
+# the parameters on the actual DEXI may differ (check 5).
+schema_version: 1
+name: dexi
+description: DroneBlocks DEXI 5, PX4 v1.16.2 airframe defaults
+px4:
+  version: v1.16.2
+  airframe: 4601_droneblocks_dexi_5
+  airframe_url: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d/airframes/4601_droneblocks_dexi_5
+
+vehicle:
+  mass:
+    value: null
+    unit: kg
+    status: unknown
+    source: null
+    note: not in the PX4 sources (the airframe file sets no mass and there is no Gazebo model of the DEXI 5); weigh the vehicle (check 5)
+  hover_thrust:
+    value: 0.22
+    unit: norm
+    status: px4_airframe
+    param: MPC_THR_HOVER
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d/airframes/4601_droneblocks_dexi_5#L69
+    note: PX4 default, confirm on the vehicle (check 5)
+  max_thrust:
+    value: 0.5
+    unit: norm
+    status: px4_airframe
+    param: MPC_THR_MAX
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d/airframes/4601_droneblocks_dexi_5#L70
+    note: PX4 default, confirm on the vehicle (check 5). Whether PX4 applies MPC_THR_MAX to offboard attitude setpoints is not verified (open question 4)
+  min_thrust:
+    value: 0.025
+    unit: norm
+    status: px4_airframe
+    param: MPC_THR_MIN
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d/airframes/4601_droneblocks_dexi_5#L71
+    note: PX4 default, confirm on the vehicle (check 5). Below the parameter's documented minimum of 0.05 (multicopter_position_control_limits_params.c#L120)
+  motor_constant:
+    value: null
+    unit: N s^2/rad^2
+    status: unknown
+    source: null
+    note: no Gazebo model or PX4 source for the DEXI 5 motors; needs a thrust-stand measurement
+  max_rot_velocity:
+    value: null
+    unit: rad/s
+    status: unknown
+    source: null
+    note: no Gazebo model or PX4 source for the DEXI 5 motors; needs a measurement
+  moment_constant:
+    value: null
+    unit: m
+    status: unknown
+    source: null
+    note: no Gazebo model or PX4 source for the DEXI 5 motors; needs a measurement
+
+battery:
+  n_cells:
+    value: 6
+    unit: cells
+    status: px4_airframe
+    param: BAT1_N_CELLS
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d/airframes/4601_droneblocks_dexi_5#L26
+    note: PX4 default, confirm on the vehicle (check 5)
+  v_empty_cell:
+    value: 3.3
+    unit: V
+    status: px4_airframe
+    param: BAT1_V_EMPTY
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d/airframes/4601_droneblocks_dexi_5#L27
+    note: PX4 default, confirm on the vehicle (check 5)
+  v_charged_cell:
+    value: 4.05
+    unit: V
+    status: px4_param_default
+    param: BAT1_V_CHARGED
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/src/lib/battery/module.yaml#L40
+    note: PX4 default, confirm on the vehicle (check 5). Not set by the airframe file
+  capacity:
+    value: 4000.0
+    unit: mAh
+    status: px4_airframe
+    param: BAT1_CAPACITY
+    source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/ROMFS/px4fmu_common/init.d/airframes/4601_droneblocks_dexi_5#L25
+    note: PX4 default, confirm on the vehicle (check 5)
+
+# Reference-plant parameters (sim/quadrotor.py). No PX4 source: assumed.
+plant:
+  attitude_time_constant:
+    value: 0.13
+    unit: s
+    status: assumed
+    source: null
+    note: >-
+      First-order attitude response of the reference plant. About 1/MC_ROLL_P, taking the
+      airframe's MC_ROLL_P = MC_PITCH_P = 7.5 1/s (4601_droneblocks_dexi_5#L61, #L65) and a
+      much faster rate loop; not measured. Larger values make the plant tilt more slowly,
+      so lateral responses lag and overshoot more.
+  drag_coefficient:
+    value: 0.02
+    unit: kg/m
+    status: assumed
+    source: null
+    note: >-
+      k in F = -k |v_rel| v_rel, from 0.5 * rho * Cd * A with rho = 1.225 kg/m^3 and an
+      assumed Cd * A of about 0.03 m^2 for a 5-inch quadrotor; order of magnitude only,
+      not measured. It scales the wind force linearly (2 N at 10 m/s relative wind) and
+      sets the top speed. The plant also needs the unknown mass to turn it into an
+      acceleration.
