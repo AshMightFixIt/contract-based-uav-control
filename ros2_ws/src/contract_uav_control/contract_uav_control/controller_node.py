@@ -40,34 +40,15 @@ def _f3(v):
 
 
 def _import_core_controller():
-    """Import AdaptiveDroneController from the contract-based-uav-control repo.
+    """Import AdaptiveDroneController from the installed contract_uav_core package.
 
-    The core controller is plain-Python research code that lives outside the ROS 2
-    package. Set CONTRACT_UAV_ROOT to the repo root (the dir containing `src/`).
-    Falls back to a dev-tree relative path for local colcon builds.
+    The core controller is the plain-Python package contract_uav_core, installed
+    next to this one (colcon build, or `pip install -e ./contract_uav_core`), so a
+    normal import finds it. Returns the class and the directory it was loaded from.
     """
-    root = os.environ.get('CONTRACT_UAV_ROOT')
-    candidates = []
-    if root:
-        candidates.append(root)
-    # dev fallback: this file lives at <repo>/ros2_ws/src/contract_uav_control/contract_uav_control/
-    here = os.path.dirname(os.path.abspath(__file__))
-    candidates.append(os.path.abspath(os.path.join(here, '..', '..', '..', '..')))
-
-    for cand in candidates:
-        src_dir = os.path.join(cand, 'src')
-        # core modules import each other as top-level (e.g. `from contracts...`),
-        # so `src/` itself must be on sys.path, not the repo root.
-        if os.path.isdir(os.path.join(src_dir, 'control')):
-            if src_dir not in sys.path:
-                sys.path.insert(0, src_dir)
-            from adaptive_control_system import AdaptiveDroneController
-            return AdaptiveDroneController, cand
-
-    raise ImportError(
-        "Could not locate the contract-based-uav-control core. "
-        "Set CONTRACT_UAV_ROOT to the repo root (the directory containing 'src/')."
-    )
+    from contract_uav_core.core import AdaptiveDroneController
+    core_file = sys.modules[AdaptiveDroneController.__module__].__file__
+    return AdaptiveDroneController, os.path.dirname(os.path.abspath(core_file))
 
 
 class ContractControllerNode(Node):

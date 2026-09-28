@@ -6,17 +6,11 @@ Demonstrates all flight modes: TRACK, HOVER, LAND, EMERGENCY
 Architecture: Sensors -> EKF -> Supervisor -> [PID | H-inf] -> CBF -> Actuators
 """
 
-import sys
 import os
-
-# Add src directory to Python path
-src_path = os.path.join(os.path.dirname(__file__), 'src')
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
 
 import numpy as np
 import matplotlib.pyplot as plt
-from adaptive_control_system import AdaptiveDroneController
+from contract_uav_core.core import AdaptiveDroneController
 import logging
 
 logging.basicConfig(level=logging.WARNING)

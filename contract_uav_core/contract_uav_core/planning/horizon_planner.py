@@ -19,10 +19,7 @@ from enum import Enum
 import numpy as np
 import logging
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from planning.pacti_contracts import PactiContractLibrary
+from .pacti_contracts import PactiContractLibrary
 
 logger = logging.getLogger(__name__)
 

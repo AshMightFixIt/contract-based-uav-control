@@ -9,9 +9,7 @@ Shows:
 5. Mission completion with hover at final waypoint
 """
 
-import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,10 +17,10 @@ import logging
 
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
 
-from adaptive_control_system import AdaptiveDroneController
+from contract_uav_core.core import AdaptiveDroneController
 
 try:
-    from visualization.live_visualizer import LiveVisualizer
+    from contract_uav_core.viz.live_visualizer import LiveVisualizer
     HAS_VISUALIZER = True
 except ImportError:
     HAS_VISUALIZER = False

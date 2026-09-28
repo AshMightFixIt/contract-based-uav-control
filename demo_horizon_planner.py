@@ -9,21 +9,17 @@ Shows:
 5. Controller switching (PID <-> H-inf)
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
 import numpy as np
 import logging
 
 logging.basicConfig(level=logging.WARNING, format='%(message)s')
 
-from adaptive_control_system import AdaptiveDroneController
+from contract_uav_core.core import AdaptiveDroneController
 
 # Quieter logging for demo
-logging.getLogger('planning').setLevel(logging.WARNING)
-logging.getLogger('estimation').setLevel(logging.WARNING)
-logging.getLogger('contracts').setLevel(logging.WARNING)
+logging.getLogger('contract_uav_core.planning').setLevel(logging.WARNING)
+logging.getLogger('contract_uav_core.estimation').setLevel(logging.WARNING)
+logging.getLogger('contract_uav_core.contracts').setLevel(logging.WARNING)
 
 
 def run_demo():
