@@ -219,7 +219,12 @@ data. The controller gains live in the core code, not in ROS:
 After each change, rebuild the core (`colcon build --packages-select contract_uav_core`)
 and restart the controller node (Terminal 3). If you built with
 `colcon build --symlink-install`, edits to the core Python apply without a rebuild;
-just restart the node.
+just restart the node. `--symlink-install` needs setuptools < 80 (Humble's apt
+`python3-setuptools` 59.6 is fine; do not `pip install -U setuptools` into the ROS
+Python). With setuptools 80 or newer, older colcon versions fail with
+`error: option --editable not recognized` and newer ones silently fall back to a
+copy install, so the edits would not apply: pin `setuptools<80` for Humble, or build
+without `--symlink-install` and rebuild after each edit.
 
 ---
 
