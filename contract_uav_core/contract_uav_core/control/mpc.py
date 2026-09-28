@@ -7,6 +7,8 @@ from typing import Dict
 import logging
 
 from .base import BaseController
+from ..frames import accel_to_attitude, attitude_to_rates_torques, mpc_accel_to_thrust
+from ..interfaces import AccelCommand
 
 logger = logging.getLogger(__name__)
 
@@ -140,9 +142,9 @@ class MPCController(BaseController):
         for i in range(self.N):
             self._prev_U[i * self.n_u:(i + 1) * self.n_u] = effective_accel
 
-    def compute_control(self,
-                       state: Dict[str, np.ndarray],
-                       setpoint: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    def compute_accel_command(self,
+                              state: Dict[str, np.ndarray],
+                              setpoint: Dict[str, np.ndarray]) -> AccelCommand:
         """
         Solve condensed QP and return control.
 
@@ -153,6 +155,10 @@ class MPCController(BaseController):
         4. U* = -H_inv * f  (one matrix-vector multiply)
         5. Clip to constraints
         6. Extract first input, map to thrust + attitude + torques
+
+        Returns the AccelCommand: accel is the first, constraint-clipped QP input
+        (its z sets the thrust through frames.mpc_accel_to_thrust), yaw is the
+        setpoint's yaw. compute_control (base.py) returns its legacy dict.
         """
         import time
         t_start = time.perf_counter()
@@ -202,39 +208,27 @@ class MPCController(BaseController):
         # Extract first input (acceleration command)
         accel_cmd = U_star[0:3]
 
-        # Map acceleration to thrust + attitude
+        # Map acceleration to thrust + attitude (frames.py)
         # Simulation convention: thrust > hover → z increases (descent in NED)
         # MPC accel_cmd[2] < 0 means "move z negative" (climb) → need less thrust
-        desired_thrust = self.hover_thrust + accel_cmd[2] / 9.81
-        desired_thrust = np.clip(desired_thrust, 0.0, 1.0)
+        desired_thrust = mpc_accel_to_thrust(accel_cmd[2], self.hover_thrust)
 
-        # Desired attitude from lateral acceleration
-        desired_roll = accel_cmd[1] / 9.81
-        desired_pitch = -accel_cmd[0] / 9.81
+        # Desired attitude from lateral acceleration (yaw-blind), clip tilt
         desired_yaw = setpoint.get('yaw', attitude[2])
-
-        # Clip tilt
         max_tilt = np.arctan2(self.max_lateral_accel, 9.81)  # ~17°
-        desired_roll = np.clip(desired_roll, -max_tilt, max_tilt)
-        desired_pitch = np.clip(desired_pitch, -max_tilt, max_tilt)
+        desired_attitude = accel_to_attitude(accel_cmd, desired_yaw, max_tilt)
 
-        desired_attitude = np.array([desired_roll, desired_pitch, desired_yaw])
-
-        # Inner loop: PD attitude control (same as PID inner loop)
-        att_error = desired_attitude - attitude
-        att_error[2] = np.arctan2(np.sin(att_error[2]), np.cos(att_error[2]))
-        desired_rates_cmd = self.kp_att * att_error - self.kd_att * rates
-        desired_rates_cmd = np.clip(desired_rates_cmd, -2.0, 2.0)
-
-        # Rate → torque
-        rate_error = desired_rates_cmd - rates
-        torques = 0.08 * rate_error
+        # Inner loop: PD attitude control (same as PID inner loop), rate → torque
+        desired_rates_cmd, torques = attitude_to_rates_torques(
+            desired_attitude, attitude, rates, self.kp_att, self.kd_att, 2.0, 0.08)
 
         self.last_solve_time = time.perf_counter() - t_start
 
-        return {
-            'thrust': desired_thrust,
-            'torques': torques,
-            'desired_attitude': desired_attitude,
-            'desired_rates': desired_rates_cmd,
-        }
+        return AccelCommand(
+            accel=accel_cmd,
+            yaw=desired_yaw,
+            thrust=desired_thrust,
+            torques=torques,
+            desired_attitude=desired_attitude,
+            desired_rates=desired_rates_cmd,
+        )
