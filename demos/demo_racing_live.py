@@ -31,19 +31,21 @@ logging.disable(logging.CRITICAL)
 import numpy as np
 
 # ── Import simulation modules BEFORE touching matplotlib.
-# benchmark_racing.py calls matplotlib.use('Agg') at module level; we let it
-# run first, then switch to an interactive backend before creating any figure.
 from contract_uav_core.core import AdaptiveDroneController
-from benchmark_racing import (
+from contract_uav_core.sim.racing_scenario import (
     RacingDroneSimulation, WAYPOINTS,
     INITIAL_CONDITIONS, DT, MAX_STEPS,
     get_wind_at_time,
 )
 
 import matplotlib
+# Start from Agg, as importing the racing benchmark used to force, so the
+# backend chosen below is unchanged; then switch to an interactive backend
+# before creating any figure.
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-# Switch away from the Agg backend that benchmark_racing forced.
+# Switch away from Agg.
 for _backend in ('TkAgg', 'Qt5Agg', 'WXAgg', 'GTK3Agg'):
     try:
         plt.switch_backend(_backend)
