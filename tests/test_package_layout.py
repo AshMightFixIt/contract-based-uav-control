@@ -7,7 +7,7 @@ package: the inner ``__init__.py`` never runs there, while the submodules still
 resolve to the inner package. Code in that ``__init__.py`` would therefore run
 or not depending on the working directory. These tests keep the file
 docstring-only and check that the core still resolves from the repository root.
-See DEVELOPMENT.md, "Package layout".
+See docs/DEVELOPMENT.md, "Package layout".
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def test_package_init_is_docstring_only():
     assert is_docstring and not code, (
         f"{init.relative_to(REPO_ROOT).as_posix()} must hold only a docstring (no imports, "
         "assignments or other code): from the repository root it is not executed "
-        f"(see DEVELOPMENT.md, 'Package layout'). Found: {code or 'no docstring'}"
+        f"(see docs/DEVELOPMENT.md, 'Package layout'). Found: {code or 'no docstring'}"
     )
 
 

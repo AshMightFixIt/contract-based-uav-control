@@ -4,7 +4,7 @@ name: core
 #   the ROS 2 node import check) on every push and pull request, across
 #   OS x Python x NumPy, with the core installed by `pip install -e ./contract_uav_core`.
 # pacti-reproduction: the slow opt-in check that pacti 0.3.1 reproduces
-#   RESULTS.md section 1. Runs only when started by hand or on the weekly schedule.
+#   docs/RESULTS.md section 1. Runs only when started by hand or on the weekly schedule.
 
 on:
   push:
@@ -59,11 +59,11 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
           cache-dependency-path: |
-            requirements*.txt
+            requirements/*.txt
             contract_uav_core/setup.py
 
-      - name: Install contract_uav_core (editable) and requirements-test.txt with ${{ matrix.numpy-spec }}
-        run: python -m pip install -e ./contract_uav_core -r requirements-test.txt "${{ matrix.numpy-spec }}"
+      - name: Install contract_uav_core (editable) and requirements/test.txt with ${{ matrix.numpy-spec }}
+        run: python -m pip install -e ./contract_uav_core -r requirements/test.txt "${{ matrix.numpy-spec }}"
 
       - name: Show versions
         run: |
@@ -101,11 +101,11 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: |
-            requirements*.txt
+            requirements/*.txt
             contract_uav_core/setup.py
 
-      - name: Install contract_uav_core (editable), requirements-legacy.txt and requirements-test.txt
-        run: python -m pip install -e ./contract_uav_core -r requirements-legacy.txt -r requirements-test.txt
+      - name: Install contract_uav_core (editable), requirements/pacti.txt and requirements/test.txt
+        run: python -m pip install -e ./contract_uav_core -r requirements/pacti.txt -r requirements/test.txt
 
       - name: Show versions and require pacti 0.3.1
         run: |

@@ -25,7 +25,7 @@ setup(
     # PyYAML: the airframe files. 5.4.1 is Ubuntu 22.04's python3-yaml.
     install_requires=['numpy>=1.20.0', 'PyYAML>=5.4.1'],
     extras_require={
-        # Plotting in the top-level scripts and the pygame live visualizer (viz/).
+        # Plotting in the benchmarks/ and demos/ scripts and the pygame live visualizer (viz/).
         'viz': ['matplotlib>=3.3.0', 'pygame>=2.0.0'],
     },
     zip_safe=False,  # the airframe files are read from the file system

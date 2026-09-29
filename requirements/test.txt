@@ -1,12 +1,12 @@
-# Test set for `make test`: the default install plus pytest. It deliberately
-# leaves out pacti, because the golden files in tests/golden/ pin the
-# requirements-only behaviour. For the slow pacti test, install
-# requirements-legacy.txt as well.
+# Test set for `make test`: the demos set plus pytest. It deliberately leaves
+# out pacti, because the golden files in tests/golden/ pin the
+# requirements-only behaviour. For the slow pacti test, install pacti.txt as
+# well.
 #
 # Python floor: 3.8
 #   - The tests/ code needs 3.8 (importlib.metadata; static check with `vermin`).
-#   - requirements.txt needs 3.7 (numpy 1.20.0); pytest 7.0.0 declares
+#   - demos.txt needs 3.7 (numpy 1.20.0); pytest 7.0.0 declares
 #     Requires-Python >=3.6.
 #   Python below 3.10 has not been exercised; CI covers 3.10 and 3.11.
--r requirements.txt
+-r demos.txt
 pytest>=7.0

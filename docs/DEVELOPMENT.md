@@ -27,11 +27,11 @@ python --version  # Should be >= 3.8
 
 # Install the core package (editable) and the demo dependencies
 pip install -e ./contract_uav_core
-pip install -r requirements.txt
+pip install -r requirements/demos.txt
 
 # For the tests (make test), and optionally the pacti planner
-pip install -r requirements-test.txt
-pip install -r requirements-legacy.txt   # optional: pacti, for the horizon planner and make test-pacti
+pip install -r requirements/test.txt
+pip install -r requirements/pacti.txt   # optional: pacti, for the horizon planner and make test-pacti
 
 # Verify installation
 python -c "import numpy; import matplotlib; print('✓ Dependencies OK')"
@@ -195,7 +195,7 @@ All tests passed!
 ### Full Demonstration
 
 ```bash
-python simulation_demo.py
+python demos/simulation_demo.py
 ```
 
 **Runs 15-second flight simulation:**
@@ -294,7 +294,10 @@ get_covariance() -> np.ndarray
 
 - `planning/`: the Pacti horizon planner (needs pacti; the core runs without it).
 - `sim/`: `sensor_faults.py` and `battery_model.py` for the demos and benchmarks;
-  `quadrotor.py`, the reference plant.
+  `quadrotor.py`, the reference plant; `racing_scenario.py`, the old racing plant
+  shared by `benchmarks/benchmark_racing.py` and `demos/demo_racing_live.py`;
+  `outputs.py`, which puts the scripts' plots and flight logs in the git-ignored
+  `outputs/` folder.
 - `config/`: `airframe.py` (schema and loader) and `airframes/*.yaml`.
 - `viz/`: `live_visualizer.py` (needs pygame).
 

@@ -7,7 +7,7 @@ This folder contains comprehensive LaTeX documentation for the Contract-Based Ad
 1. **Create a new project** on Overleaf
 2. **Upload all files** from this directory maintaining the folder structure:
    ```
-   LaTeX_Database/
+   thesis/
    ├── main.tex                 # Main document (compile this)
    ├── references.bib           # Bibliography
    ├── chapters/

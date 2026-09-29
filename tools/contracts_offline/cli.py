@@ -270,7 +270,7 @@ def main(argv=None) -> int:
 
     if importlib.util.find_spec("pacti") is None:
         print("contracts_offline: pacti is not installed. Install the tool's requirements:\n"
-              "  python -m pip install -r tools/contracts_offline/requirements.txt", file=sys.stderr)
+              "  python -m pip install -r requirements/contracts_tool.txt", file=sys.stderr)
         return 2
     try:  # find_spec raises when a parent package is missing
         core_found = importlib.util.find_spec("contract_uav_core.contracts.monitor") is not None

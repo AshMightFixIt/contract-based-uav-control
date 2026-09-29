@@ -24,7 +24,7 @@ from contract_uav_core.sim.outputs import output_file
 
 
 # ---------------------------------------------------------------------------
-# DroneSimulation (copied from demo_waypoint_mission.py for self-containment)
+# DroneSimulation (copied from demos/demo_waypoint_mission.py for self-containment)
 # ---------------------------------------------------------------------------
 class DroneSimulation:
     """Simple drone dynamics for waypoint mission testing"""
