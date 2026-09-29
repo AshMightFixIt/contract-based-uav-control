@@ -163,7 +163,7 @@ Your times will differ.
 | Script | What it shows | Time |
 |---|---|---|
 | `demos/demo_waypoint_mission.py` | Four waypoints in changing wind. The controller switches. Opens a 3D window. Saves a plot. | about 2 min |
-| `demos/demo_sensor_degradation.py` | GPS and IMU faults during a mission, and how the estimator copes. Opens a 3D window. Saves a plot. | about 30 s |
+| `demos/demo_sensor_degradation.py` | GPS and IMU faults during a mission, and how the estimator copes. Opens a 3D window. Saves a plot. It uses random noise, so each run is a little different. | 30 s to 2 min |
 | `demos/demo_battery.py` | The battery model: voltage, power use and flight time left. Prints tables only. | under 1 s |
 | `demos/demo_horizon_planner.py` | The planner looking ahead. Needs Pacti. Without Pacti it still runs, but the planner is off. Prints tables only. | under 1 s without Pacti, about 1.5 min with Pacti |
 | `demos/demo_racing_live.py` | Four drones race live in a window, one per controller setup. Does not work with NumPy 2 (see "Known problems"). | fails at once |
