@@ -50,19 +50,19 @@ vehicle:
     unit: N s^2/rad^2
     status: unknown
     source: null
-    note: no Gazebo model or PX4 source for the DEXI 5 motors; needs a thrust-stand measurement
+    note: no Gazebo model or PX4 source for the DEXI 5 motors; needs a thrust-stand measurement (check 5)
   max_rot_velocity:
     value: null
     unit: rad/s
     status: unknown
     source: null
-    note: no Gazebo model or PX4 source for the DEXI 5 motors; needs a measurement
+    note: no Gazebo model or PX4 source for the DEXI 5 motors; needs a measurement (check 5)
   moment_constant:
     value: null
     unit: m
     status: unknown
     source: null
-    note: no Gazebo model or PX4 source for the DEXI 5 motors; needs a measurement
+    note: no Gazebo model or PX4 source for the DEXI 5 motors; needs a measurement (check 5)
 
 battery:
   n_cells:
@@ -104,8 +104,8 @@ plant:
     note: >-
       First-order attitude response of the reference plant. About 1/MC_ROLL_P, taking the
       airframe's MC_ROLL_P = MC_PITCH_P = 7.5 1/s (4601_droneblocks_dexi_5#L61, #L65) and a
-      much faster rate loop; not measured. Larger values make the plant tilt more slowly,
-      so lateral responses lag and overshoot more.
+      much faster rate loop; not measured, confirm on the vehicle (check 5). Larger values
+      make the plant tilt more slowly, so lateral responses lag and overshoot more.
   drag_coefficient:
     value: 0.02
     unit: kg/m
@@ -114,6 +114,6 @@ plant:
     note: >-
       k in F = -k |v_rel| v_rel, from 0.5 * rho * Cd * A with rho = 1.225 kg/m^3 and an
       assumed Cd * A of about 0.03 m^2 for a 5-inch quadrotor; order of magnitude only,
-      not measured. It scales the wind force linearly (2 N at 10 m/s relative wind) and
-      sets the top speed. The plant also needs the unknown mass to turn it into an
-      acceleration.
+      not measured, confirm on the vehicle (check 5). It scales the wind force linearly
+      (2 N at 10 m/s relative wind) and sets the top speed. The plant also needs the
+      unknown mass to turn it into an acceleration.
