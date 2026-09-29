@@ -647,4 +647,4 @@ For hardware deployment, see C++ implementation guide (coming soon).
 
 ---
 
-**Questions?** Open an issue on GitHub or contact aswatth@umich.edu
+**Questions?** Open an issue on GitHub or contact aswatths@umich.edu
