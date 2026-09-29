@@ -47,14 +47,18 @@ Important files at the top level:
 
 ## Install
 
-You need Python 3.10 or 3.11.
+Use Python 3.10 or 3.11.
 CI tests the code with these two versions, on Linux and on Windows.
 Other versions are not tested.
+Check yours with `python3 --version` (on Windows: `python --version`).
+If it shows another version, write `python3.11` (or `python3.10`) instead of `python3` in step 2.
 
 1. Get the code and go into its folder.
+   The newest code is on the `HILSILCode` branch.
+   The `main` branch still has an older layout, so these steps do not work there.
 
    ```bash
-   git clone https://github.com/AshMightFixIt/contract-based-uav-control.git
+   git clone --branch HILSILCode https://github.com/AshMightFixIt/contract-based-uav-control.git
    cd contract-based-uav-control
    ```
 
@@ -140,7 +144,9 @@ python -m pip install -r requirements/test.txt
 make test
 ```
 
+`make` is a small tool that runs the commands saved in the `Makefile`.
 If you do not have `make` (common on Windows), run `python -m pytest` instead.
+On Windows with `make`, use `make test PYTHON=python`.
 
 Five of the scripts save a plot in the `outputs/` folder at the top of the project.
 They create this folder the first time.
@@ -250,7 +256,7 @@ It reacts to the error now, to the error built up over time, and to how fast the
 MPC looks 15 steps ahead with a simple model, and picks the moves that fit best.
 H-infinity is named after a math method for building controllers that cope with the worst gusts.
 The version here is simpler.
-It uses fixed, hand-picked settings, and it strongly slows down any spinning.
+It uses fixed, hand-picked settings and allows only a small tilt (about 13 degrees).
 It is the fallback, because its contract allows the widest range of conditions.
 `control/switcher.py` holds all three and makes the switch.
 
@@ -263,6 +269,8 @@ The tilt must stay under 30 degrees.
 The turn rate must stay under 3 radians (about 170 degrees) per second.
 Near a limit, the filter changes the command with a few fixed rules, one after another.
 For example, when the drone is too low, it adds thrust.
+Only the height and speed rules change the thrust.
+The tilt and turn-rate rules change only the motor torques, and nothing that flies uses those today (see "Known problems").
 It does not solve an optimization problem (a math search for the best command).
 
 **Contracts** (`contracts/`).
@@ -289,7 +297,7 @@ This stops the choice from flipping back and forth.
 If GPS and IMU both fail, it picks H-infinity.
 Then the planner and the supervisor may raise the choice, as described above.
 Last, `control/switcher.py` makes the switch.
-It waits at least 5 seconds between two switches.
+It waits at least 5 seconds between two switches (the cooldown).
 When it switches, it passes the built-up correction to the new controller, to make the change smooth.
 
 ### What a contract is
@@ -302,7 +310,7 @@ Here is a real example from `contracts/library.py`.
 The PID contract assumes that the wind speed is between 0 and 3 m/s.
 It promises that the tracking error stays under a limit.
 The tracking error is how far the drone is from where it should be.
-That limit is the estimator's error, plus half the wind speed, plus 0.2 m.
+That limit is the estimator's error (how unsure the estimator is about the position), plus half the wind speed, plus 0.2 m.
 Now say the estimated wind reaches 3.1 m/s.
 The PID assumption is broken, so the switching rules stop choosing PID.
 The MPC contract allows wind up to 15 m/s.
@@ -327,7 +335,7 @@ You cannot run this part without ROS 2.
 You also need PX4 and the `px4_msgs` package, which holds the PX4 message types for ROS 2.
 The steps are in [`docs/TESTING_MANUAL.md`](docs/TESTING_MANUAL.md) and [`docs/HARDWARE_TESTING.md`](docs/HARDWARE_TESTING.md).
 The manual starts with SITL, where PX4 runs on your computer with a simulated drone.
-Only then does it move on to the real drone.
+Next comes HIL, and only then the real drone.
 For example, this is how the node starts (needs ROS 2):
 
 ```bash
@@ -343,6 +351,7 @@ This bridge has not been tested on a real drone in this repository's CI.
 - The controllers use the wrong sign for thrust. They add thrust to go down, so a real drone would fall. The demos still look fine, because their simple drone models have the same wrong sign.
 - The tilt direction ignores the drone's heading (the way its nose points). The drone only moves the right way when it faces north.
 - A switch between controllers can be delayed by the 5-second wait, even in an emergency.
+- The safety filter's tilt and turn-rate rules, and the spin damping in H-infinity, only change the motor torques. PX4 and the demos that fly do not use those torques, so these rules have no effect on the flight today.
 - Memory use grows during long runs, and each step gets slower.
 - Without GPS, the position estimate drifts badly, because it keeps the last known speed.
 - The pre-flight check in the ROS 2 bridge does not read real drone data. It uses fixed values, so it always passes.
@@ -405,8 +414,8 @@ Advisor: Prof. Iñigo Incer.
 | Flight mode | What the drone is doing: TRACK, HOVER, LAND or EMERGENCY. |
 | GPS | Satellite positioning. It tells the drone where it is. |
 | Guarantee | The part of a contract that says what a part promises when its assumptions hold. |
-| H-infinity | The name of a robust control method. Here, the fallback controller: its contract allows the widest range of conditions. |
-| HIL | Hardware in the loop (the docs also write HITL). PX4 runs on the real flight board, but the drone and the world are simulated. |
+| H-infinity | The name of a control method built to cope with the worst disturbances. Here, the fallback controller: its contract allows the widest range of conditions. |
+| HIL | Hardware in the loop (the docs also write HITL). PX4 runs on the drone's real flight computer, but the drone's motion and the world are simulated. |
 | IMU | Inertial measurement unit. A sensor that measures tilt and turn rates. |
 | MPC | Model predictive control. A controller that predicts a few steps ahead and picks the best moves. |
 | NED | North, East, Down. The direction rule for positions: x points north, y east and z down. So z = -5 means 5 m above the start. |
@@ -422,6 +431,7 @@ Advisor: Prof. Iñigo Incer.
 | SITL | Software in the loop. PX4 runs on your computer, together with a simulated drone. |
 | Supervisor | The part that picks the flight mode, the target point and, in some modes, the controller. |
 | Thrust | The upward push of the rotors. |
+| Torque | A turning force. Here, the part of a controller's output meant to turn the drone. |
 | UAV | Unmanned aerial vehicle: a drone. |
 | Virtual environment | A private set of Python packages for one project. |
 | Waypoint | A point in the air that the drone must reach. |
