@@ -97,6 +97,11 @@ Wait until you see `Ready for takeoff!`.
 ros2 launch contract_uav_control contract_control.launch.py
 ```
 You should see log lines like `[track] ctrl=PID cbf=False thrust=0.50`.
+The core's own INFO messages (waypoint reached, pre-flight details, switching reasons) do not
+appear here, because the core no longer configures Python logging; its warnings and errors still
+print. Configuring logging in the node is planned for batch 3 (W4-13).
+In `/contract_uav/state`, `controller_time` is the PX4 `vehicle_local_position` timestamp in
+seconds (PX4 time), not a counter that starts at 0.
 
 **Terminal 4 — watch the data** (see Section 4).
 
