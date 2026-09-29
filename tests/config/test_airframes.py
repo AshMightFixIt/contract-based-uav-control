@@ -67,6 +67,7 @@ def test_dexi_loads_with_px4_defaults_and_unknowns(airframe):
     for name, param in dexi.provenance.items():
         if param.status in ('px4_airframe', 'px4_param_default'):
             assert param.note.startswith(DEXI_NOTE), name
+        assert '(check 5)' in param.note, name   # every DEXI value needs the vehicle
 
 
 def test_provenance_rules_hold_in_both_files(airframe):
