@@ -91,6 +91,35 @@ def test_heading_rotates_the_body_axes(x500):
         assert last.attitude[2] == pytest.approx(yaw, abs=1e-9)
 
 
+def test_positive_roll_moves_right_of_the_heading(x500):
+    """Roll +0.1 rad (right side down) moves east at yaw 0 and south (-x) at yaw 90 deg.
+
+    This is the direction frames.accel_to_attitude assumes (roll = a_y / 9.81).
+    """
+    roll = 0.1
+    for yaw_deg, direction in [(0, (0.0, 1.0)), (90, (-1.0, 0.0))]:
+        yaw = math.radians(yaw_deg)
+        p = plant(x500, position=(0.0, 0.0, -20.0), attitude=(0.0, 0.0, yaw))
+        last = fly(p, cmd(x500.hover_thrust / math.cos(roll), roll=roll, yaw=yaw), 3.0)[-1]
+        horizontal = last.position[:2]
+        distance = np.linalg.norm(horizontal)
+        assert distance > 2.0, yaw_deg
+        assert np.dot(horizontal / distance, direction) > 0.999, (yaw_deg, horizontal)
+
+
+def test_attitude_follows_a_first_order_lag(x500):
+    """A step roll command: ~63 % after one time constant, exactly 1 - (1 - dt/tau)^n."""
+    tau, target = x500.attitude_time_constant, 0.2
+    p = plant(x500, position=(0.0, 0.0, -20.0))
+    rolls = [s.attitude[0] for s in fly(p, cmd(x500.hover_thrust, roll=target), 3 * tau)]
+    alpha = DT / tau
+    for n in (1, 5, int(round(tau / DT)), int(round(3 * tau / DT))):
+        assert rolls[n - 1] == pytest.approx(target * (1.0 - (1.0 - alpha) ** n), rel=1e-12), n
+    assert rolls[0] < 0.1 * target                               # not instantaneous
+    assert 0.6 < rolls[int(round(tau / DT)) - 1] / target < 0.7  # one tau: ~63 %
+    assert all(a < b < target for a, b in zip(rolls, rolls[1:]))  # monotone, no overshoot
+
+
 def test_wind_pushes_a_hovering_vehicle_downwind(x500):
     for wind, axis, sign in [((4.0, 0.0, 0.0), 0, 1), ((0.0, -4.0, 0.0), 1, -1)]:
         p = plant(x500, position=(0.0, 0.0, -10.0))
