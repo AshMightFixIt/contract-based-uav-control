@@ -7,10 +7,8 @@ Runs the same wind/waypoint scenario with 4 configurations:
   3. MPC-only (forced)
   4. H-inf-only (forced)
 
-Produces comparison metrics table + benchmark_results.png
+Produces comparison metrics table + outputs/benchmark_results.png
 """
-
-import os
 
 import numpy as np
 import matplotlib
@@ -22,6 +20,7 @@ import copy
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
 
 from contract_uav_core.core import AdaptiveDroneController
+from contract_uav_core.sim.outputs import output_file
 
 
 # ---------------------------------------------------------------------------
@@ -576,7 +575,7 @@ def generate_plots(all_data, all_metrics):
     ax_radar.legend(fontsize=7, loc='upper right', bbox_to_anchor=(1.3, 1.1))
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    output_path = os.path.join(os.path.dirname(__file__), 'benchmark_results.png')
+    output_path = output_file(__file__, 'benchmark_results.png')
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     print(f"\nPlot saved to: {output_path}")
     plt.close()

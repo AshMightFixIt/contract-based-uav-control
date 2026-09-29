@@ -13,8 +13,6 @@ Validates that contracts, EKF fusion modes, controller switching,
 and CBF safety work together to maintain safe flight.
 """
 
-import os
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -26,6 +24,7 @@ logging.basicConfig(level=logging.ERROR, format='%(message)s')
 from contract_uav_core.core import AdaptiveDroneController
 from contract_uav_core.control.supervisor import FlightMode
 from contract_uav_core.sim.sensor_faults import SensorFaultInjector, create_standard_degradation_schedule
+from contract_uav_core.sim.outputs import output_file
 
 try:
     from contract_uav_core.viz.live_visualizer import LiveVisualizer
@@ -558,7 +557,7 @@ def run_sensor_degradation_demo():
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
 
-    output_path = os.path.join(os.path.dirname(__file__), 'sensor_degradation_results.png')
+    output_path = output_file(__file__, 'sensor_degradation_results.png')
     plt.savefig(output_path, dpi=150)
     print(f"Plot saved to: {output_path}")
 

@@ -9,8 +9,6 @@ Shows:
 5. Mission completion with hover at final waypoint
 """
 
-import os
-
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
@@ -18,6 +16,7 @@ import logging
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
 
 from contract_uav_core.core import AdaptiveDroneController
+from contract_uav_core.sim.outputs import output_file
 
 try:
     from contract_uav_core.viz.live_visualizer import LiveVisualizer
@@ -433,7 +432,7 @@ def run_waypoint_mission():
 
     plt.tight_layout()
 
-    output_path = os.path.join(os.path.dirname(__file__), 'waypoint_mission_results.png')
+    output_path = output_file(__file__, 'waypoint_mission_results.png')
     plt.savefig(output_path, dpi=150)
     print(f"Plot saved to: {output_path}")
 

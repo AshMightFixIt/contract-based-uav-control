@@ -51,21 +51,16 @@ htmlcov/
 *.sql
 *.sqlite
 
-# Generated outputs. Only these names are ignored, not every png/pdf/json/csv,
+# Generated outputs. Only these are ignored, not every png/pdf/json/csv,
 # so committed data (e.g. tools/contracts_offline/out/) stays visible to git.
-# Plots saved next to the scripts:
-/benchmark_results.png
-/benchmark_racing.png
-/benchmark_sensor_degradation.png
-/sensor_degradation_results.png
-/waypoint_mission_results.png
-/simulation_results.png
-# Flight logs (simulation_demo.py) and the contract metrics that
+# Plots and flight logs from the scripts in benchmarks/ and demos/:
+/outputs/
+# Flight logs (demos/simulation_demo.py) and the contract metrics that
 # AdaptiveDroneController.save_flight_log writes next to them:
 flight_log*.json
 *_contracts.json
 # LaTeX build output
-/LaTeX_Database/main.pdf
+/thesis/main.pdf
 
 # OS
 Thumbs.db

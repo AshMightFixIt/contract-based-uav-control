@@ -6,11 +6,10 @@ Demonstrates all flight modes: TRACK, HOVER, LAND, EMERGENCY
 Architecture: Sensors -> EKF -> Supervisor -> [PID | H-inf] -> CBF -> Actuators
 """
 
-import os
-
 import numpy as np
 import matplotlib.pyplot as plt
 from contract_uav_core.core import AdaptiveDroneController
+from contract_uav_core.sim.outputs import output_file
 import logging
 
 logging.basicConfig(level=logging.WARNING)
@@ -317,12 +316,12 @@ def run_simulation():
     plt.tight_layout()
 
     # Save
-    output_path = os.path.join(os.path.dirname(__file__), 'simulation_results.png')
+    output_path = output_file(__file__, 'simulation_results.png')
     plt.savefig(output_path, dpi=150)
     print(f"Plot saved to: {output_path}")
 
     # Save logs
-    log_path = os.path.join(os.path.dirname(__file__), 'flight_log.json')
+    log_path = output_file(__file__, 'flight_log.json')
     controller.save_flight_log(log_path)
 
     print("\n" + "=" * 70)
