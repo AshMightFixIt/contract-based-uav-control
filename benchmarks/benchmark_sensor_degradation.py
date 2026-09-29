@@ -11,10 +11,8 @@ All configurations use the same EKF + CBF safety pipeline; only the controller
 selection is locked. This isolates the controller's resilience to degraded
 sensor input (noisy/biased/missing measurements).
 
-Produces comparison metrics table + benchmark_sensor_degradation.png
+Produces comparison metrics table + outputs/benchmark_sensor_degradation.png
 """
-
-import os
 
 import numpy as np
 import matplotlib
@@ -28,6 +26,7 @@ logging.basicConfig(level=logging.ERROR, format='%(message)s')
 from contract_uav_core.core import AdaptiveDroneController
 from contract_uav_core.control.supervisor import FlightMode
 from contract_uav_core.sim.sensor_faults import SensorFaultInjector, create_standard_degradation_schedule
+from contract_uav_core.sim.outputs import output_file
 
 
 # ---------------------------------------------------------------------------
@@ -605,7 +604,7 @@ def generate_plots(all_data, all_metrics):
     ax_radar.legend(fontsize=7, loc='upper right', bbox_to_anchor=(1.3, 1.1))
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    output_path = os.path.join(os.path.dirname(__file__), 'benchmark_sensor_degradation.png')
+    output_path = output_file(__file__, 'benchmark_sensor_degradation.png')
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     print(f"\nPlot saved to: {output_path}")
     plt.close()
