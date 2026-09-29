@@ -135,4 +135,4 @@ Dual sensor failure → H-inf (regardless of wind)
 ---
 
 *Generated: 2026-02-20 | Platform: Windows 11, Python 3.8, simplified UAV simulator*
-*Figures: `waypoint_mission_results.png`, `benchmark_results.png`, `sensor_degradation_results.png`, `benchmark_sensor_degradation.png`, `benchmark_racing.png`*
+*Figures (written to `outputs/`): `waypoint_mission_results.png`, `benchmark_results.png`, `sensor_degradation_results.png`, `benchmark_sensor_degradation.png`, `benchmark_racing.png`*

@@ -1,9 +1,9 @@
 """Golden characterisation tests for the two deterministic benchmark scripts.
 
 These pin the *current* behaviour so refactors can be shown to preserve it.
-Each test runs a benchmark script unchanged, as a child process from a copy of
-the top-level scripts (the core comes from the installed contract_uav_core),
-and compares its printed results with a pinned text file.
+Each test runs a script from benchmarks/ unchanged, as a child process from a
+copy of benchmarks/ and demos/ (the core comes from the installed
+contract_uav_core), and compares its printed results with a pinned text file.
 
 What is compared: the results block of stdout, from the first ``Running ...``
 status line up to (not including) ``Generating comparison plots...``. That is
@@ -16,11 +16,11 @@ Goldens:
   benchmark_controllers.nopacti.txt         requirements-only (pacti hidden)
   benchmark_sensor_degradation.nopacti.txt  requirements-only (pacti hidden)
   benchmark_controllers.pacti.txt           pacti 0.3.1, planner active; this is
-                                            RESULTS.md section 1 (slow, opt-in)
+                                            docs/RESULTS.md section 1 (slow, opt-in)
 
 To regenerate after a reviewed, intentional behaviour change:
   make golden-update         (the two requirements-only goldens)
-  make golden-update-pacti   (the pacti golden; needs requirements-legacy.txt)
+  make golden-update-pacti   (the pacti golden; needs requirements/pacti.txt)
 
 Known host dependence (review note N2): the Adaptive column depends on the
 MPC's wall-clock solve time (time.perf_counter() in
@@ -46,7 +46,7 @@ GOLDEN_DIR = Path(__file__).resolve().parent
 START_PREFIX = "Running "
 END_LINE = "Generating comparison plots..."
 
-# Column layout of print_comparison_table() in benchmark_controllers.py:
+# Column layout of print_comparison_table() in benchmarks/benchmark_controllers.py:
 # metric name left-aligned in 28 characters, then one 18-character cell per mode.
 METRIC_WIDTH = 28
 CELL_WIDTH = 18
@@ -113,7 +113,9 @@ def check_golden(actual: str, golden_name: str, update: bool) -> None:
 
 
 def run_benchmark(run_python, repo_copy, script, pythonpath=(), timeout=1800):
-    proc = run_python([repo_copy / script], cwd=repo_copy, pythonpath=pythonpath, timeout=timeout)
+    """Run ``benchmarks/<script>`` from the copy and check that it exits 0."""
+    script_path = repo_copy / "benchmarks" / script
+    proc = run_python([script_path], cwd=repo_copy, pythonpath=pythonpath, timeout=timeout)
     assert proc.returncode == 0, (
         f"{script} exited with {proc.returncode}\n"
         f"--- stdout (tail) ---\n{proc.stdout[-3000:]}\n"
@@ -148,12 +150,12 @@ def test_benchmark_matches_golden_without_pacti(
 def test_benchmark_controllers_with_pacti_reproduces_results_section_1(
     repo_copy, run_python, pacti_available, update_goldens
 ):
-    """RESULTS.md section 1 needs the horizon planner, hence pacti (~8.5 min)."""
+    """docs/RESULTS.md section 1 needs the horizon planner, hence pacti (~8.5 min)."""
     if not pacti_available:
-        pytest.skip("pacti is not installed: pip install -r requirements-legacy.txt")
+        pytest.skip("pacti is not installed: pip install -r requirements/pacti.txt")
     proc = run_benchmark(run_python, repo_copy, "benchmark_controllers.py", timeout=3600)
     results = extract_results(proc.stdout)
     if not update_goldens:
-        # The headline number of RESULTS.md section 1; without pacti it is 63.240.
+        # The headline number of docs/RESULTS.md section 1; without pacti it is 63.240.
         assert adaptive_cell(results, "Mission Time (s)") == "53.780", environment_summary()
     check_golden(results, "benchmark_controllers.pacti.txt", update_goldens)

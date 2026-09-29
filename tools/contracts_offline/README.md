@@ -72,7 +72,7 @@ byte-identical on 3.10, 3.11, 3.12 and 3.13, and CI runs 3.10 and 3.11. Run
 from the repo root:
 
 ```bash
-python -m pip install -r tools/contracts_offline/requirements.txt -e ./contract_uav_core   # in a venv
+python -m pip install -r requirements/contracts_tool.txt -e ./contract_uav_core   # in a venv
 python -B tools/contracts_offline/run.py          # or: python -B -m tools.contracts_offline
 python -B tools/contracts_offline/run.py --check  # exit 1 if out/ is stale; writes nothing
 python -B -m pytest -p no:cacheprovider tools/contracts_offline/tests

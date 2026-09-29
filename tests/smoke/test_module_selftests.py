@@ -39,7 +39,7 @@ def _params():
 @pytest.mark.parametrize("module, needs_pacti", list(_params()))
 def test_module_selftest_exits_zero(module, needs_pacti, core_package, tmp_path, run_python, pacti_available):
     if needs_pacti and not pacti_available:
-        pytest.skip("needs pacti: pip install -r requirements-legacy.txt")
+        pytest.skip("needs pacti: pip install -r requirements/pacti.txt")
     proc = run_python(["-m", module], cwd=tmp_path, timeout=600)
     assert proc.returncode == 0, (
         f"python -m {module} exited with {proc.returncode}\n"

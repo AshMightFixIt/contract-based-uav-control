@@ -161,7 +161,7 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
         8. Contract monitoring + logging
 
         Time, two modes:
-        - t is None (the top-level scripts): the step runs at the accumulated
+        - t is None (the benchmark and demo scripts): the step runs at the accumulated
           self.time and the EKF predicts with the nominal self.dt; self.time += self.dt
           at the end. This is the unchanged legacy path.
         - t given (seconds, from the caller's clock; the ROS node passes the PX4

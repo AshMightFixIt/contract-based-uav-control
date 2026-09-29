@@ -3,10 +3,11 @@
 The core is the installed package ``contract_uav_core``
 (``pip install -e ./contract_uav_core``); ``core_package`` checks that it
 resolves to this checkout. Every script under test runs in a child process,
-from a throwaway copy of the top-level ``*.py`` scripts in pytest's temporary
-directory. The benchmark scripts save PNGs next to ``__file__``, so running
-from the copy keeps the working tree clean, and CHILD_ENV stops Python from
-writing ``__pycache__`` into the package.
+from a throwaway copy of the ``benchmarks/`` and ``demos/`` scripts in pytest's
+temporary directory. The scripts save their plots into ``outputs/`` next to
+their own folder (found from ``__file__``), so running from the copy keeps the
+working tree clean, and CHILD_ENV stops Python from writing ``__pycache__``
+into the package.
 """
 from __future__ import annotations
 
@@ -21,6 +22,8 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PACKAGE_DIR = REPO_ROOT / "contract_uav_core" / "contract_uav_core"
+# The script folders that repo_copy copies.
+SCRIPT_DIRS = ("benchmarks", "demos")
 
 # Applied to every child process: headless plotting/pygame, UTF-8 output (the
 # code logs characters such as U+2192 that a cp1252 pipe on Windows cannot
@@ -83,11 +86,13 @@ def core_package(tmp_path_factory) -> Path:
 
 @pytest.fixture
 def repo_copy(tmp_path, core_package) -> Path:
-    """A fresh copy of the top-level scripts, outside the repo."""
+    """A fresh copy of the ``benchmarks/`` and ``demos/`` scripts, outside the repo."""
     dest = tmp_path / "repo"
     dest.mkdir()
-    for script in REPO_ROOT.glob("*.py"):
-        shutil.copy2(script, dest / script.name)
+    for folder in SCRIPT_DIRS:
+        (dest / folder).mkdir()
+        for script in (REPO_ROOT / folder).glob("*.py"):
+            shutil.copy2(script, dest / folder / script.name)
     return dest
 
 
