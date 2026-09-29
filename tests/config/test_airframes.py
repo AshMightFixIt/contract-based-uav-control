@@ -230,6 +230,22 @@ def test_file_errors(airframe, tmp_path):
         airframe.load_airframe_file(empty)
 
 
+@pytest.mark.parametrize('text, shown', [
+    ('? [a, b]\n: 1\n', "['a', 'b']"),                   # unhashable list key
+    ('? {a: 1}\n: 1\n', "{'a': 1}"),                     # unhashable mapping key
+    ('schema_version: 1\n2: two\n', '2'),                # number key
+    ('vehicle:\n  null: 1\n', 'None'),                   # null key, nested
+])
+def test_non_string_keys_are_rejected(airframe, tmp_path, text, shown):
+    path = tmp_path / 'keys.yaml'
+    path.write_text(text, encoding='utf-8')
+    with pytest.raises(airframe.AirframeError) as info:
+        airframe.load_airframe_file(path)
+    message = str(info.value)
+    assert message.startswith('keys.yaml: not a valid airframe file: '), message
+    assert f'key {shown} on line ' in message and 'is not a string' in message, message
+
+
 def test_unchanged_copy_passes(airframe):
     data = raw(airframe, 'dexi')
     assert airframe.parse_airframe(copy.deepcopy(data), origin='x').hover_thrust == 0.22

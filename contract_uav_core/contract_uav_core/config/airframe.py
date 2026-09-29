@@ -22,7 +22,7 @@ which have no PX4 source). Every number is an entry
 - value is null exactly when status is unknown, and only for fields the schema
   marks nullable. assumed and unknown need a note (why, and the effect).
 - unit must equal the schema's unit; the value must have the schema's type and
-  lie in its range. Unknown keys and duplicate keys are errors.
+  lie in its range. Unknown, duplicate and non-string keys are errors.
 
 load_airframe returns a frozen Airframe; any violation raises AirframeError
 naming the file and the key.
@@ -246,14 +246,17 @@ def _check_text(value, where, fail):
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):
-    """yaml.SafeLoader that rejects duplicate keys instead of keeping the last one."""
+    """yaml.SafeLoader that rejects duplicate and non-string keys (instead of keeping the last
+    duplicate, or failing with a bare TypeError on an unhashable key)."""
 
 
 def _construct_unique_mapping(loader, node, deep=False):
     loader.flatten_mapping(node)
     seen = set()
     for key_node, _ in node.value:
-        key = loader.construct_object(key_node, deep=deep)
+        key = loader.construct_object(key_node, deep=True)  # deep: a list key is built in full
+        if not isinstance(key, str):  # e.g. a number, null, or an unhashable list or mapping
+            raise AirframeError(f"key {key!r} on line {key_node.start_mark.line + 1} is not a string")
         if key in seen:
             raise AirframeError(f"duplicate key {key!r} on line {key_node.start_mark.line + 1}")
         seen.add(key)
