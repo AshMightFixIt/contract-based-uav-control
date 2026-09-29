@@ -1,3 +1,7 @@
+> Note: these numbers were measured before the batch 3 fixes, when the
+> simulated drone's thrust direction was backwards (verified finding K01).
+> They will be measured again after those fixes.
+
 # Benchmark Results — Contract-Based Adaptive UAV Control
 
 All results produced after applying three stability fixes:
