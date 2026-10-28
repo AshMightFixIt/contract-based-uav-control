@@ -8,6 +8,9 @@ loop at dt = 0.02 s, from rest at (0, 0, -5) with the heading held at yaw 0,
 the horizontal distance to the setpoint is within 0.5 m and stays there to the
 end of a 30 s run; no ground contact; the altitude stays within 0.5 m and the
 heading is held; and the settling time is the same at all four headings.
+A second test starts at 90, 180 or 270 deg with a setpoint yaw of 0: the PID
+and MPC turn to it, the H-infinity holds its own heading, and all must settle
+the same way (this checks that the H-infinity rotates by the yaw it commands).
 
 Before W4-05 the tilt ignored the heading (A-R2): at 90, 180 and 270 deg the
 error grew to 46-161 m (and the thrust sign, K01, put every tier on the
@@ -88,3 +91,25 @@ def test_g1_2_lateral_step_settles_at_any_heading(tier, direction):
         settle_times[yaw_deg] = settle
     # heading-invariant: the same response at every heading (to within a step or two)
     assert max(settle_times.values()) - min(settle_times.values()) <= 2 * DT + 1e-9, settle_times
+
+
+@pytest.mark.parametrize('tier', ['PID', 'MPC', 'Hinf'])
+def test_g1_2_lateral_step_settles_when_the_setpoint_yaw_differs(tier):
+    """G1.2 (controller level), setpoint yaw 0 while the vehicle starts at 90, 180 or 270 deg.
+
+    The PID and MPC turn to the setpoint's yaw while they translate; the H-inf
+    holds the heading it starts with (it ignores the setpoint's yaw) and must
+    still tilt the right way, so its rotation has to use the yaw it commands.
+    """
+    goal = np.array([START[0] + 10.0, START[1]])
+    setpoint = {'position': np.array([goal[0], goal[1], START[2]]), 'velocity': np.zeros(3), 'yaw': 0.0}
+    for yaw_deg in YAWS[1:]:
+        start_yaw = math.radians(yaw_deg)
+        log = fly(tier, start_yaw, setpoint, RUN)
+        where = (tier, yaw_deg)
+        assert not any(state.on_ground for _, state in log), where
+        assert all(abs(state.position[2] - START[2]) < 0.5 for _, state in log), where
+        settle = settling_time(log, lambda s: np.linalg.norm(s.position[:2] - goal), TOLERANCE)
+        assert settle <= SETTLE_BY, (where, settle)
+        held = start_yaw if tier == 'Hinf' else 0.0
+        assert abs(math.remainder(log[-1][1].attitude[2] - held, 2 * math.pi)) < 1e-6, where
