@@ -1,9 +1,10 @@
 """
 Airframe files: schema, validation and loader (W4-04, P0a.10).
 
-The files are config/airframes/<name>.yaml, installed with the package. Nothing
-in the legacy scripts or the control path reads them yet; the reference plant
-(sim/quadrotor.py) can be built from one.
+The files are config/airframes/<name>.yaml, installed with the package. The
+reference plant (sim/quadrotor.py) can be built from one, and the control tiers
+take one as an option (control/base.py: hover thrust and thrust limits); the
+switcher, the core and the legacy scripts do not pass one yet.
 
     from contract_uav_core.config.airframe import load_airframe
     x500 = load_airframe('x500_sitl')

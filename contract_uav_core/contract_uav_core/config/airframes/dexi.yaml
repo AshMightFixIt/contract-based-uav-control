@@ -1,6 +1,7 @@
 # DroneBlocks DEXI 5 (PX4 airframe 4601_droneblocks_dexi_5).
-# Schema and loader: contract_uav_core/config/airframe.py. Not read by the legacy
-# scripts or the control path yet.
+# Schema and loader: contract_uav_core/config/airframe.py. The control tiers take
+# it as an option (control/base.py); the switcher, the core and the legacy
+# scripts do not pass it yet.
 #
 # Every number carries {value, unit, status, source}: status is px4_airframe
 # (set in the PX4 airframe file), px4_param_default (PX4's default when the

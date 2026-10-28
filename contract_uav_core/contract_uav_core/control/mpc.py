@@ -1,5 +1,9 @@
 """
 Model predictive controller (optimal tier), moved unchanged from controllers.py.
+
+Batch 3 (W4-05, P1.1/P1.2): the QP's vertical input becomes thrust through
+frames.accel_to_thrust (physically signed, normalised by the airframe's hover
+thrust), and the tilt follows the heading (frames.accel_to_attitude).
 """
 
 import numpy as np
@@ -7,7 +11,7 @@ from typing import Dict
 import logging
 
 from .base import BaseController
-from ..frames import accel_to_attitude, attitude_to_rates_torques, mpc_accel_to_thrust
+from ..frames import accel_to_attitude, accel_to_thrust, attitude_to_rates_torques
 from ..interfaces import AccelCommand
 
 logger = logging.getLogger(__name__)
@@ -31,8 +35,10 @@ class MPCController(BaseController):
                   constraint satisfaction, Lyapunov decrease
     """
 
-    def __init__(self, dt: float = 0.02):
-        super().__init__("MPC", dt)
+    def __init__(self, dt: float = 0.02, airframe=None):
+        """airframe: optional config.airframe.Airframe; sets hover_thrust, min_thrust and
+        max_thrust (base.py). Without one: hover 0.5, thrust limits [0, 1]."""
+        super().__init__("MPC", dt, airframe)
 
         # Prediction horizon
         self.N = 15
@@ -47,7 +53,7 @@ class MPCController(BaseController):
         # Constraints
         self.max_lateral_accel = 3.0    # m/s², ~17° tilt
         self.max_vertical_accel = 5.0   # m/s²
-        self.hover_thrust = 0.5
+        # hover_thrust, min_thrust, max_thrust: base.py (from the airframe; else 0.5, 0, 1)
 
         # Attitude inner loop (same structure as PID)
         self.kp_att = np.array([1.5, 1.5, 1.0])
@@ -157,7 +163,7 @@ class MPCController(BaseController):
         6. Extract first input, map to thrust + attitude + torques
 
         Returns the AccelCommand: accel is the first, constraint-clipped QP input
-        (its z sets the thrust through frames.mpc_accel_to_thrust), yaw is the
+        (its z sets the thrust through frames.accel_to_thrust), yaw is the
         setpoint's yaw. compute_control (base.py) returns its legacy dict.
         """
         import time
@@ -208,12 +214,15 @@ class MPCController(BaseController):
         # Extract first input (acceleration command)
         accel_cmd = U_star[0:3]
 
-        # Map acceleration to thrust + attitude (frames.py)
-        # Simulation convention: thrust > hover → z increases (descent in NED)
-        # MPC accel_cmd[2] < 0 means "move z negative" (climb) → need less thrust
-        desired_thrust = mpc_accel_to_thrust(accel_cmd[2], self.hover_thrust)
+        # Map acceleration to thrust + attitude (frames.py; P1.1, P1.2)
+        # NED z is down: accel_cmd[2] < 0 means "move z negative" (climb) → thrust
+        # above hover, thrust = hover * (1 - a_z / g) (the double-integrator model's
+        # a_z is then what the vehicle does when level)
+        desired_thrust = accel_to_thrust(accel_cmd[2], self.hover_thrust,
+                                         self.min_thrust, self.max_thrust)
 
-        # Desired attitude from lateral acceleration (yaw-blind), clip tilt
+        # Desired attitude from lateral acceleration (rotated by the yaw into the
+        # heading frame), clip tilt
         desired_yaw = setpoint.get('yaw', attitude[2])
         max_tilt = np.arctan2(self.max_lateral_accel, 9.81)  # ~17°
         desired_attitude = accel_to_attitude(accel_cmd, desired_yaw, max_tilt)

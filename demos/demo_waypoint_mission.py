@@ -47,7 +47,7 @@ class DroneSimulation:
 
         # Vertical dynamics - thrust=0.5 is hover
         # Reduced gain for gentler altitude control
-        vertical_accel = (thrust - 0.5) * 8.0
+        vertical_accel = -(thrust - 0.5) * 8.0  # NED z is down: thrust above hover climbs (K01)
         self.velocity[2] += vertical_accel * self.dt
 
         # Horizontal dynamics - attitude commands velocity
