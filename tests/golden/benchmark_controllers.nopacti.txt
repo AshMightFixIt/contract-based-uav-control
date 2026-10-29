@@ -1,32 +1,32 @@
-Running Adaptive... COMPLETE  (WP: 3/4, RMS: 5.05m)
-Running PID-only... COMPLETE  (WP: 3/4, RMS: 5.04m)
+Running Adaptive... COMPLETE  (WP: 3/4, RMS: 5.07m)
+Running PID-only... COMPLETE  (WP: 3/4, RMS: 5.05m)
 Running MPC-only... COMPLETE  (WP: 3/4, RMS: 5.06m)
-Running H-inf-only... COMPLETE  (WP: 3/4, RMS: 5.99m)
+Running H-inf-only... COMPLETE  (WP: 3/4, RMS: 6.01m)
 
 ====================================================================================================
 BENCHMARK RESULTS: Adaptive vs Standalone Controllers
 ====================================================================================================
 Metric                                adaptive               PID               MPC              Hinf
 ----------------------------------------------------------------------------------------------------
-RMS Tracking Error (m)                   5.050           5.042 *             5.060           5.987 !
-Max Tracking Error (m)                  10.548            10.542          10.541 *          11.232 !
+RMS Tracking Error (m)                   5.074           5.051 *             5.060           6.013 !
+Max Tracking Error (m)                  10.548            10.543          10.541 *          11.258 !
 Waypoints Completed                          3                 3                 3                 3
-Mission Time (s)                        63.300          67.340 !            64.640          43.800 *
-Total Energy (N·s)                      34.176          36.190 !            34.846          24.436 *
-Control Effort                           1.660             1.254           1.084 *           4.020 !
+Mission Time (s)                        63.860          67.520 !            64.640          44.680 *
+Total Energy (N·s)                      34.455          36.280 !            34.846          24.875 *
+Control Effort                           1.664             1.253           1.084 *           3.880 !
 CBF Interventions                            0                 0                 0                 0
-Max Tilt (rad)                           0.287           0.226 *           0.291 !             0.234
-Control Smoothness                       6.707             3.827           3.144 *          22.626 !
-Max Speed (m/s)                          1.231           1.310 !             1.230           1.215 *
+Max Tilt (rad)                           0.286           0.220 *           0.288 !             0.220
+Control Smoothness                       6.498             3.812           3.142 *          22.641 !
+Max Speed (m/s)                          1.231           1.300 !             1.230           1.166 *
 ----------------------------------------------------------------------------------------------------
   * = best   ! = worst
 
 ======================================================================
 QUALITATIVE SUMMARY
 ======================================================================
-  Best tracking accuracy : PID-only (RMS 5.042m)
-  Most energy efficient  : H-inf-only (24.4 N·s)
+  Best tracking accuracy : PID-only (RMS 5.051m)
+  Most energy efficient  : H-inf-only (24.9 N·s)
   Most waypoints reached : Adaptive (3/4)
-  Fastest mission time   : H-inf-only (43.8s)
+  Fastest mission time   : H-inf-only (44.7s)
 
   Overall winner: H-inf-only (2/4 categories)
