@@ -109,11 +109,36 @@ def test_tilt_for_each_yaw(yaw_deg, roll_pitch):
 
 
 def test_tilt_at_yaw_zero_is_the_legacy_mapping():
+    """Within the limit, and for a saturating demand along one axis, yaw 0 gives the legacy values."""
     from contract_uav_core.frames import accel_to_attitude
-    for a in ([2.0, -1.0, 0.3], [-0.4, 0.7, 0.0], [10.0, -10.0, 0.0]):
+    for a in ([1.0, -0.5, 0.3], [-0.4, 0.7, 0.0], [10.0, 0.0, 0.0], [0.0, -10.0, 0.0]):
         a = np.array(a)
         expected = [np.clip(a[1] / G, -0.22, 0.22), np.clip(-a[0] / G, -0.22, 0.22), 0.0]
         assert accel_to_attitude(a, 0.0, 0.22).tolist() == expected
+
+
+DIRECTIONS = [(1.0, 0.0), (0.0, 1.0), (1.0, 1.0), (-0.6, 0.8), (-1.0, -0.2)]
+
+
+@pytest.mark.parametrize('yaw_deg', [45, 135, 0, 90, 225, -45, 30])
+@pytest.mark.parametrize('direction', DIRECTIONS)
+def test_tilt_magnitude_stays_within_the_limit_at_any_heading(yaw_deg, direction):
+    """N2: a saturating demand tilts by exactly max_tilt, in the demand's direction, at any heading.
+
+    (Clipping roll and pitch separately gave up to sqrt(2) * max_tilt at 45 and 135 deg.)
+    """
+    from contract_uav_core.frames import accel_to_attitude
+    yaw, max_tilt = math.radians(yaw_deg), 0.22
+    demand = 20.0 * np.array([direction[0], direction[1], 0.0]) / math.hypot(*direction)
+    att = accel_to_attitude(demand, yaw, max_tilt)
+    free = accel_to_attitude(demand, yaw, 10.0)                      # the same, with no limit acting
+    assert math.hypot(att[0], att[1]) == pytest.approx(max_tilt, rel=1e-12)
+    assert math.hypot(free[0], free[1]) == pytest.approx(20.0 / G, rel=1e-12)
+    assert att[:2] == pytest.approx(free[:2] * max_tilt / math.hypot(free[0], free[1]), rel=1e-12, abs=1e-15)
+    assert att[2] == yaw
+    # inside the limit nothing is scaled
+    small = accel_to_attitude(0.1 * demand, yaw, max_tilt)
+    assert small[:2] == pytest.approx(0.1 * free[:2], rel=1e-12, abs=1e-15)
 
 
 def test_tilt_limit_applies_in_the_heading_frame():
@@ -124,16 +149,17 @@ def test_tilt_limit_applies_in_the_heading_frame():
     assert att[0] == -0.22 and abs(att[1]) < 1e-15                    # all roll, clipped
 
 
-@pytest.mark.parametrize('yaw_deg', [0, 30, 90, 135, 180, 270, -45])
+@pytest.mark.parametrize('scale', [1.0, 20.0], ids=['within-limit', 'saturating'])
+@pytest.mark.parametrize('yaw_deg', [0, 30, 45, 90, 135, 180, 270, -45])
 @pytest.mark.parametrize('direction', [(1.0, 0.0), (0.0, 1.0), (-0.6, 0.8)])
-def test_plant_accelerates_along_the_demand_at_any_heading(x500_params, yaw_deg, direction):
-    """The attitude from accel_to_attitude moves sim/quadrotor.py along the NED demand."""
+def test_plant_accelerates_along_the_demand_at_any_heading(x500_params, yaw_deg, direction, scale):
+    """The attitude from accel_to_attitude moves sim/quadrotor.py along the NED demand (also when limited)."""
     from contract_uav_core.frames import accel_to_attitude, accel_to_thrust
     from contract_uav_core.interfaces import AttitudeThrustCommand
     from contract_uav_core.sim.quadrotor import QuadrotorPlant
 
     yaw = math.radians(yaw_deg)
-    demand = np.array([direction[0], direction[1], 0.0])
+    demand = scale * np.array([direction[0], direction[1], 0.0])
     att = accel_to_attitude(demand, yaw, 0.3)
     plant = QuadrotorPlant(x500_params, position=(0.0, 0.0, -20.0), attitude=(att[0], att[1], yaw))
     cmd = AttitudeThrustCommand(attitude=att, thrust=float(accel_to_thrust(0.0, x500_params.hover_thrust)))

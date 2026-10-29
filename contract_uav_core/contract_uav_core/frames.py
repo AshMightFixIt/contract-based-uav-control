@@ -11,6 +11,11 @@ Changed on purpose in batch 3 (W4-05):
   horizontal demand by the yaw of the attitude setpoint it returns, into the
   heading frame (forward, right), before mapping it to pitch and roll. It used
   to map a_x/a_y straight to pitch/roll, as if the vehicle always faced north.
+- Tilt limit on the magnitude (W4-05 fix round, review nit N2): the tilt
+  sqrt(roll^2 + pitch^2) is limited to max_tilt with its direction kept. It
+  used to clip roll and pitch separately, so a diagonal demand could tilt up
+  to sqrt(2) * max_tilt, in a distorted direction, and with the rotation the
+  response depended on the heading (e.g. 45 deg vs 0 deg).
 - Physically signed, hover-normalised thrust (P1.1, P1.2, K01, A-G6):
   accel_to_thrust turns the NED vertical acceleration demand into normalised
   collective thrust, thrust = hover_thrust * (1 - a_z / g): a demand to climb
@@ -54,12 +59,15 @@ def accel_to_attitude(accel: np.ndarray, yaw, max_tilt) -> np.ndarray:
         a_forward =  cos(yaw) a_north + sin(yaw) a_east
         a_right   = -sin(yaw) a_north + cos(yaw) a_east
     then pitch = -a_forward / g (nose down to accelerate forward) and
-    roll = a_right / g (right side down to accelerate right), each clipped to
-    +-max_tilt. accel[2] is not used here (accel_to_thrust).
+    roll = a_right / g (right side down to accelerate right). If the tilt
+    sqrt(roll^2 + pitch^2) exceeds max_tilt, both are scaled down so that it
+    equals max_tilt and the direction is kept, so the limit is the same at
+    every heading. accel[2] is not used here (accel_to_thrust).
 
     yaw is returned as the attitude setpoint's yaw, so the rotation always uses
     the yaw the setpoint carries: PX4 (and sim/quadrotor.py) apply roll and pitch
-    in the frame of that yaw (ZYX Euler). At yaw 0 this is the legacy mapping.
+    in the frame of that yaw (ZYX Euler). At yaw 0, and within the limit, this
+    is the legacy mapping; a demand along one axis is limited as before.
     """
     cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
     a_forward = cos_yaw * accel[0] + sin_yaw * accel[1]
@@ -68,9 +76,12 @@ def accel_to_attitude(accel: np.ndarray, yaw, max_tilt) -> np.ndarray:
     desired_pitch = -a_forward / GRAVITY  # Negative: forward accel needs nose down
     desired_roll = a_right / GRAVITY      # Positive: right accel needs right roll
 
-    # Limit tilt angles (in the heading frame, as before at yaw 0)
-    desired_roll = np.clip(desired_roll, -max_tilt, max_tilt)
-    desired_pitch = np.clip(desired_pitch, -max_tilt, max_tilt)
+    # Limit the tilt magnitude, keeping its direction (x / tilt is exactly +-1
+    # for a demand along one axis, so that case gives exactly +-max_tilt)
+    tilt = np.hypot(desired_roll, desired_pitch)
+    if tilt > max_tilt:
+        desired_roll = desired_roll / tilt * max_tilt
+        desired_pitch = desired_pitch / tilt * max_tilt
 
     return np.array([desired_roll, desired_pitch, yaw])
 

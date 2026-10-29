@@ -14,6 +14,9 @@ same three methods with only these edits, each marked ``# W4-05`` in the code:
   yaw of the attitude setpoint into (a_forward, a_right) before pitch =
   -a_forward / 9.81 and roll = a_right / 9.81 (PID, MPC: the setpoint's yaw;
   H-inf: the current yaw, which is the yaw it commands).
+- Fix round, review nit N2, tilt limit on the magnitude: if sqrt(roll^2 +
+  pitch^2) exceeds the tier's max_tilt, both are scaled to it, keeping the
+  direction (was: roll and pitch clipped separately). Marked ``# W4-05 (N2)``.
 - P1.1/P1.2, physically signed thrust normalised by the hover thrust:
   thrust = hover * (1 - a_z / 9.81), clipped to the tier's thrust limits
   (self.min_thrust, self.max_thrust: [0, 1] without an airframe), where a_z is
@@ -35,8 +38,9 @@ state must match too.
 test_change_from_79d0287_is_only_the_intended_one ties the reference to the
 original, with no airframe (hover 0.5): the PID and H-inf thrust is the old
 thrust mirrored about 0.5, the MPC's moves half as far from 0.5 the other way,
-and wherever the yaw used is exactly 0 the attitude, torques and rates are the
-old ones.
+and wherever the yaw used is exactly 0 and the old tilt was inside the limit the
+attitude, torques and rates are the old ones; where the old tilt reached the
+limit, the new tilt magnitude is exactly the limit.
 """
 from __future__ import annotations
 
@@ -356,8 +360,10 @@ def reference_pid_compute_control(self,
     desired_yaw = target_yaw
 
     # Limit tilt angles
-    desired_roll = np.clip(desired_roll, -self.max_tilt, self.max_tilt)
-    desired_pitch = np.clip(desired_pitch, -self.max_tilt, self.max_tilt)
+    tilt = np.hypot(desired_roll, desired_pitch)                              # W4-05 (N2): was a clip per axis
+    if tilt > self.max_tilt:                                                  # W4-05 (N2)
+        desired_roll = desired_roll / tilt * self.max_tilt                    # W4-05 (N2)
+        desired_pitch = desired_pitch / tilt * self.max_tilt                  # W4-05 (N2)
 
     desired_attitude = np.array([desired_roll, desired_pitch, desired_yaw])
 
@@ -462,8 +468,10 @@ def reference_mpc_compute_control(self,
 
     # Clip tilt
     max_tilt = np.arctan2(self.max_lateral_accel, 9.81)  # ~17°
-    desired_roll = np.clip(desired_roll, -max_tilt, max_tilt)
-    desired_pitch = np.clip(desired_pitch, -max_tilt, max_tilt)
+    tilt = np.hypot(desired_roll, desired_pitch)                              # W4-05 (N2): was a clip per axis
+    if tilt > max_tilt:                                                       # W4-05 (N2)
+        desired_roll = desired_roll / tilt * max_tilt                         # W4-05 (N2)
+        desired_pitch = desired_pitch / tilt * max_tilt                       # W4-05 (N2)
 
     desired_attitude = np.array([desired_roll, desired_pitch, desired_yaw])
 
@@ -514,8 +522,12 @@ def reference_hinf_compute_control(self,
     cos_yaw, sin_yaw = np.cos(attitude[2]), np.sin(attitude[2])               # W4-05
     a_forward = cos_yaw * desired_accel[0] + sin_yaw * desired_accel[1]       # W4-05
     a_right = -sin_yaw * desired_accel[0] + cos_yaw * desired_accel[1]        # W4-05
-    desired_pitch = np.clip(-a_forward / 9.81, -self.max_tilt, self.max_tilt)  # W4-05: was -desired_accel[0]
-    desired_roll = np.clip(a_right / 9.81, -self.max_tilt, self.max_tilt)      # W4-05: was desired_accel[1]
+    desired_pitch = -a_forward / 9.81  # W4-05: was -desired_accel[0] / 9.81, clipped per axis
+    desired_roll = a_right / 9.81      # W4-05: was desired_accel[1] / 9.81, clipped per axis
+    tilt = np.hypot(desired_roll, desired_pitch)                              # W4-05 (N2)
+    if tilt > self.max_tilt:                                                  # W4-05 (N2)
+        desired_roll = desired_roll / tilt * self.max_tilt                    # W4-05 (N2)
+        desired_pitch = desired_pitch / tilt * self.max_tilt                  # W4-05 (N2)
     target_attitude = np.array([desired_roll, desired_pitch, attitude[2]])
 
     # === RATE DAMPING (Highest Priority) ===
@@ -752,9 +764,10 @@ def test_legacy_dict_matches_the_reference(tier, airframe):
 
 @pytest.mark.parametrize("tier", TIERS)
 def test_change_from_79d0287_is_only_the_intended_one(tier):
-    """No airframe (hover 0.5): thrust mirrored (MPC: halved), the rest as before at yaw 0."""
+    """No airframe (hover 0.5): thrust mirrored (MPC: halved), the rest as before at yaw 0 within the tilt limit."""
     old, new = controller(tier), controller(tier)
-    yaw_zero_steps = thrust_steps = 0
+    max_tilt = np.arctan2(old.max_lateral_accel, 9.81) if tier == 'MPC' else old.max_tilt
+    yaw_zero_steps = saturated_steps = thrust_steps = 0
     for step, (state, sp) in enumerate(sequence(tier)):
         where = f"{tier} step {step}"
         before = LEGACY[tier](old, state, sp)
@@ -771,12 +784,19 @@ def test_change_from_79d0287_is_only_the_intended_one(tier):
             assert after['thrust'] == pytest.approx(1.0 - before['thrust'], abs=1e-12), where
             thrust_steps += 1
         yaw_used = state['attitude'][2] if tier == 'Hinf' else sp.get('yaw', state['attitude'][2])
-        if yaw_used == 0.0:                         # the rotation is the identity
+        old_tilt = np.hypot(before['desired_attitude'][0], before['desired_attitude'][1])
+        new_tilt = np.hypot(after['desired_attitude'][0], after['desired_attitude'][1])
+        assert new_tilt <= max_tilt * (1 + 1e-12), where           # N2: never beyond the limit
+        if yaw_used == 0.0 and old_tilt < max_tilt:  # the rotation is the identity, no clip acted
             for key in ('desired_attitude', 'torques', 'desired_rates'):
                 assert np.array_equal(after[key], before[key]), (where, key)
             yaw_zero_steps += 1
+        elif old_tilt >= max_tilt:                   # the old per-axis clip acted: now the magnitude is the limit
+            assert new_tilt == pytest.approx(max_tilt, rel=1e-12), where
+            saturated_steps += 1
         assert_same_state(old, (new,), tier, where)  # integrators and warm start untouched
-    assert thrust_steps >= 6 and yaw_zero_steps >= 2, (thrust_steps, yaw_zero_steps)
+    assert thrust_steps >= 6 and yaw_zero_steps >= 1 and saturated_steps >= 1, (  # both branches ran
+        thrust_steps, yaw_zero_steps, saturated_steps)
 
 
 @pytest.mark.parametrize("airframe", AIRFRAMES)

@@ -3,12 +3,15 @@
 W4-05 (P1.2). Each tier (PID, MPC, H-infinity), built with the x500_sitl
 airframe, flies the reference plant sim/quadrotor.py (same airframe) in closed
 loop at dt = 0.02 s, from rest at (0, 0, -5) with the heading held at yaw 0,
-90, 180 or 270 deg (the setpoint's yaw equals the start yaw). The setpoint is
+90, 180 or 270 deg, or at the diagonals 45 and 135 deg (the setpoint's yaw
+equals the start yaw). The setpoint is
 10 m to the north or 10 m to the east, at the same altitude. Pass: within 20 s
 the horizontal distance to the setpoint is within 0.5 m and stays there to the
 end of a 30 s run; no ground contact; the altitude stays within 0.5 m and the
-heading is held; and the settling time is the same at all four headings.
-A second test starts at 90, 180 or 270 deg with a setpoint yaw of 0: the PID
+heading is held; and the settling time is the same at all six headings (the
+tilt limit acts on the tilt magnitude, so a diagonal heading tilts no further
+than a cardinal one: review nit N2, fix round).
+A second test starts at 45, 90, 135, 180 or 270 deg with a setpoint yaw of 0: the PID
 and MPC turn to it, the H-infinity holds its own heading, and all must settle
 the same way (this checks that the H-infinity rotates by the yaw it commands).
 
@@ -31,7 +34,7 @@ START = (0.0, 0.0, -5.0)
 TOLERANCE = 0.5     # m, horizontal
 SETTLE_BY = 20.0    # s
 RUN = 30.0          # s
-YAWS = (0, 90, 180, 270)
+YAWS = (0, 45, 90, 135, 180, 270)
 
 
 def fly(tier, yaw, setpoint, seconds):
@@ -70,7 +73,7 @@ def settling_time(log, error, tolerance):
 @pytest.mark.parametrize('direction', [(10.0, 0.0), (0.0, 10.0)], ids=['10m-north', '10m-east'])
 @pytest.mark.parametrize('tier', ['PID', 'MPC', 'Hinf'])
 def test_g1_2_lateral_step_settles_at_any_heading(tier, direction):
-    """G1.2 (controller level): a 10 m lateral step converges within 0.5 m at yaw 0, 90, 180, 270."""
+    """G1.2 (controller level): a 10 m lateral step converges within 0.5 m at yaw 0, 90, 180, 270 (and 45, 135)."""
     goal = np.array([START[0] + direction[0], START[1] + direction[1]])
     settle_times = {}
     for yaw_deg in YAWS:
@@ -95,7 +98,7 @@ def test_g1_2_lateral_step_settles_at_any_heading(tier, direction):
 
 @pytest.mark.parametrize('tier', ['PID', 'MPC', 'Hinf'])
 def test_g1_2_lateral_step_settles_when_the_setpoint_yaw_differs(tier):
-    """G1.2 (controller level), setpoint yaw 0 while the vehicle starts at 90, 180 or 270 deg.
+    """G1.2 (controller level), setpoint yaw 0 while the vehicle starts at 45, 90, 135, 180 or 270 deg.
 
     The PID and MPC turn to the setpoint's yaw while they translate; the H-inf
     holds the heading it starts with (it ignores the setpoint's yaw) and must
