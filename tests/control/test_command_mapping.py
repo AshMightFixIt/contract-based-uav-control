@@ -270,6 +270,30 @@ def test_pid_mpc_rotate_by_the_setpoint_yaw(tier, yaw_deg, roll_pitch):
     assert np.sign(np.round([roll, pitch], 12)).tolist() == list(roll_pitch), (roll, pitch)
 
 
+@pytest.mark.parametrize('tier', ['PID', 'MPC'])
+@pytest.mark.parametrize('current_deg, setpoint_deg, roll_pitch', [
+    (90, 0, (0.0, -1.0)),       # facing east, setpoint yaw north: north is straight ahead, nose down
+    (0, 90, (-1.0, 0.0)),       # facing north, setpoint yaw east: north is to the left, left side down
+    (180, 270, (1.0, 0.0)),     # facing south, setpoint yaw west: north is to the right
+])
+def test_pid_mpc_rotate_by_the_setpoint_yaw_not_the_current_yaw(tier, current_deg, setpoint_deg, roll_pitch):
+    """Review N5: the tilt is in the frame of the yaw the setpoint carries (PX4's q_d), not the current yaw.
+
+    A target to the north while the current heading and the setpoint's yaw differ.
+    """
+    from contract_uav_core.frames import accel_to_attitude
+    current, wanted = math.radians(current_deg), math.radians(setpoint_deg)
+    ctrl = make(tier)
+    max_tilt = np.arctan2(ctrl.max_lateral_accel, G) if tier == 'MPC' else ctrl.max_tilt
+    cmd = ctrl.compute_accel_command(at_rest(yaw=current), target(x=1.0, yaw=wanted))
+    assert cmd.yaw == wanted and cmd.desired_attitude[2] == wanted
+    roll, pitch = cmd.desired_attitude[:2]
+    assert np.sign(np.round([roll, pitch], 12)).tolist() == list(roll_pitch), (roll, pitch)
+    assert cmd.desired_attitude.tolist() == accel_to_attitude(cmd.accel, wanted, max_tilt).tolist()
+    by_current = accel_to_attitude(cmd.accel, current, max_tilt)
+    assert np.max(np.abs(by_current[:2] - cmd.desired_attitude[:2])) > 1e-3   # the other choice differs
+
+
 @pytest.mark.parametrize('yaw_deg, roll_pitch', NORTH_DEMAND)
 def test_hinf_rotates_by_the_yaw_it_commands(yaw_deg, roll_pitch):
     """The H-inf holds the current yaw, whatever the setpoint's, and rotates by that yaw."""
