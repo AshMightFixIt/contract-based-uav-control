@@ -49,7 +49,7 @@ class DroneSimulation:
 
         # Vertical dynamics: thrust=0.5 is hover, deviation causes acceleration
         # Scale factor 20.0 determines responsiveness (m/s² per unit thrust deviation)
-        vertical_accel = (thrust - 0.5) * 20.0
+        vertical_accel = -(thrust - 0.5) * 20.0  # NED z is down: thrust above hover climbs (K01)
         self.velocity[2] += vertical_accel * self.dt
 
         # Wind affects horizontal motion

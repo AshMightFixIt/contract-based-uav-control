@@ -32,7 +32,7 @@ See "Known problems" below.
 | `contract_uav_core/` | The main Python package. It holds the controllers, the contracts, the other flight parts (see "How it works") and a simple drone model. Most of the code is here. |
 | `contract_uav_control/` | The ROS 2 bridge. It connects the core package to PX4. |
 | `contract_uav_msgs/` | The ROS 2 message type that the bridge uses to report its state. |
-| `docs/` | Longer guides: testing with PX4 ([`docs/TESTING_MANUAL.md`](docs/TESTING_MANUAL.md)), tests on the real drone ([`docs/HARDWARE_TESTING.md`](docs/HARDWARE_TESTING.md)), notes for developers ([`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)) and benchmark results ([`docs/RESULTS.md`](docs/RESULTS.md)). |
+| `docs/` | Longer guides: testing with PX4 ([`docs/TESTING_MANUAL.md`](docs/TESTING_MANUAL.md)), tests on the real drone ([`docs/HARDWARE_TESTING.md`](docs/HARDWARE_TESTING.md)), notes for developers ([`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)) benchmark results ([`docs/RESULTS.md`](docs/RESULTS.md)), the full list of known problems ([`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md)) and the plan for fixing them ([`docs/ROADMAP.md`](docs/ROADMAP.md)). |
 | `thesis/` | The source files of the written thesis about this project, in LaTeX (a language for writing documents). Parts of it describe an older version of the code. |
 | `tests/` | The automatic tests. `make test` runs them. |
 | `tools/` | The offline contracts tool, in `tools/contracts_offline/`. It uses Pacti to combine the contracts and to compare the two sets of contract values in the code. It never runs on the drone. |
@@ -347,6 +347,8 @@ It only checks the node's Python code with fake ROS modules.
 This bridge has not been tested on a real drone in this repository's CI.
 
 ## Known problems (being fixed next)
+
+The full list is in [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md). The order of the fixes is in [`docs/ROADMAP.md`](docs/ROADMAP.md). The main ones:
 
 - The controllers use the wrong sign for thrust. They add thrust to go down, so a real drone would fall. The demos still look fine, because their simple drone models have the same wrong sign.
 - The tilt direction ignores the drone's heading (the way its nose points). The drone only moves the right way when it faces north.

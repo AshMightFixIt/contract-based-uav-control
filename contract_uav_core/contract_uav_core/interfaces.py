@@ -13,11 +13,14 @@ Frame convention, as the code uses it:
   north toward east.
 - Thrust: normalised collective thrust in [0, 1]. Physically it pushes along
   body -z, i.e. up; the node sends thrust_body = [0, 0, -thrust] to PX4.
+  Thrust above the airframe's hover thrust climbs.
 
-Known legacy behaviour that these types carry unchanged (fixed in batch 3):
-- The tiers' altitude laws raise thrust above hover to *increase* z, i.e. to
-  descend (K01; P1.1).
-- The acceleration-to-tilt mapping ignores yaw (frames.py; A-R2, P1.2).
+Fixed in batch 3 (W4-05; the types themselves are unchanged):
+- The tiers' altitude laws used to raise thrust above hover to *increase* z,
+  i.e. to descend (K01). They are now physically signed and normalised by the
+  hover thrust (frames.accel_to_thrust; P1.1, P1.2).
+- The acceleration-to-tilt mapping used to ignore yaw (A-R2). It now rotates
+  the demand by the setpoint's yaw (frames.accel_to_attitude; P1.2).
 """
 
 from dataclasses import dataclass
@@ -39,14 +42,16 @@ class AccelCommand:
     the benchmarks read its torques (K16).
 
     accel: shape (3,), NED, m/s^2. The kinematic acceleration the tier's
-        position law asks for, without gravity (zero means hold). It is taken
-        before the tilt limit. Which components drive the legacy outputs
-        differs per tier (see each compute_accel_command): x and y always set
-        the tilt; z sets the thrust only for the MPC, while the PID and H-inf
-        thrust come from their own altitude laws (the H-inf z is always 0).
+        position law asks for, without gravity (zero means hold). x and y set
+        the tilt (frames.accel_to_attitude, rotated by yaw) and are taken before
+        the tilt limit. z is, in all three tiers since W4-05, the vertical
+        demand that sets the thrust (frames.accel_to_thrust): the MPC's QP
+        input, or the PID's or H-inf's altitude law (the H-inf's after its
+        +-0.8 g limit).
     yaw: desired yaw in rad. The PID and MPC use the setpoint's yaw (current yaw
         if the setpoint has none); the H-inf holds the current yaw.
-    thrust: legacy normalised collective thrust, from the tier's altitude law.
+    thrust: legacy normalised collective thrust, frames.accel_to_thrust of
+        accel[2] with the tier's hover thrust and limits.
     torques: legacy body torques [roll, pitch, yaw], from the tier's inner loop.
     desired_attitude: legacy [roll, pitch, yaw] setpoint in rad; the node turns
         it into the attitude setpoint quaternion it sends to PX4.

@@ -1,34 +1,52 @@
 """
 Airframe files: schema, validation and loader (W4-04, P0a.10).
 
-The files are config/airframes/<name>.yaml, installed with the package. Nothing
-in the legacy scripts or the control path reads them yet; the reference plant
-(sim/quadrotor.py) can be built from one.
+The files are config/airframes/<name>.yaml, installed with the package. The
+reference plant (sim/quadrotor.py) can be built from one, and the control tiers
+take one as an option (control/base.py: hover thrust and thrust limits); the
+switcher, the core and the legacy scripts do not pass one yet.
 
     from contract_uav_core.config.airframe import load_airframe
     x500 = load_airframe('x500_sitl')
     x500.hover_thrust                  # 0.6
     x500.provenance['hover_thrust']    # Param(value=0.6, unit='norm', status='px4_airframe', ...)
 
-File layout: top-level keys schema_version (1), name, description,
-px4 {version, airframe, airframe_url} and three sections of numbers:
+File layout: top-level keys schema_version (2), name, description,
+px4 {version, airframe, airframe_url}, three sections of numbers:
 vehicle, battery (PX4- or model-sourced) and plant (reference-plant parameters,
-which have no PX4 source). Every number is an entry
+which have no PX4 source), and the section unavailable. Every number is an entry
 {value, unit, status, source} with optional note and param (the PX4 parameter):
 
 - status is one of STATUSES. px4_airframe and px4_param_default need param and
-  a source URL; model_sdf needs a source URL; assumed is allowed, and required,
-  in the plant section only; unknown means value null.
+  a source URL; model_sdf needs a source URL; datasheet (a component datasheet
+  value that no PX4 parameter holds, e.g. the 4.2 V full charge of a LiPo cell)
+  is allowed outside the plant section; assumed is allowed, and required, in the
+  plant section only; unknown means value null.
 - value is null exactly when status is unknown, and only for fields the schema
-  marks nullable. assumed and unknown need a note (why, and the effect).
+  marks nullable. assumed, datasheet and unknown need a note (why, and the effect).
 - unit must equal the schema's unit; the value must have the schema's type and
   lie in its range. Unknown, duplicate and non-string keys are errors.
+
+unavailable (P1.3) lists the contract variables that have no PX4 source on this
+airframe, e.g. motor_temperature: name -> {status: unavailable, note}, with an
+optional param (the nearest PX4 quantity, if any). The core has no reading for
+them, so a contract on one must not be checked against a made-up value (A-F11).
+An empty mapping ({}) means every contract variable has a source.
+
+Derived: Airframe.battery_pack_voltage_range is (n_cells * v_empty_cell,
+n_cells * v_full_cell) in V, rounded to the mV (P1.3).
+
+Schema versions: 1 is the batch-2 format (W4-04). 2 (W4-05, P1.3) adds the
+required battery.v_full_cell and the top-level section unavailable, and the
+status datasheet. A version-1 file is rejected with a message that names the
+missing keys and points to config/airframes/x500_sitl.yaml as an example.
 
 load_airframe returns a frozen Airframe; any violation raises AirframeError
 naming the file and the key.
 """
 
 import math
+import re
 from collections import namedtuple
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,11 +55,17 @@ from typing import Any, Mapping, Optional, Tuple, Union
 
 import yaml
 
-SCHEMA_VERSION = 1
-STATUSES = ('px4_airframe', 'px4_param_default', 'model_sdf', 'assumed', 'unknown')
+SCHEMA_VERSION = 2
+# What version 2 added to version 1 (section, key); section None = top level.
+_ADDED_IN_V2 = (('battery', 'v_full_cell'), (None, 'unavailable'))
+_EXAMPLE_FILE = 'config/airframes/x500_sitl.yaml'
+STATUSES = ('px4_airframe', 'px4_param_default', 'model_sdf', 'assumed', 'unknown', 'datasheet')
 _PX4_STATUSES = ('px4_airframe', 'px4_param_default')
 _SOURCED_STATUSES = _PX4_STATUSES + ('model_sdf',)
+_NOTE_STATUSES = ('assumed', 'unknown', 'datasheet')
 _SOURCE_PREFIX = 'https://raw.githubusercontent.com/'
+UNAVAILABLE = 'unavailable'   # the status of every entry in the unavailable section
+_VARIABLE_NAME = re.compile(r'[a-z][a-z0-9_]*\Z')
 
 AIRFRAME_DIR = Path(__file__).resolve().parent / 'airframes'
 
@@ -64,12 +88,16 @@ FIELDS = MappingProxyType({
     # plant: reference-plant parameters, always assumed
     'attitude_time_constant': FieldSpec('plant', 'attitude_time_constant', 's', float, 0.01, 2.0, False),
     'drag_coefficient': FieldSpec('plant', 'drag_coefficient', 'kg/m', float, 0.0, 10.0, False),
+    # battery, added in P1.3: full-charge voltage per cell (the top of the pack voltage range)
+    'battery_v_full_cell': FieldSpec('battery', 'v_full_cell', 'V', float, 2.5, 4.5, False),
 })
 SECTIONS = ('vehicle', 'battery', 'plant')
-_TOP_KEYS = ('schema_version', 'name', 'description', 'px4') + SECTIONS
+_TOP_KEYS = ('schema_version', 'name', 'description', 'px4') + SECTIONS + ('unavailable',)
 _PX4_KEYS = ('version', 'airframe', 'airframe_url')
 _ENTRY_REQUIRED = ('value', 'unit', 'status', 'source')
 _ENTRY_OPTIONAL = ('note', 'param')
+_UNAVAILABLE_REQUIRED = ('status', 'note')
+_UNAVAILABLE_OPTIONAL = ('param',)
 
 
 class AirframeError(ValueError):
@@ -89,7 +117,12 @@ class Param:
 
 @dataclass(frozen=True)
 class Airframe:
-    """A validated airframe. None marks an unknown value; provenance maps each field to its Param."""
+    """A validated airframe. None marks an unknown value; provenance maps each field to its Param.
+
+    Added in P1.3 (after provenance, so the earlier fields keep their order):
+    battery_v_full_cell (V per cell), and unavailable: the contract variables
+    with no PX4 source on this airframe, name -> note (read-only).
+    """
     name: str
     description: str
     px4_version: str
@@ -109,6 +142,14 @@ class Airframe:
     attitude_time_constant: float
     drag_coefficient: float
     provenance: Mapping[str, Param]
+    battery_v_full_cell: float
+    unavailable: Mapping[str, str]
+
+    @property
+    def battery_pack_voltage_range(self) -> Tuple[float, float]:
+        """(empty, full) pack voltage in V: n_cells times v_empty_cell and v_full_cell, to the mV."""
+        return (round(self.battery_n_cells * self.battery_v_empty_cell, 3),
+                round(self.battery_n_cells * self.battery_v_full_cell, 3))
 
 
 def available_airframes() -> Tuple[str, ...]:
@@ -148,6 +189,8 @@ def parse_airframe(data: Any, origin: str = '<data>') -> Airframe:
     def fail(where, message):
         raise AirframeError(f"{origin}: {where}: {message}")
 
+    if isinstance(data, dict) and type(data.get('schema_version')) is int and data['schema_version'] == 1:
+        fail('schema_version', _version_1_message(data))
     _check_keys(data, _TOP_KEYS, (), 'top level', fail)
     if type(data['schema_version']) is not int or data['schema_version'] != SCHEMA_VERSION:
         fail('schema_version', f"expected {SCHEMA_VERSION}, got {data['schema_version']!r}")
@@ -175,12 +218,49 @@ def parse_airframe(data: Any, origin: str = '<data>') -> Airframe:
     if not values['battery_v_empty_cell'] < values['battery_v_charged_cell']:
         fail('battery', f"need v_empty_cell < v_charged_cell, got {values['battery_v_empty_cell']} "
                         f"and {values['battery_v_charged_cell']}")
+    if not values['battery_v_charged_cell'] <= values['battery_v_full_cell']:
+        fail('battery', f"need v_charged_cell <= v_full_cell, got {values['battery_v_charged_cell']} "
+                        f"and {values['battery_v_full_cell']}")
+
+    unavailable = _parse_unavailable(data['unavailable'], fail)
 
     return Airframe(
         name=data['name'], description=data['description'],
         px4_version=data['px4']['version'], px4_airframe=data['px4']['airframe'],
         px4_airframe_url=data['px4']['airframe_url'],
-        provenance=MappingProxyType(provenance), **values)
+        provenance=MappingProxyType(provenance), unavailable=MappingProxyType(unavailable), **values)
+
+
+def _version_1_message(data) -> str:
+    """Why a version-1 file is rejected, naming the keys it lacks."""
+    def present(section, key):
+        holder = data if section is None else data.get(section)
+        return isinstance(holder, dict) and key in holder
+    names = [key + ' (top-level section)' if section is None else f'{section}.{key}'
+             for section, key in _ADDED_IN_V2]
+    missing = [name for (section, key), name in zip(_ADDED_IN_V2, names) if not present(section, key)]
+    return (f"version 1 is the airframe format before P1.3; version {SCHEMA_VERSION} also requires "
+            f"{' and '.join(names)}; missing here: {', '.join(missing) or 'none'}. Add them and set "
+            f"schema_version: {SCHEMA_VERSION}; see {_EXAMPLE_FILE} for an example")
+
+
+def _parse_unavailable(section, fail) -> dict:
+    """The unavailable section: contract variable -> note."""
+    if not isinstance(section, dict):
+        fail('unavailable', f"expected a mapping (use {{}} for none), got {type(section).__name__}")
+    notes = {}
+    for name, entry in section.items():
+        where = f'unavailable.{name}'
+        if not isinstance(name, str) or not _VARIABLE_NAME.match(name):
+            fail(where, "a contract variable name is lower case letters, digits and underscores")
+        _check_keys(entry, _UNAVAILABLE_REQUIRED, _UNAVAILABLE_OPTIONAL, where, fail)
+        if entry['status'] != UNAVAILABLE:
+            fail(f'{where}.status', f"expected {UNAVAILABLE!r}, got {entry['status']!r}")
+        _check_text(entry['note'], f'{where}.note', fail)
+        if 'param' in entry:
+            _check_text(entry['param'], f'{where}.param', fail)
+        notes[name] = entry['note']
+    return notes
 
 
 def _parse_entry(entry, spec, where, fail) -> Param:
@@ -199,7 +279,7 @@ def _parse_entry(entry, spec, where, fail) -> Param:
     for key, text in (('note', note), ('param', param), ('source', source)):
         if text is not None and (not isinstance(text, str) or not text.strip()):
             fail(f'{where}.{key}', f"expected a non-empty string or null, got {text!r}")
-    if status in ('assumed', 'unknown') and note is None:
+    if status in _NOTE_STATUSES and note is None:
         fail(f'{where}.note', f"a note is required when status is {status!r}")
     if status in _PX4_STATUSES and param is None:
         fail(f'{where}.param', f"the PX4 parameter name is required when status is {status!r}")
