@@ -12,7 +12,7 @@
 # The section unavailable lists the contract variables PX4 gives no reading for.
 # The Gazebo models are the PX4-gazebo-models commit that PX4 v1.16.2 pins as
 # its Tools/simulation/gz submodule: e05f4312d3f28aa621157610584a4870406cb6d3.
-schema_version: 1
+schema_version: 2
 name: x500_sitl
 description: Holybro X500 in PX4 v1.16.2 SITL (Gazebo gz_x500)
 px4:

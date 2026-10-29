@@ -4,7 +4,9 @@
   charge of a LiPo cell), and the derived Airframe.battery_pack_voltage_range;
 - the section unavailable: contract variables with no PX4 source
   (motor_temperature on both airframes);
-- the schema stays additive: the batch-2 fields, names and order are unchanged.
+- the schema stays additive: the batch-2 fields, names and order are unchanged;
+- schema version 2 (fix round, review nit N3): a version-1 file fails with a
+  message naming the missing keys and pointing to x500_sitl.yaml.
 """
 from __future__ import annotations
 
@@ -74,7 +76,7 @@ def test_schema_is_additive(airframe):
     names = [f.name for f in dataclasses.fields(airframe.Airframe)]
     assert tuple(names[:len(BATCH2_FIELDS)]) == BATCH2_FIELDS
     assert names[len(BATCH2_FIELDS):] == ['battery_v_full_cell', 'unavailable']
-    assert airframe.SCHEMA_VERSION == 1
+    assert airframe.SCHEMA_VERSION == 2      # review N3: the new keys are required, so the version moved
     assert airframe.STATUSES[:5] == ('px4_airframe', 'px4_param_default', 'model_sdf', 'assumed', 'unknown')
     assert 'datasheet' in airframe.STATUSES
 
@@ -138,3 +140,37 @@ def test_unavailable_section_rules(airframe):
     data = raw(airframe, 'x500_sitl')
     data['unavailable']['example_input'] = {'status': 'unavailable', 'note': 'x', 'param': 'EXAMPLE_PARAM'}
     assert set(airframe.parse_airframe(data).unavailable) == {'motor_temperature', 'example_input'}
+
+
+def version_1(module, name='x500_sitl', drop=('v_full_cell', 'unavailable')):
+    """The packaged file turned back into the batch-2 (version 1) format."""
+    data = raw(module, name)
+    data['schema_version'] = 1
+    if 'v_full_cell' in drop:
+        del data['battery']['v_full_cell']
+    if 'unavailable' in drop:
+        del data['unavailable']
+    return data
+
+
+def test_version_1_file_fails_with_a_clear_message(airframe, tmp_path):
+    import yaml
+    path = tmp_path / 'old_x500.yaml'
+    path.write_text(yaml.safe_dump(version_1(airframe)), encoding='utf-8')
+    with pytest.raises(airframe.AirframeError) as info:
+        airframe.load_airframe_file(path)
+    message = str(info.value)
+    assert message.startswith('old_x500.yaml: schema_version: version 1 is the airframe format before P1.3'), message
+    assert 'missing here: battery.v_full_cell, unavailable (top-level section)' in message, message
+    assert 'set schema_version: 2' in message and 'see config/airframes/x500_sitl.yaml for an example' in message
+    # it names only what is actually missing
+    expect_error(airframe, version_1(airframe, drop=('unavailable',)),
+                 'schema_version', 'missing here: unavailable (top-level section).')
+    expect_error(airframe, version_1(airframe, 'dexi', drop=('v_full_cell',)),
+                 'schema_version', 'missing here: battery.v_full_cell.')
+    expect_error(airframe, version_1(airframe, drop=()), 'schema_version', 'missing here: none.')
+    # other versions keep the plain message
+    data = raw(airframe, 'x500_sitl')
+    data['schema_version'] = 0
+    expect_error(airframe, data, 'schema_version', 'expected 2, got 0')
+    assert raw(airframe, 'dexi')['schema_version'] == raw(airframe, 'x500_sitl')['schema_version'] == 2

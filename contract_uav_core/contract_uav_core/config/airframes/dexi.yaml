@@ -12,7 +12,7 @@
 # The section unavailable lists the contract variables PX4 gives no reading for.
 # These are PX4's defaults for the airframe, not measurements of a vehicle:
 # the parameters on the actual DEXI may differ (check 5).
-schema_version: 1
+schema_version: 2
 name: dexi
 description: DroneBlocks DEXI 5, PX4 v1.16.2 airframe defaults
 px4:

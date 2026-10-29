@@ -11,7 +11,7 @@ switcher, the core and the legacy scripts do not pass one yet.
     x500.hover_thrust                  # 0.6
     x500.provenance['hover_thrust']    # Param(value=0.6, unit='norm', status='px4_airframe', ...)
 
-File layout: top-level keys schema_version (1), name, description,
+File layout: top-level keys schema_version (2), name, description,
 px4 {version, airframe, airframe_url}, three sections of numbers:
 vehicle, battery (PX4- or model-sourced) and plant (reference-plant parameters,
 which have no PX4 source), and the section unavailable. Every number is an entry
@@ -36,6 +36,11 @@ An empty mapping ({}) means every contract variable has a source.
 Derived: Airframe.battery_pack_voltage_range is (n_cells * v_empty_cell,
 n_cells * v_full_cell) in V, rounded to the mV (P1.3).
 
+Schema versions: 1 is the batch-2 format (W4-04). 2 (W4-05, P1.3) adds the
+required battery.v_full_cell and the top-level section unavailable, and the
+status datasheet. A version-1 file is rejected with a message that names the
+missing keys and points to config/airframes/x500_sitl.yaml as an example.
+
 load_airframe returns a frozen Airframe; any violation raises AirframeError
 naming the file and the key.
 """
@@ -50,7 +55,10 @@ from typing import Any, Mapping, Optional, Tuple, Union
 
 import yaml
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+# What version 2 added to version 1 (section, key); section None = top level.
+_ADDED_IN_V2 = (('battery', 'v_full_cell'), (None, 'unavailable'))
+_EXAMPLE_FILE = 'config/airframes/x500_sitl.yaml'
 STATUSES = ('px4_airframe', 'px4_param_default', 'model_sdf', 'assumed', 'unknown', 'datasheet')
 _PX4_STATUSES = ('px4_airframe', 'px4_param_default')
 _SOURCED_STATUSES = _PX4_STATUSES + ('model_sdf',)
@@ -181,6 +189,8 @@ def parse_airframe(data: Any, origin: str = '<data>') -> Airframe:
     def fail(where, message):
         raise AirframeError(f"{origin}: {where}: {message}")
 
+    if isinstance(data, dict) and type(data.get('schema_version')) is int and data['schema_version'] == 1:
+        fail('schema_version', _version_1_message(data))
     _check_keys(data, _TOP_KEYS, (), 'top level', fail)
     if type(data['schema_version']) is not int or data['schema_version'] != SCHEMA_VERSION:
         fail('schema_version', f"expected {SCHEMA_VERSION}, got {data['schema_version']!r}")
@@ -219,6 +229,19 @@ def parse_airframe(data: Any, origin: str = '<data>') -> Airframe:
         px4_version=data['px4']['version'], px4_airframe=data['px4']['airframe'],
         px4_airframe_url=data['px4']['airframe_url'],
         provenance=MappingProxyType(provenance), unavailable=MappingProxyType(unavailable), **values)
+
+
+def _version_1_message(data) -> str:
+    """Why a version-1 file is rejected, naming the keys it lacks."""
+    def present(section, key):
+        holder = data if section is None else data.get(section)
+        return isinstance(holder, dict) and key in holder
+    names = [key + ' (top-level section)' if section is None else f'{section}.{key}'
+             for section, key in _ADDED_IN_V2]
+    missing = [name for (section, key), name in zip(_ADDED_IN_V2, names) if not present(section, key)]
+    return (f"version 1 is the airframe format before P1.3; version {SCHEMA_VERSION} also requires "
+            f"{' and '.join(names)}; missing here: {', '.join(missing) or 'none'}. Add them and set "
+            f"schema_version: {SCHEMA_VERSION}; see {_EXAMPLE_FILE} for an example")
 
 
 def _parse_unavailable(section, fail) -> dict:
