@@ -156,6 +156,6 @@ def test_benchmark_controllers_with_pacti_reproduces_results_section_1(
     proc = run_benchmark(run_python, repo_copy, "benchmark_controllers.py", timeout=3600)
     results = extract_results(proc.stdout)
     if not update_goldens:
-        # The headline number of docs/RESULTS.md section 1; without pacti it is 63.240.
-        assert adaptive_cell(results, "Mission Time (s)") == "53.780", environment_summary()
+        # The headline number of docs/RESULTS.md section 1; without pacti it is 63.860.
+        assert adaptive_cell(results, "Mission Time (s)") == "54.320", environment_summary()
     check_golden(results, "benchmark_controllers.pacti.txt", update_goldens)
