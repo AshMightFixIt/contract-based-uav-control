@@ -37,6 +37,7 @@ class PlanningState:
     consecutive_failures: int = 0
     max_failures: int = 3
     emergency_mode: bool = False
+    low_altitude: bool = False    # less than LOW_ALTITUDE above ground at the last update
 
 
 class IntegratedPlanner:
@@ -48,7 +49,15 @@ class IntegratedPlanner:
     2. Safety margin monitoring
     3. Automatic re-planning triggers
     4. Emergency mode fallback
+
+    Low altitude (less than LOW_ALTITUDE m above ground) triggers one immediate
+    replan when the drone gets there, not one on every step while it stays
+    there (W4-09, K10): on the ground before take-off the planner used to
+    replan on every control step. The plan does not depend on altitude, so
+    replanning again would give the same plan; the periodic replan continues.
     """
+
+    LOW_ALTITUDE = 0.5  # m above ground (NED z > -LOW_ALTITUDE)
 
     def __init__(self, config: Optional[PlannerConfig] = None):
         self.config = config or PlannerConfig(
@@ -92,9 +101,11 @@ class IntegratedPlanner:
 
         # Check if we need to replan
         time_since_plan = current_time - self.state.last_plan_time
+        reached_low_altitude = self._reached_low_altitude(drone_state)
         needs_replan = (
             self.state.current_plan is None or
             time_since_plan >= self.state.replan_interval or
+            reached_low_altitude or
             self._safety_critical(drone_state, environment)
         )
 
@@ -195,6 +206,21 @@ class IntegratedPlanner:
             'distance_to_target': dist_to_target,
         }
 
+    def _reached_low_altitude(self, drone_state: Dict[str, np.ndarray]) -> bool:
+        """True on the update where the drone gets below LOW_ALTITUDE (NED z > -LOW_ALTITUDE).
+
+        Updates state.low_altitude on every call, so staying low (e.g. on the
+        ground before take-off) does not trigger again until the drone has been
+        above LOW_ALTITUDE in between.
+        """
+        position = drone_state.get('position', np.zeros(3))
+        low = bool(position[2] > -self.LOW_ALTITUDE)
+        reached = low and not self.state.low_altitude
+        self.state.low_altitude = low
+        if reached:
+            logger.warning(f"Altitude critical: z={position[2]:.2f}")
+        return reached
+
     def _safety_critical(self,
                          drone_state: Dict[str, np.ndarray],
                          environment: Dict[str, float]) -> bool:
@@ -215,11 +241,7 @@ class IntegratedPlanner:
         if self.state.current_plan.min_safety_margin < self.config.replan_threshold:
             return True
 
-        # Check for altitude anomaly (positive Z in NED = below ground)
-        position = drone_state.get('position', np.zeros(3))
-        if position[2] > -0.5:  # Less than 0.5m above ground
-            logger.warning(f"Altitude critical: z={position[2]:.2f}")
-            return True
+        # (Low altitude: see _reached_low_altitude, checked on every update.)
 
         # Check for high velocity (indicates loss of control)
         velocity = drone_state.get('velocity', np.zeros(3))
