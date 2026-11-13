@@ -414,70 +414,43 @@ class HorizonPlanner:
 
 class AdaptiveRePlanner:
     """
-    Higher-level replanning strategies when basic horizon planning fails.
+    Higher-level replanning when basic horizon planning fails.
 
-    Strategies (in order of preference):
-    1. Shrink horizon - less lookahead, more reactive
-    2. Switch controller - PID -> H-inf
-    3. Modify target - slow down, change waypoint
-    4. Emergency hover - stop and stabilize
+    HorizonPlanner.plan already tries every controller at the full horizon, then
+    MPC and H-inf at every shorter horizon down to min_horizon, all at the real
+    wind. If none of these plans is safe, find_feasible_plan returns the
+    emergency plan (H-inf, INFEASIBLE).
+
+    Before W4-09 it then tried three more strategies (K10): an unreachable
+    "controller switched" branch; H-inf at horizons max_horizon-2, -4, ... down
+    to min_horizon, which plan() had already rejected; and H-inf at min_horizon
+    with the wind lowered by 1 m/s ("modify target"), which approved H-inf at
+    16 m/s, above its 15 m/s assumption. Pretending the wind is lower is not
+    sound, and at the real wind that last try is also a plan plan() had already
+    rejected, so all three are gone.
     """
 
     def __init__(self, planner: HorizonPlanner):
         self.planner = planner
-        self.strategy_attempts = 0
-        self.max_attempts = 5
 
     def find_feasible_plan(self,
                            current_state: Dict[str, float],
                            target: np.ndarray,
-                           environment: Dict[str, float]) -> Tuple[Plan, Dict[str, any]]:
+                           environment: Dict[str, float]) -> Tuple[Plan, Dict[str, bool]]:
         """
-        Try multiple strategies to find a feasible plan.
+        Find a safe plan, or fall back to the emergency plan.
 
-        Returns: (plan, modifications) where modifications describes
-                 any changes made (horizon, controller, target)
+        Returns: (plan, modifications) where modifications['emergency_mode'] is
+                 True when no safe plan exists
         """
-        modifications = {
-            'horizon_reduced': False,
-            'controller_switched': False,
-            'target_modified': False,
-            'emergency_mode': False
-        }
+        modifications = {'emergency_mode': False}
 
-        # Strategy 1: Try with PID at full horizon
+        # Every controller at the full horizon, then MPC and H-inf at shorter horizons
         plan = self.planner.plan(current_state, target, environment)
         if plan.is_safe():
             return plan, modifications
 
-        # Strategy 2: Already tried H-inf in plan(), check if it worked
-        if plan.recommended_controller == 'hinf' and plan.is_safe():
-            modifications['controller_switched'] = True
-            return plan, modifications
-
-        # Strategy 3: Shrink horizon progressively
-        for h in range(self.planner.config.max_horizon - 2,
-                       self.planner.config.min_horizon - 1, -2):
-            plan = self.planner._try_plan(current_state, environment, h, 'hinf')
-            if plan.is_safe():
-                modifications['horizon_reduced'] = True
-                modifications['new_horizon'] = h
-                logger.info(f"Found feasible plan with reduced horizon: {h}")
-                return plan, modifications
-
-        # Strategy 4: Modify target (slow approach)
-        # Reduce effective target distance
-        modified_env = environment.copy()
-        modified_env['wind_speed'] = max(0, environment.get('wind_speed', 0) - 1)
-
-        plan = self.planner._try_plan(current_state, modified_env,
-                                      self.planner.config.min_horizon, 'hinf')
-        if plan.is_safe():
-            modifications['target_modified'] = True
-            logger.info("Found feasible plan with modified approach")
-            return plan, modifications
-
-        # Strategy 5: Emergency mode
+        # Emergency mode
         logger.error("All strategies failed - entering emergency mode")
         modifications['emergency_mode'] = True
         return Plan(
