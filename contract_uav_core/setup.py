@@ -15,7 +15,7 @@ setup(
     version='0.1.0',
     packages=find_packages(exclude=['test', 'tests']),
     # The airframe files, read by contract_uav_core.config.airframe.
-    package_data={'contract_uav_core.config': ['airframes/*.yaml']},
+    package_data={'contract_uav_core.config': ['airframes/*.yaml', 'contracts.json']},
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
