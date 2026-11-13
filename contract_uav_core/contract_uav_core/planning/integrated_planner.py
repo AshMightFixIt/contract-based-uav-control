@@ -7,11 +7,13 @@ Provides predictive planning layer on top of reactive control.
 Architecture:
     Sensors -> EKF -> [HORIZON PLANNER] -> Supervisor -> [PID|Hinf] -> CBF -> Actuators
                            |
-                    Pacti Contract Cascade
+                    Contract Cascade (bounds composed offline, config/contracts.json)
                            |
                     Safety Margin Monitor
                            |
                     Re-planning Trigger
+
+No Pacti at run time (W4-09): see horizon_planner.py.
 """
 
 import numpy as np

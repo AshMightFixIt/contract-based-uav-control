@@ -6,6 +6,13 @@ These contracts enable:
 1. Formal composition across the control pipeline
 2. Optimization of safety margins over horizons
 3. Verification of mission feasibility
+
+Design time only (W4-09): this module needs Pacti, and the flight code does not
+import it. export_contracts.py builds these contracts with Pacti, offline, and
+writes their bounds to config/contracts.json, which the horizon planner reads. After
+any change here, regenerate that file (see export_contracts.py); a test fails
+while it is stale. The offline contracts tool (tools/contracts_offline/) reads
+this module too.
 """
 
 from pacti.contracts import PolyhedralIoContract
@@ -29,18 +36,8 @@ class PactiContractLibrary:
 
     def __init__(self):
         self.contracts: Dict[str, PolyhedralIoContract] = {}
-        # Steady-state error params (wind_coeff, constant) derived from controller guarantees.
-        # e_ss(wind) = wind_coeff * wind_speed + constant
-        self.controller_ss_params: Dict[str, Tuple[float, float]] = {
-            'pid':  (0.30, 0.2),   # tracking_error <= ... + 0.30*wind + 0.2
-            'mpc':  (0.15, 0.1),   # tracking_error <= ... + 0.15*wind + 0.1
-            'hinf': (0.50, 1.0),   # tracking_error <= ... + 0.50*wind + 1.0
-        }
-        self.step_contract_cache: Dict[str, PolyhedralIoContract] = {}
-        self.pipeline_cache: Dict[str, PolyhedralIoContract] = {}
         self._build_contracts()
-        logger.info(f"PactiContractLibrary initialized with {len(self.contracts)} contracts, "
-                    f"{len(self.step_contract_cache)} step contracts cached")
+        logger.info(f"PactiContractLibrary initialized with {len(self.contracts)} contracts")
 
     def _build_contracts(self):
         """Build all component contracts."""
@@ -49,7 +46,6 @@ class PactiContractLibrary:
         self._build_controller_contracts()
         self._build_actuator_contract()
         self._build_dynamics_contract()
-        self._build_cached_contracts()
 
     def _build_sensor_contracts(self):
         """
@@ -255,45 +251,6 @@ class PactiContractLibrary:
                 'position_change <= 2 * dt',  # Max 2 m/s movement
             ]
         )
-
-    def _build_cached_contracts(self):
-        """Pre-compute commonly used contract compositions for fast horizon planning."""
-        dynamics = self.contracts.get('dynamics')
-        gps = self.contracts.get('gps')
-        ekf = self.contracts.get('ekf')
-
-        for ctrl_name in ['pid', 'mpc', 'hinf']:
-            ctrl = self.contracts.get(ctrl_name)
-
-            # Step contract: ctrl ∘ dynamics (used every timestep in _try_plan)
-            try:
-                self.step_contract_cache[ctrl_name] = ctrl.compose(dynamics)
-                logger.info(f"Cached step contract: {ctrl_name} ∘ dynamics")
-            except Exception as e:
-                logger.warning(f"Failed to cache step contract for {ctrl_name}: {e}")
-
-            # Pipeline contract: gps ∘ ekf ∘ ctrl (full sensor-to-control chain)
-            try:
-                self.pipeline_cache[ctrl_name] = gps.compose(ekf).compose(ctrl)
-                logger.info(f"Cached pipeline contract: gps ∘ ekf ∘ {ctrl_name}")
-            except Exception as e:
-                logger.warning(f"Failed to cache pipeline for {ctrl_name}: {e}")
-
-    def get_step_contract(self, controller: str) -> Optional[PolyhedralIoContract]:
-        """Return the pre-computed ctrl ∘ dynamics contract, or None if unavailable."""
-        return self.step_contract_cache.get(controller)
-
-    def get_controller_ss_error(self, controller: str, wind_speed: float) -> float:
-        """
-        Compute the steady-state tracking error bound for a given controller and wind speed.
-
-        Derived from controller contract guarantees:
-            e_ss = wind_coeff * wind_speed + constant
-        """
-        wind_coeff, constant = self.controller_ss_params.get(
-            controller, self.controller_ss_params['hinf']  # fallback to most conservative
-        )
-        return wind_coeff * wind_speed + constant
 
     def get_contract(self, name: str) -> Optional[PolyhedralIoContract]:
         """Get a contract by name."""
