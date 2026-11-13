@@ -63,11 +63,16 @@ class ContractBounds:
         return controller in self.input_bounds
 
     def violated_assumption(self, controller: str, values: Dict[str, float]) -> Optional[str]:
-        """The first input of values outside controller's bounds, or None if all are inside."""
+        """The first input of values outside controller's bounds, or None if all are inside.
+
+        NaN is outside every bound (W4-09). With Pacti's bounds the check was
+        `val < lo or val > hi`, which a NaN passes; the planner then found a NaN
+        margin, which min() skips, and returned a FEASIBLE plan.
+        """
         for var, (lo, hi) in self.input_bounds[controller].items():
             if var in values:
                 val = values[var]
-                if val < lo or val > hi:
+                if not lo <= val <= hi:
                     return var
         return None
 
@@ -217,11 +222,8 @@ class HorizonPlanner:
         # the correct closed-form 0.9^t * e_0 + (1-0.9^t) * e_ss at each step t.
         initial_tracking_error = current_state.get('tracking_error', 0.0)
 
-        # Get environment parameters
+        # Get environment parameters (the controller contracts use only the wind)
         wind_speed = environment.get('wind_speed', 0.0)
-        gps_sats = environment.get('gps_satellites', 12.0)
-        gps_hdop = environment.get('gps_hdop', 1.0)
-        battery = environment.get('battery_voltage', 12.0)
 
         # Check if controller assumptions are satisfied
         if not self.contracts.has_controller(controller):

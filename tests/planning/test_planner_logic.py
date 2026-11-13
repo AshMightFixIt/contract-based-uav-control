@@ -4,6 +4,8 @@
   above the 15 m/s its contract assumes. It now checks at the real wind.
 - On the ground (less than 0.5 m up) the planner replanned on every step. Now
   reaching low altitude triggers one replan, and the periodic one continues.
+- A NaN input passed the assumption check and gave a FEASIBLE plan with an
+  infinite margin. Now NaN is outside every bound.
 """
 from __future__ import annotations
 
@@ -13,6 +15,7 @@ import pytest
 pytestmark = pytest.mark.usefixtures("core_package")
 
 STATE = {'tracking_error': 0.5, 'position_est_error': 0.3, 'velocity_est_error': 0.1}
+TARGET = np.array([10.0, 0.0, -5.0])
 
 
 def replan(wind, state=STATE):
@@ -49,8 +52,26 @@ def test_no_wind_discount_on_the_margin():
     assert plan.is_safe() and plan.recommended_controller == 'hinf' and plan.horizon_length == 3
 
 
+@pytest.mark.parametrize('state, wind', [
+    (dict(STATE, tracking_error=float('nan')), 1.0),
+    (STATE, float('nan')),
+    (dict(STATE, position_est_error=float('nan')), 1.0),
+], ids=['tracking-error', 'wind', 'position-estimate'])
+def test_nan_input_gives_no_plan(state, wind):
+    """Before W4-09: FEASIBLE PID plan, min_safety_margin = inf."""
+    plan, mods = replan(wind, state)
+    assert not plan.is_safe() and plan.min_safety_margin == -1.0 and mods == {'emergency_mode': True}
+
+
+def test_planning_state_holds_what_the_planner_reads():
+    from contract_uav_core.planning.integrated_planner import IntegratedPlanner
+
+    state = IntegratedPlanner()._convert_state(
+        {'position': np.array([0.0, 0.0, -5.0]), 'velocity': np.array([1.0, 0.0, 0.0])}, TARGET)
+    assert sorted(state) == ['position_est_error', 'tracking_error', 'velocity_est_error']
+
+
 DT = 0.02
-TARGET = np.array([10.0, 0.0, -5.0])
 
 
 def replan_times(altitudes):

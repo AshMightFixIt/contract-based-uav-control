@@ -168,7 +168,6 @@ class IntegratedPlanner:
 
             # Track if we're making progress toward target
             # Large distance when we should be close indicates overshoot
-            expected_progress_rate = 2.0  # m/s reasonable approach speed
             max_reasonable_distance = 15.0  # If further than this, something is wrong
 
             # Tracking error combines:
@@ -203,7 +202,6 @@ class IntegratedPlanner:
             'tracking_error': tracking_error,
             'position_est_error': position_est_error,
             'velocity_est_error': velocity_est_error,
-            'distance_to_target': dist_to_target,
         }
 
     def _reached_low_altitude(self, drone_state: Dict[str, np.ndarray]) -> bool:
