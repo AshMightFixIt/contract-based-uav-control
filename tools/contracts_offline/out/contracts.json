@@ -6679,7 +6679,7 @@
       },
       {
         "path": "contract_uav_core/contract_uav_core/planning/horizon_planner.py",
-        "sha256": "f08c91f687c32d83e688aa370269e6b7008daec5a692b40dea29bc8c2cf10fad"
+        "sha256": "a3f36ecec85c0d64babd9ae55ae0475b3978aea1a1affccc34125c5bd9d504b2"
       },
       {
         "path": "contract_uav_core/contract_uav_core/planning/integrated_planner.py",
@@ -6690,7 +6690,7 @@
         "sha256": "e418559425b79dfd14841732a9764b31eb53f63a27715d0d80d171fcaeb0b707"
       }
     ],
-    "inputs_sha256": "67f77c429bf90921f887acfc5d609cf434925e2b60cd26a9fc106d9f5f815fda"
+    "inputs_sha256": "ef46b543e1b5f1f3b160e5ed460a214b7f4142c85aa4dd2a8abddf938311bfec"
   },
   "reconciliation": {
     "both_present": 101,
