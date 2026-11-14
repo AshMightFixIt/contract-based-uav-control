@@ -13,7 +13,10 @@ Each test needs at least MIN_REPLANS samples for a meaningful p99. A mission
 that yields fewer is topped up, to exactly MIN_REPLANS, with replans from the
 other mission, recorded the same way in the same process (W4-08: the sensor
 mission now ends at 30 s, through the benchmark's "mission complete" break,
-K07, and yields 68 replans).
+K07, and yields 68 replans). The mission's own replans must still come at
+least at 90 % of the planner's rate, one per REPLAN_INTERVAL_S of mission
+time (review R-08, N-1), so the top-up cannot hide a planner that replans
+less often.
 
 Two checks, because CI runners are noisy and shared:
 - CPU time, p99 < 1 ms. CPU time (time.process_time) does not count the time
@@ -55,6 +58,7 @@ pytestmark = pytest.mark.usefixtures("core_package")
 BUDGET_S = 1e-3
 REPEATS = 200
 MIN_REPLANS = 100
+REPLAN_INTERVAL_S = 0.5     # IntegratedPlanner replans at least this often (planning/integrated_planner.py)
 OTHER_MISSION = {'benchmark_controllers': 'benchmark_sensor_degradation',
                  'benchmark_sensor_degradation': 'benchmark_controllers'}
 
@@ -77,7 +81,7 @@ def timed(self, current_state, target, environment):
 
 AdaptiveRePlanner.find_feasible_plan = timed
 module = __import__(SCRIPT)
-module.run_scenario('adaptive')
+mission_seconds = float(module.run_scenario('adaptive')['times'][-1])
 mission_replans = len(calls)
 if len(calls) < MIN_REPLANS:             # top up from the other mission, to exactly MIN_REPLANS
     __import__(OTHER).run_scenario('adaptive')
@@ -94,6 +98,7 @@ cpu.sort()
 print(json.dumps({
     'replans': len(calls),
     'mission_replans': mission_replans,
+    'mission_seconds': mission_seconds,
     'cpu_p99': cpu[min(len(cpu) - 1, int(0.99 * len(cpu)))] if cpu else None,
     'cpu_max': max(cpu) if cpu else None,
     'wall_median': statistics.median(wall) if wall else None,
@@ -113,7 +118,8 @@ def test_g1_5_replan_within_1ms_without_pacti(script, repo_copy, run_python):
     print(f"G1.5 {script}: {out}")
     assert out['pacti_loaded'] == []
     assert out['replans'] >= MIN_REPLANS, out  # enough samples (topped up from the other mission if needed)
-    assert out['mission_replans'] > 0, out     # and the planner ran in this mission
+    # and the mission's own replans came at least at 90 % of one per REPLAN_INTERVAL_S
+    assert out['mission_replans'] >= 0.9 * out['mission_seconds'] / REPLAN_INTERVAL_S, out
     assert out['cpu_p99'] < BUDGET_S, out
     assert out['wall_median'] < BUDGET_S, out
 
