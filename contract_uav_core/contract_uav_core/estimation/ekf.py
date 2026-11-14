@@ -392,6 +392,8 @@ class ContractAwareEKF:
         """
         gps = sensors.get('gps') or {}
         r_all = R.diagonal().tolist()
+        if 'gps_position' in keys:
+            r_all[0:6] = self.gps_noise(gps, r_all[0:6])
         x = self.x.tolist()
         accepted = []
         for key in self.MEASUREMENT_ROWS:
@@ -445,6 +447,34 @@ class ContractAwareEKF:
             self.x = np.array(x)
             self.x[self.YAW] = wrap_angle(self.x[self.YAW])
 
+    def gps_noise(self, gps: Dict[str, any], nominal: List[float]) -> List[float]:
+        """The GPS measurement noise of this update: variances of x, y, z, vx, vy, vz (S-3).
+
+        Each is at least the nominal value, and grows with the reported accuracy, so that a
+        fix the sensor contract accepts is gated on the noise it actually has:
+        - position: eph^2 / 2 for x and y and epv^2 for z when the GPS reports eph / epv
+          (PX4's convention, as in pass-through); otherwise (HDOP x UERE)^2 / 2 per axis,
+          the sensor contract's predicted position_meas_error (HDOP x UERE is the horizontal
+          RMS error, so half its square per axis; z gets the same, as there is no VDOP);
+        - velocity: evh^2 / 2 and evv^2 when reported, otherwise the contract's
+          velocity_meas_error squared.
+        With HDOP 0.8 (UERE 1.5 m: 0.72 m^2) the nominal 1 m^2 is kept, so nominal flight is
+        unchanged; at HDOP 5, 28 m^2. Before, R was 1 m^2 whatever the HDOP, and with 3 m of
+        noise 58 % of the fixes were rejected.
+        """
+        bounds = self.sensor_metrics.predicted_bounds if self.sensor_metrics is not None else {}
+        pme = bounds.get('position_meas_error_max', 0.0)
+        vme = bounds.get('velocity_meas_error_max', 0.0)
+        position_var = pme * pme / 2.0
+        velocity_var = vme * vme
+        reported = [self._accuracy_variance(gps, 'eph', 2.0, position_var),
+                    self._accuracy_variance(gps, 'eph', 2.0, position_var),
+                    self._accuracy_variance(gps, 'epv', 1.0, position_var),
+                    self._accuracy_variance(gps, 'evh', 2.0, velocity_var),
+                    self._accuracy_variance(gps, 'evh', 2.0, velocity_var),
+                    self._accuracy_variance(gps, 'evv', 1.0, velocity_var)]
+        return [max(n, r) for n, r in zip(nominal, reported)]
+
     def _pass_through(self, measurements: Dict[str, np.ndarray], sensors: Dict[str, any]):
         """mode='passthrough' (T7): PX4's position and velocity become the state.
 
@@ -494,7 +524,8 @@ class ContractAwareEKF:
         Main update function with contract-based sensor fusion
 
         The sensor contracts choose which sensors may be fused (unchanged):
-        - both ok ("nominal"): GPS position and velocity, IMU attitude and rates, R_nominal;
+        - both ok ("nominal"): GPS position and velocity, IMU attitude and rates, R_nominal
+          (the GPS part raised to the reported accuracy, gps_noise);
         - IMU ok only ("degraded"): IMU attitude and rates, R_degraded;
         - otherwise ("emergency"): nothing, and the covariance grows by 2 Q more.
         Of those, only the components that are present, finite, not flagged invalid

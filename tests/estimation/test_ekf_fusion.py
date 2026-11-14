@@ -305,3 +305,42 @@ def test_covariance_setter_round_trips_and_refuses_other_couplings():
     with pytest.raises(ValueError):
         ekf.P = asymmetric
     assert np.array_equal(ekf.P, P)      # a refused matrix changes nothing
+
+
+# --- S-3: the GPS noise follows the reported accuracy --------------------------------------------
+
+def test_gps_noise_follows_hdop_and_eph():
+    ekf = converged(1.0)
+    nominal = np.diag(ekf.R_nominal)[0:6].tolist()
+    assert ekf.gps_noise({'hdop': 0.8}, nominal) == nominal     # HDOP 0.8: (1.2 m)^2 / 2 < 1 m^2, unchanged
+    ekf.update_sensor_quality({'gps': {'satellites': 12, 'hdop': 5.0, 'valid': True}, 'imu': good_sensors()['imu']})
+    ekf.check_sensor_contracts(1.0)
+    noise = ekf.gps_noise({}, nominal)
+    assert noise[0:3] == pytest.approx([(1.5 * 5.0) ** 2 / 2] * 3)   # (HDOP x UERE)^2 / 2 per axis
+    assert noise[3:6] == pytest.approx(nominal[3:6])                 # 0.1 m/s Doppler: below nominal
+    reported = ekf.gps_noise({'eph': 4.0, 'epv': 6.0, 'evh': 1.0, 'evv': 0.8}, nominal)
+    assert reported == pytest.approx([8.0, 8.0, 36.0, 0.5, 0.5, 0.64])
+
+
+@pytest.mark.parametrize("hdop, eph", [(0.8, None), (3.0, None), (5.0, None), (0.8, 4.0)])
+def test_noisy_fixes_inside_the_contract_are_not_mostly_rejected(hdop, eph):
+    """S-3: with GPS noise as the sensor contract predicts it (sigma per axis HDOP x UERE / sqrt 2,
+    or eph / sqrt 2 and epv), about 0.1 % of fixes are rejected and none is reset. With R fixed
+    at 1 m^2, HDOP 3 rejected 63 % and reset 130 times in 600 s."""
+    ekf = make_ekf()
+    rng = np.random.default_rng(int(hdop * 10))
+    sigma = np.full(3, 1.5 * hdop / np.sqrt(2)) if eph is None else np.array([eph / np.sqrt(2)] * 2 + [eph])
+    gps = {'satellites': 12, 'hdop': hdop, 'valid': True}
+    if eph is not None:
+        gps.update(eph=eph, epv=eph)
+    rejected = reset = n = 0
+    for k in range(int(65.0 / DT)):
+        meas = measurements(pos=TRUTH + rng.standard_normal(3) * sigma, vel=rng.standard_normal(3) * 0.01)
+        ekf.predict(DT)
+        ekf.update(meas, {'gps': gps, 'imu': good_sensors()['imu']}, k * DT)
+        if k * DT > 5.0:
+            n += 1
+            rejected += 'gps_position' in ekf.last_rejected
+            reset += 'gps_position' in ekf.last_reset
+    assert rejected / n < 0.005, rejected / n
+    assert reset == 0
