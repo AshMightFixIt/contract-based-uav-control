@@ -6,6 +6,24 @@ Key Innovation:
 - EKF checks sensor quality contracts before fusion
 - Degrades gracefully when sensors violate contracts
 - Provides formal guarantees on estimation accuracy
+
+A constant-velocity, constant-rate model of [position, velocity, attitude,
+rates] (NED, see interfaces.py), at the step predict() is given.
+
+What W4-08 changed (K17, the core half of A-F7):
+- Only measurements that are present, finite and not flagged invalid are fused
+  (per-axis flags as in PX4's vehicle_local_position); before, a missing one was
+  fused as zeros. Each is gated on its normalised innovation; 10 rejects in a row
+  reset its rows to it (T1, T2).
+- The heading is wrapped to (-pi, pi], in the innovation and the state (T3).
+- The process noise is per second. Without GPS the velocity is kept, its
+  variance grows at VEL_RANDOM_WALK_NO_GPS, and the position is flagged
+  untrusted once eph > POSITION_UNTRUSTED_EPH (T4).
+- When GPS returns, the published position glides back at <= 2 m/s (T5).
+- gps_ok / imu_ok come from the sensor contract (sensor_limits.py, T6).
+- mode='passthrough' takes PX4's own estimate, with its eph / epv covariance (T7).
+- The estimator contract is checked with its own quantities and inputs (T8).
+With every measurement valid and inside the gate, the numbers are as before.
 """
 
 import numpy as np
