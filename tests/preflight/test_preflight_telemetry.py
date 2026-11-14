@@ -101,7 +101,8 @@ def test_dexi_battery_checked_against_its_pack_range(volts, ok):
     result, msg = preflight(airframe='dexi', drop=('motor_temperature',), battery_voltage=volts)
     assert result is ok, msg
     assert msg.endswith("not checked (unavailable on dexi): motor_temperature; "
-                        "battery_voltage checked against dexi's range 19.8-25.2")
+                        "battery_voltage checked against dexi's range 19.8-25.2; "
+                        "predictions left out: response_time_max, thrust_accuracy_max, thrust_accuracy_min")
     if not ok:
         assert msg.startswith("Mission infeasible - all controller contracts violated (PID: Assumptions violated: "
                               "['battery_voltage']; MPC: Assumptions violated: ['battery_voltage']; Hinf: ")
@@ -112,9 +113,14 @@ def test_without_airframe_the_3_cell_range_applies():
     assert preflight(battery_voltage=11.5)[0] is True
 
 
-def test_unavailable_input_is_not_checked():
+def test_unavailable_input_is_not_checked(caplog):
     """motor_temperature: PX4 reports none (dexi.yaml, unavailable). Not required, not checked, never zero."""
-    assert preflight(airframe='dexi', drop=('motor_temperature',), battery_voltage=22.0)[0] is True
+    with caplog.at_level(logging.WARNING, logger="contract_uav_core.contracts.preflight"):
+        assert preflight(airframe='dexi', drop=('motor_temperature',), battery_voltage=22.0)[0] is True
+    # The log line names the predictions left out (review R-09, N2), as the result message does.
+    assert ("Pre-flight: not checked (unavailable on dexi): motor_temperature; battery_voltage checked against "
+            "dexi's range 19.8-25.2; predictions left out: response_time_max, thrust_accuracy_max, "
+            "thrust_accuracy_min") in caplog.text
     # A value given anyway (the node fills in 25 degC today) cannot come from the vehicle: ignored, with a note.
     ok, msg = preflight(airframe='dexi', battery_voltage=22.0, motor_temperature=15.0)
     assert ok is True
@@ -171,6 +177,12 @@ def test_predictions_leave_out_what_the_airframe_overrides():
     ok, msg = monitor.verify_mission_feasibility(
         'PID', dexi, assumption_overrides={'battery_voltage': (19.8, 25.2)}, not_checked=('motor_temperature',))
     assert ok and 'thrust_accuracy' not in msg and 'tracking_error_max' in msg
+    # The names pre-flight reports: the battery alone drops the thrust accuracy bounds;
+    # motor_temperature also drops the response time.
+    assert monitor.left_out_predictions({'battery_voltage'}) == ('thrust_accuracy_max', 'thrust_accuracy_min')
+    assert monitor.left_out_predictions({'battery_voltage', 'motor_temperature'}) == (
+        'response_time_max', 'thrust_accuracy_max', 'thrust_accuracy_min')
+    assert monitor.left_out_predictions(()) == ()
 
 
 def test_node_style_telemetry():

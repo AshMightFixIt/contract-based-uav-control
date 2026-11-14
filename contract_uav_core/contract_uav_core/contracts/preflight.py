@@ -26,13 +26,15 @@ pre_flight_check(initial_conditions, mission, airframe=None):
   actuator contract's 3-cell 11.0-12.6 V, and it does not check the inputs the
   airframe lists as unavailable (e.g. motor_temperature): they are not
   required, a value given for one is ignored with a warning (it cannot come
-  from the vehicle), and the predictions that need one are left out. Without
-  an airframe every input is checked against the contracts, as before.
+  from the vehicle), and the predictions that need one, or the battery voltage,
+  are left out and named in the warning and the result (e.g. thrust_accuracy_min,
+  thrust_accuracy_max, response_time_max). Without an airframe every input is
+  checked against the contracts, as before.
 """
 
 import math
 import numbers
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Dict, Iterable, Mapping, Optional, Tuple, Union
 
 import numpy as np
@@ -61,6 +63,8 @@ class TelemetryCheck:
     assumption_overrides: input -> (lo, hi) that replaces the contracts' range
         (battery_voltage -> the airframe's pack range).
     airframe: the airframe's name, or None.
+    left_out_predictions: the guarantee predictions left out because they need an
+        unchecked or overridden input (pre_flight_check fills this in).
     """
     conditions: Mapping[str, float]
     missing: Tuple[str, ...] = ()
@@ -70,6 +74,7 @@ class TelemetryCheck:
     ignored: Tuple[str, ...] = ()
     assumption_overrides: Mapping[str, Tuple[float, float]] = None
     airframe: Optional[str] = None
+    left_out_predictions: Tuple[str, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -94,6 +99,8 @@ class TelemetryCheck:
             parts.append(f"not checked (unavailable on {self.airframe}): {', '.join(self.not_checked)}{given}")
         for name, (lo, hi) in sorted((self.assumption_overrides or {}).items()):
             parts.append(f"{name} checked against {self.airframe}'s range {lo:g}-{hi:g}")
+        if self.left_out_predictions:
+            parts.append(f"predictions left out: {', '.join(self.left_out_predictions)}")
         return "; ".join(parts)
 
 
@@ -196,6 +203,25 @@ class ContractPreflightMixin:
                 names.update(pipeline.assumptions)
         return tuple(sorted(names))
 
+    def left_out_predictions(self, variables: Iterable[str]) -> Tuple[str, ...]:
+        """The predictions (output_max / output_min) verify_mission_feasibility leaves out
+        when the given inputs are unchecked or overridden, over every controller's pipeline.
+
+        A prediction is left out when every guarantee that gives it uses one of the inputs.
+        """
+        variables = set(variables)
+        if not variables:
+            return ()
+        dropped, kept = set(), set()
+        for controller_name in self.controller_contracts:
+            pipeline = self.compose_pipeline(controller_name)
+            if pipeline is None:
+                continue
+            for g in pipeline.guarantees:
+                key = f"{g.output_var}_{'max' if g.is_upper_bound else 'min'}"
+                (dropped if variables & set(g.coefficients) else kept).add(key)
+        return tuple(sorted(dropped - kept))
+
     def verify_mission_feasibility(self,
                                    controller_name: str,
                                    current_conditions: Dict[str, float],
@@ -269,6 +295,10 @@ class ControllerPreflightMixin:
         waypoints = mission.get('waypoints', [target])
 
         telemetry = check_telemetry(initial_conditions, self.contract_monitor.pipeline_inputs(), airframe)
+        skipped = set(telemetry.not_checked) | set(telemetry.assumption_overrides or {})
+        if skipped:
+            telemetry = replace(telemetry,
+                                left_out_predictions=self.contract_monitor.left_out_predictions(skipped))
         notes = telemetry.notes()
         if notes:
             logger.warning(f"Pre-flight: {notes}")
