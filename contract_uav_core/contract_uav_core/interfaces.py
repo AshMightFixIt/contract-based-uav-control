@@ -21,6 +21,24 @@ Fixed in batch 3 (W4-05; the types themselves are unchanged):
   hover thrust (frames.accel_to_thrust; P1.1, P1.2).
 - The acceleration-to-tilt mapping used to ignore yaw (A-R2). It now rotates
   the demand by the setpoint's yaw (frames.accel_to_attitude; P1.2).
+
+The raw sensor dict (control_step's raw_sensors, passed on to the estimator,
+estimation/ekf.py, as ContractAwareEKF.update's `sensors`). Not a type: a plain
+dict. The keys the estimator reads (W4-08 added the optional ones marked *):
+- 'gps': dict
+    position: shape (3,), NED, m. velocity: shape (3,), NED, m/s.
+    valid: bool. False, or absent, means: use neither position nor velocity.
+    satellites: int. hdop: float. Checked against the sensor contract
+      (estimation/sensor_limits.py).
+    * xy_valid, z_valid: bool, default True. The horizontal / vertical position
+      may be used (PX4 vehicle_local_position's flags of the same names).
+    * v_xy_valid, v_z_valid: bool, default True. The same for the velocity.
+- 'imu': dict
+    attitude: shape (3,), [roll, pitch, yaw], rad. rates: shape (3,), rad/s.
+    valid: bool. calibrated: bool. temperature: float, degrees C.
+A missing 'gps' or 'imu' dict counts as invalid, a non-finite component is not
+fused, and a False flag means "do not use": the estimator then fuses nothing
+for that component (before W4-08 a missing measurement was fused as zeros).
 """
 
 from dataclasses import dataclass
