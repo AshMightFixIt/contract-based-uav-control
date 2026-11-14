@@ -64,19 +64,52 @@ def test_planner_runs_with_pacti_blocked(run_python, tmp_path):
     assert out['pacti_modules'] == [] and out['pacti_contracts_imported'] is False
 
 
+# A finder placed first in sys.meta_path records every attempt to import pacti
+# (or pacti.*) and then lets the import go on as usual. So an attempt is seen
+# whether or not Pacti is installed, also one hidden in try/except ImportError.
+RECORD_PACTI_IMPORTS = r"""
+import importlib.abc, json, sys
+attempts = []
+
+class RecordPacti(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] == 'pacti':
+            attempts.append(fullname)
+        return None
+
+sys.meta_path.insert(0, RecordPacti())
+import numpy as np
+from contract_uav_core.planning.horizon_planner import AdaptiveRePlanner, HorizonPlanner
+from contract_uav_core.planning.integrated_planner import IntegratedPlanner
+
+planner = IntegratedPlanner()
+drone = {'position': np.array([0.0, 0.0, -5.0]), 'velocity': np.zeros(3), 'attitude': np.zeros(3)}
+controllers = [planner.update(t, drone, {'wind_speed': w}, np.array([5.0, 0.0, -5.0]))[0]
+               for t, w in ((0.0, 2.0), (0.5, 5.0), (1.0, 12.0), (1.5, 16.0))]   # 16 m/s: emergency path
+nan_plan, _ = AdaptiveRePlanner(HorizonPlanner()).find_feasible_plan(
+    {'tracking_error': float('nan')}, np.zeros(3), {'wind_speed': 1.0})
+print(json.dumps({
+    'attempts': attempts, 'controllers': controllers, 'nan_status': nan_plan.status.value,
+    'loaded': sorted(m for m in sys.modules if m.split('.')[0] == 'pacti'
+                     or m.endswith('pacti_contracts') or m.endswith('export_contracts')),
+}))
+"""
+
+
 def test_planner_modules_do_not_import_pacti(run_python, tmp_path):
-    """Even where Pacti is installed, importing and running the planner loads none of it."""
-    code = (
-        "import json, sys, numpy as np\n"
-        "from contract_uav_core.planning.integrated_planner import IntegratedPlanner\n"
-        "p = IntegratedPlanner()\n"
-        "p.update(0.0, {'position': np.array([0.0, 0.0, -5.0])}, {'wind_speed': 2.0}, np.zeros(3))\n"
-        "print(json.dumps(sorted(m for m in sys.modules if m.split('.')[0] == 'pacti' "
-        "or m.endswith('pacti_contracts') or m.endswith('export_contracts'))))\n"
-    )
-    proc = run_python(["-c", code], cwd=tmp_path, timeout=120)
+    """Importing and running the planner never even tries to import Pacti (S1, review R-09).
+
+    This holds with or without Pacti installed: the child records every import
+    attempt of pacti or pacti.*, so a guarded `try: import pacti ... except
+    ImportError` in the planner fails this test in a venv without Pacti too
+    (which is what the default CI job runs).
+    """
+    proc = run_python(["-c", RECORD_PACTI_IMPORTS], cwd=tmp_path, timeout=120)
     assert proc.returncode == 0, proc.stderr[-3000:]
-    assert json.loads(proc.stdout.strip().splitlines()[-1]) == []
+    out = json.loads(proc.stdout.strip().splitlines()[-1])
+    assert out['controllers'] == ['pid', 'mpc', 'hinf', 'hinf'] and out['nan_status'] == 'infeasible'
+    assert out['attempts'] == [], f"the planner tried to import Pacti: {out['attempts']}"
+    assert out['loaded'] == []
 
 
 def test_contract_bounds_come_from_the_file():
