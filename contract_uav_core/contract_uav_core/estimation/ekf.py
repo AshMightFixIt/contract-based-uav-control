@@ -61,6 +61,27 @@ class ContractAwareEKF:
     # ... with a wide covariance: this factor times the measurement noise R.
     RESET_VARIANCE_FACTOR = 10.0
 
+    # Process noise (T4). self.Q holds the noise per Q_REFERENCE_DT, the 50 Hz step it was
+    # tuned for; predict(dt) scales it by dt / Q_REFERENCE_DT, so the covariance grows per
+    # second, not per call (identical at dt = 0.02 s).
+    Q_REFERENCE_DT = 0.02  # s
+    # A velocity component that was not measured in the last update (no GPS velocity) keeps
+    # its last value, and its variance grows by this per second instead of by Q's: the
+    # vehicle is assumed to hold its velocity, up to an unmodelled acceleration of
+    # sqrt(0.04) = 0.2 m/s^2 (Q's 0.1 per 0.02 s, 2.2 m/s^2, is a tuning for GPS tracking).
+    VEL_RANDOM_WALK_NO_GPS = 0.04  # m^2/s^3
+    # When nothing is fused at all (both sensor contracts violated) the covariance grows by
+    # this many more times the step's process noise (the legacy 2 Q).
+    DEAD_RECKONING_EXTRA_Q = 2.0
+    # The position is flagged untrusted once its horizontal uncertainty
+    # eph = sqrt(P_xx + P_yy) (PX4's eph convention) exceeds this (T4).
+    POSITION_UNTRUSTED_EPH = 5.0  # m
+
+    # Smooth recovery (T5): when the GPS position comes back after an outage, or after a gate
+    # reset, the published position glides to the new estimate at no more than this speed
+    # (on top of the estimated velocity) instead of jumping.
+    MAX_RECOVERY_SPEED = 2.0  # m/s
+
     def __init__(self, contract_monitor: HierarchicalContractMonitor):
         self.contract_monitor = contract_monitor
         
@@ -114,6 +135,19 @@ class ContractAwareEKF:
         self.initialized = {key: False for key in self.MEASUREMENT_ROWS}
         self._rows = {key: np.array(rows) for key, rows in self.MEASUREMENT_ROWS.items()}
 
+        # T4: which velocity components the last update measured (the process noise of the
+        # next predict depends on it), the step and process noise of the last predict, and
+        # whether the published position is trusted
+        self.velocity_observed = np.ones(3, dtype=bool)
+        self.last_dt = self.dt
+        self.last_Q = self.Q
+        self.position_trusted = True
+        # T5: the published position is self.x[0:3] + glide_offset while it glides back
+        # (None otherwise); whether the GPS position was fused in the last update, and ever
+        self.glide_offset: Optional[np.ndarray] = None
+        self._position_fused_last = False
+        self._position_fused_ever = False
+
         logger.info("Contract-Aware EKF initialized")
     
     def predict(self, dt: Optional[float] = None):
@@ -140,8 +174,21 @@ class ContractAwareEKF:
         self.x = F @ self.x
         self.x[self.YAW] = wrap_angle(self.x[self.YAW])
 
-        # Predict covariance
-        self.P = F @ self.P @ F.T + self.Q
+        # Predict covariance, with the process noise of this step (T4)
+        self.last_dt = dt
+        self.last_Q = self.process_noise(dt)
+        self.P = F @ self.P @ F.T + self.last_Q
+
+    def process_noise(self, dt: float) -> np.ndarray:
+        """The process noise of a step of dt seconds (T4).
+
+        self.Q scaled by dt / Q_REFERENCE_DT (before W4-08: self.Q whatever dt was), with
+        VEL_RANDOM_WALK_NO_GPS * dt for each velocity component the last update did not measure.
+        """
+        Q = self.Q * (dt / self.Q_REFERENCE_DT)
+        for i in np.flatnonzero(~self.velocity_observed):
+            Q[3 + i, 3 + i] = self.VEL_RANDOM_WALK_NO_GPS * dt
+        return Q
     
     def update_sensor_quality(self, sensors: Dict[str, any]):
         """
@@ -347,9 +394,13 @@ class ContractAwareEKF:
         - IMU ok only ("degraded"): IMU attitude and rates, R_degraded;
         - otherwise ("emergency"): nothing, and the covariance grows by 2 Q more.
         Of those, only the components that are present, finite, not flagged invalid
-        and inside the innovation gate are fused (_fuse).
+        and inside the innovation gate are fused (_fuse). Then (_after_measurements):
+        an unmeasured velocity keeps its value with a growing variance (T4), the
+        position is flagged untrusted once eph > POSITION_UNTRUSTED_EPH (T4), and a
+        GPS position that comes back glides in at <= MAX_RECOVERY_SPEED (T5).
 
-        Returns: (state_estimate, estimation_contract_satisfied)
+        Returns: (state_estimate, estimation_contract_satisfied); the state is the
+        published one, as get_state()
         """
         # Update sensor quality
         self.update_sensor_quality(sensors)
@@ -359,6 +410,7 @@ class ContractAwareEKF:
 
         # Contract-based fusion strategy
         self.last_fused, self.last_rejected, self.last_reset = {}, {}, {}
+        published_before = self._published_position()
         if gps_ok and imu_ok:
             keys, R, estimation_quality = tuple(self.MEASUREMENT_ROWS), self.R_nominal, "nominal"
         elif imu_ok:
@@ -371,7 +423,8 @@ class ContractAwareEKF:
             for key in self.reject_count:
                 self.reject_count[key] = 0
             # Dead reckoning: prediction already done in predict step; increase uncertainty
-            self.P += self.Q * 2.0
+            self.P += self.last_Q * self.DEAD_RECKONING_EXTRA_Q
+        self._after_measurements(published_before)
         if estimation_quality != self.estimation_quality:
             log = logger.warning if estimation_quality == "emergency" else logger.info
             log(f"EKF fusion: {self.estimation_quality} -> {estimation_quality}")
@@ -392,20 +445,105 @@ class ContractAwareEKF:
 
         logger.debug(f"EKF update: {estimation_quality}, contract: {metrics.assumptions_met}")
 
-        return self.x.copy(), metrics.guarantees_met
+        return self._published_state(), metrics.guarantees_met
+
+    def _after_measurements(self, published_before: np.ndarray):
+        """Book-keeping after an update's measurements (T4, T5).
+
+        - The velocity components measured in this update set the next step's process noise.
+        - Glide (T5): if the GPS position was fused or reset in this update after an update
+          without it (GPS back after an outage; not the very first fix), or after a gate
+          reset, the published position moves from where the prediction put it toward the new
+          estimate by at most MAX_RECOVERY_SPEED * dt per step. The filter itself takes the
+          measurement in full: only what is published glides, and get_covariance() adds the
+          remaining offset to the position covariance, so the covariance stays honest.
+        - The position is trusted while the published eph <= POSITION_UNTRUSTED_EPH.
+        """
+        used = set(self.last_fused.get('gps_velocity', ())) | set(self.last_reset.get('gps_velocity', ()))
+        self.velocity_observed = np.array([row in used for row in (3, 4, 5)])
+
+        position_fused = 'gps_position' in self.last_fused or 'gps_position' in self.last_reset
+        returned = position_fused and self._position_fused_ever and not self._position_fused_last
+        if returned or 'gps_position' in self.last_reset or self.glide_offset is not None:
+            offset = published_before - self.x[0:3]
+            limit = self.MAX_RECOVERY_SPEED * self.last_dt
+            distance = float(np.linalg.norm(offset))
+            if distance > limit:
+                if self.glide_offset is None:
+                    logger.info(f"EKF: GPS position back, {distance:.2f} m from the dead-reckoned one; "
+                                f"gliding at {self.MAX_RECOVERY_SPEED} m/s")
+                self.glide_offset = offset * (1.0 - limit / distance)
+            else:
+                self.glide_offset = None
+        self._position_fused_last = position_fused
+        self._position_fused_ever = self._position_fused_ever or position_fused
+
+        self.position_trusted = bool(self._eph() <= self.POSITION_UNTRUSTED_EPH)
+
+    def _eph(self) -> float:
+        """sqrt(P_xx + P_yy) of the published position (get_covariance), in m."""
+        var = self.P[0, 0] + self.P[1, 1]
+        if self.glide_offset is not None:
+            var += self.glide_offset[0] ** 2 + self.glide_offset[1] ** 2
+        return float(np.sqrt(var))
+
+    def _published_position(self) -> np.ndarray:
+        """The position get_state() publishes: the estimate, plus the glide offset while gliding."""
+        if self.glide_offset is None:
+            return self.x[0:3].copy()
+        return self.x[0:3] + self.glide_offset
+
+    def _published_state(self) -> np.ndarray:
+        state = self.x.copy()
+        state[0:3] = self._published_position()
+        return state
 
     def get_state(self) -> Dict[str, np.ndarray]:
-        """Return state as dictionary (copies, so later updates do not change them)"""
+        """Return state as dictionary (copies, so later updates do not change them).
+
+        'position' is the published position: while it glides back after a GPS outage
+        (T5) it differs from the filter's own estimate by glide_offset.
+        """
         return {
-            'position': self.x[0:3].copy(),
+            'position': self._published_position(),
             'velocity': self.x[3:6].copy(),
             'attitude': self.x[6:9].copy(),
             'rates': self.x[9:12].copy()
         }
-    
+
     def get_covariance(self) -> np.ndarray:
-        """Return state covariance matrix"""
-        return self.P.copy()
+        """Return state covariance matrix, of the published state.
+
+        While the position glides back (T5), the position block also holds the offset
+        between the published position and the filter's estimate (P + d d').
+        """
+        P = self.P.copy()
+        if self.glide_offset is not None:
+            P[0:3, 0:3] += np.outer(self.glide_offset, self.glide_offset)
+        return P
+
+    def get_status(self) -> Dict[str, any]:
+        """How the estimate stands after the last update (W4-08).
+
+        quality: 'nominal' | 'degraded' | 'emergency' (None before the first update);
+        position_trusted: False once eph > POSITION_UNTRUSTED_EPH (T4); eph, epv: the
+        published horizontal and vertical position uncertainty, sqrt(P_xx + P_yy) and
+        sqrt(P_zz), in m; gliding: the position is gliding back (T5) and glide_offset is
+        the published position minus the estimate; fused / rejected / reset: per
+        measurement, the state rows fused, rejected by the gate, or reset to it.
+        """
+        P = self.get_covariance()
+        return {
+            'quality': self.estimation_quality,
+            'position_trusted': self.position_trusted,
+            'eph': self._eph(),
+            'epv': float(np.sqrt(P[2, 2])),
+            'gliding': self.glide_offset is not None,
+            'glide_offset': np.zeros(3) if self.glide_offset is None else self.glide_offset.copy(),
+            'fused': dict(self.last_fused),
+            'rejected': dict(self.last_rejected),
+            'reset': dict(self.last_reset),
+        }
 
 
 # Test the contract-aware EKF

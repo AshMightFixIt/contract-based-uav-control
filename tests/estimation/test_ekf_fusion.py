@@ -200,14 +200,15 @@ def test_real_jump_is_accepted_after_ten_rejects(caplog):
     step(ekf, measurements(pos=jumped), good_sensors())   # the 10th reject: reset
     assert ekf.last_reset == {'gps_position': (0, 1, 2)}
     assert np.array_equal(ekf.x[0:3], jumped)
-    P = ekf.get_covariance()
+    P = ekf.P   # the filter's own covariance (get_covariance adds the glide offset, T5)
     assert np.allclose(np.diag(P)[0:3], 10.0 * np.diag(ekf.R_nominal)[0:3])
     assert not P[0:3, 3:].any() and not P[3:, 0:3].any()
     assert len(caplog.records) == 1 and 'reset' in caplog.records[0].getMessage()
     for k in range(20):
         step(ekf, measurements(pos=jumped), good_sensors())
         assert ekf.last_fused['gps_position'] == (0, 1, 2)
-    assert np.allclose(ekf.get_state()['position'], jumped, atol=1e-2)
+    assert np.allclose(ekf.x[0:3], jumped, atol=1e-2)   # the filter took the jump ...
+    assert ekf.get_status()['gliding']                   # ... and the published position glides there (T5)
     assert len(caplog.records) == 1
 
 
