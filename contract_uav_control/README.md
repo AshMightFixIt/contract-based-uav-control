@@ -1,7 +1,7 @@
 # contract_uav_control — ROS 2 / PX4 bridge for DEXI
 
 Runs the contract-based three-tier adaptive controller (PID → MPC → H-inf, with
-CBF safety filter and Pacti horizon planner) as a **PX4 offboard** ROS 2 node.
+CBF safety filter and horizon planner) as a **PX4 offboard** ROS 2 node.
 Targets the **DEXI / PX4** platform over **micro-XRCE-DDS** (`px4_msgs`).
 
 ## How it fits together
@@ -84,7 +84,7 @@ On DEXI hardware the agent runs over serial to the PX4 FMU
 | param | default | meaning |
 |-------|---------|---------|
 | `control_frequency` | `50.0` | loop rate (Hz); controller `dt = 1/freq` |
-| `use_horizon_planner` | `true` | enable Pacti horizon planner |
+| `use_horizon_planner` | `true` | enable the horizon planner (needs no Pacti) |
 | `takeoff_altitude` | `5.0` | metres above start (NED z = -alt) |
 | `auto_arm` | `false` | **keep false on hardware**; arm via QGroundControl |
 | `waypoints` | `[0,0,-5, ...]` | flat NED list `[x,y,z, ...]` |

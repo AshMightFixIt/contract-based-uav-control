@@ -103,10 +103,10 @@ The other files in `requirements/`, and when you need them:
 
 - `requirements/core.txt` lists only what the core package needs: NumPy (a math library) and PyYAML (it reads settings files). Step 3 already installs these.
 - `requirements/test.txt` adds pytest, the tool that runs the tests. You need it to run the tests.
-- `requirements/pacti.txt` adds Pacti 0.3.1, a Python library for contracts. You need it to turn on the planner (see "How it works") and to get the numbers in `docs/RESULTS.md`. It needs Python 3.10 or newer, and it always installs NumPy 2.
+- `requirements/pacti.txt` adds Pacti 0.3.1, a Python library for contracts. You need it only for the test `make test-pacti`, and to rebuild the planner's limits file (`config/contracts.json`). It needs Python 3.10 or newer, and it always installs NumPy 2.
 - `requirements/contracts_tool.txt` sets exact versions for the offline contracts tool. It fixes the NumPy version too, so give the tool its own virtual environment. See [`tools/contracts_offline/README.md`](tools/contracts_offline/README.md).
 
-Without Pacti, the planner is off, and the rest of the code still runs.
+The drone code never needs Pacti. The planner reads its limits from a file that was made ahead of time with Pacti.
 
 ## Run something
 
@@ -171,7 +171,7 @@ Your times will differ.
 | `demos/demo_waypoint_mission.py` | Four waypoints in changing wind. The controller switches. Opens a 3D window. Saves a plot. | about 2 min |
 | `demos/demo_sensor_degradation.py` | GPS and IMU faults during a mission, and how the estimator copes. Opens a 3D window. Saves a plot. It uses random noise, so each run is a little different. | 30 s to 2 min |
 | `demos/demo_battery.py` | The battery model: voltage, power use and flight time left. Prints tables only. | under 1 s |
-| `demos/demo_horizon_planner.py` | The planner looking ahead. Needs Pacti. Without Pacti it still runs, but the planner is off. Prints tables only. | under 1 s without Pacti, about 1.5 min with Pacti |
+| `demos/demo_horizon_planner.py` | The planner looking ahead. Prints tables only. | under 1 s |
 | `demos/demo_racing_live.py` | Four drones race live in a window, one per controller setup. Does not work with NumPy 2 (see "Known problems"). | fails at once |
 | `demos/simulation_demo.py` | Meant to show all four flight modes. Today it stops at its pre-flight check (see "Known problems"). | under 1 s |
 | `benchmarks/benchmark_controllers.py` | One waypoint mission: automatic switching against each controller alone. Saves a plot. | about 30 s |
@@ -189,7 +189,7 @@ At every step (50 steps per second by default), data flows through these parts i
   estimator          best guess of where the drone is and how it moves
      |
      v
-  planner            optional (needs Pacti): may ask for a stronger controller
+  planner            optional: may ask for a stronger controller
      |
      v
   supervisor         picks the flight mode, the target point and the controller
@@ -229,8 +229,8 @@ With bad GPS, it uses only the IMU.
 With a bad IMU, it uses no sensor at all and just moves its last guess forward in time.
 
 **Planner** (`planning/`).
-The planner is optional.
-It runs only when Pacti is installed.
+The planner is optional, and on by default.
+It checks limits that were worked out ahead of time with Pacti, so it does not need Pacti while it runs.
 It looks a short time ahead.
 Its advice can only raise the choice of controller, never lower it.
 
@@ -350,8 +350,7 @@ This bridge has not been tested on a real drone in this repository's CI.
 
 The full list is in [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md). The order of the fixes is in [`docs/ROADMAP.md`](docs/ROADMAP.md). The main ones:
 
-- The controllers use the wrong sign for thrust. They add thrust to go down, so a real drone would fall. The demos still look fine, because their simple drone models have the same wrong sign.
-- The tilt direction ignores the drone's heading (the way its nose points). The drone only moves the right way when it faces north.
+- The controllers are not yet given the drone's airframe settings, so they assume a hover thrust of 0.5. On the DEXI (hover thrust 0.22) the MPC controller would keep climbing. Do not fly the DEXI until this is fixed.
 - A switch between controllers can be delayed by the 5-second wait, even in an emergency.
 - The safety filter's tilt and turn-rate rules, and the spin damping in H-infinity, only change the motor torques. PX4 and the demos that fly do not use those torques, so these rules have no effect on the flight today.
 - Memory use grows during long runs, and each step gets slower.
@@ -359,7 +358,6 @@ The full list is in [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md). The order of
 - The pre-flight check in the ROS 2 bridge does not read real drone data. It uses fixed values, so it always passes.
 - `demos/demo_racing_live.py` crashes with NumPy 2. It works with NumPy 1.26.
 - `demos/simulation_demo.py` stops at its pre-flight check, so it never flies.
-- With Pacti installed, the planner can be very slow. The planner demo took about 80 seconds to simulate 14 seconds of flight.
 - The numbers in `docs/RESULTS.md` were measured with the old simulation, before these fixes.
 
 ## Results
@@ -376,7 +374,7 @@ They check that two benchmarks still print the same tables as the saved copies i
 They also run small tests of single parts, including a check of the ROS 2 node with fake ROS modules.
 This took about 1 minute on our test computer.
 
-With Pacti installed, `make test-pacti` checks that the controller benchmark still gives the numbers in section 1 of `docs/RESULTS.md`:
+With Pacti installed, `make test-pacti` checks two more things: that the controller benchmark still prints its saved table, and that the planner's limits file (`config/contracts.json`) still matches what Pacti works out. It takes about 1 minute:
 
 ```bash
 python -m pip install -r requirements/pacti.txt
@@ -422,9 +420,9 @@ Advisor: Prof. Iñigo Incer.
 | MPC | Model predictive control. A controller that predicts a few steps ahead and picks the best moves. |
 | NED | North, East, Down. The direction rule for positions: x points north, y east and z down. So z = -5 means 5 m above the start. |
 | Node | One program in ROS 2. |
-| Pacti | A Python library for working with contracts. It is optional here. |
+| Pacti | A Python library for working with contracts. It is used only ahead of time, to work out the planner's limits and to check the contracts. |
 | PID | Proportional, integral, derivative. A simple controller that reacts to the error now, the error built up over time, and how fast the error changes. |
-| Planner | An optional part that looks ahead and can ask for a stronger controller. It needs Pacti. |
+| Planner | An optional part that looks ahead and can ask for a stronger controller. |
 | PX4 | Open-source autopilot software that runs on many real drones. |
 | Quadrotor | A drone with four rotors. |
 | ROS 2 | Robot Operating System 2. A system that lets programs on a robot send messages to each other. |

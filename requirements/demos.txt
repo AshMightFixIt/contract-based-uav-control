@@ -4,10 +4,9 @@
 # From the repository root:
 #   python -m pip install -e ./contract_uav_core -r requirements/demos.txt
 #
-# It does NOT include pacti. Without pacti the horizon planner is silently
-# disabled, so benchmarks/benchmark_controllers.py does not reproduce
-# docs/RESULTS.md section 1 (Adaptive mission time 63.240 s instead of
-# 53.780 s). Use pacti.txt for that.
+# It does NOT include pacti, and does not need it: the horizon planner reads its
+# limits from contract_uav_core/config/contracts.json. pacti.txt is only for
+# `make test-pacti` and for rebuilding that file.
 #
 # Python floor: 3.7
 #   - Set by core.txt (numpy 1.20.0: >=3.7).
