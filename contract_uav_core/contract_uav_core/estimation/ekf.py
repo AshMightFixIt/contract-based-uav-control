@@ -13,6 +13,7 @@ from typing import Dict, Tuple, Optional
 import logging
 from ..contracts.monitor import HierarchicalContractMonitor
 from ..contracts.spec import ContractMetrics
+from .sensor_limits import sensor_limits
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,9 @@ class ContractAwareEKF:
             'gps': {'satellites': 0, 'hdop': 100.0, 'valid': False},
             'imu': {'calibrated': False, 'temperature': 25.0, 'valid': False}
         }
-        
+        # The latest sensor-contract check (ContractMetrics), set by check_sensor_contracts
+        self.sensor_metrics: Optional[ContractMetrics] = None
+
         logger.info("Contract-Aware EKF initialized")
     
     def predict(self, dt: Optional[float] = None):
@@ -95,50 +98,65 @@ class ContractAwareEKF:
     
     def update_sensor_quality(self, sensors: Dict[str, any]):
         """
-        Check sensor quality and update contracts
+        Record the sensors' quality fields (the raw sensor dict keys are in interfaces.py).
+
+        A missing 'gps' or 'imu' dict counts as an invalid sensor (W4-08): before,
+        the last values were kept, so a GPS that disappeared from the dict stayed ok.
         """
-        # GPS quality
-        if 'gps' in sensors:
-            gps = sensors['gps']
-            self.sensor_quality['gps'] = {
-                'satellites': gps.get('satellites', 0),
-                'hdop': gps.get('hdop', 100.0),
-                'valid': gps.get('valid', False)
-            }
-        
-        # IMU quality
-        if 'imu' in sensors:
-            imu = sensors['imu']
-            self.sensor_quality['imu'] = {
-                'calibrated': imu.get('calibrated', False),
-                'temperature': imu.get('temperature', 25.0),
-                'valid': imu.get('valid', False)
-            }
-    
+        gps = sensors.get('gps') or {}
+        self.sensor_quality['gps'] = {
+            'satellites': gps.get('satellites', 0),
+            'hdop': gps.get('hdop', 100.0),
+            'valid': gps.get('valid', False)
+        }
+
+        imu = sensors.get('imu') or {}
+        self.sensor_quality['imu'] = {
+            'calibrated': imu.get('calibrated', False),
+            'temperature': imu.get('temperature', 25.0),
+            'valid': imu.get('valid', False)
+        }
+
     def check_sensor_contracts(self, timestamp: float) -> Tuple[bool, bool]:
         """
-        Check if sensors satisfy their contracts
-        Returns: (gps_contract_ok, imu_contract_ok)
+        Check the sensors against the sensor contract the monitor holds.
+
+        Returns (gps_ok, imu_ok), from the contract's limits (estimation/sensor_limits.py,
+        W4-08; before, the literals 6 satellites and HDOP < 2.0, and "calibrated" alone):
+        - gps_ok: the GPS is flagged valid, satellites >= the contract's minimum (6)
+          and HDOP <= its maximum (5.0);
+        - imu_ok: the IMU is flagged valid and calibrated, and its temperature is in
+          the contract's range (5 to 55 degrees C).
+        It also records the sensor contract's runtime check with the monitor, now with
+        the contract's own variables (gps_satellites, gps_hdop, imu_temperature,
+        imu_calibrated; before, an 'imu_temperature_stable' the contract does not
+        have, so its assumptions never held).
         """
-        # Build sensor state dict for contract checking
+        limits = sensor_limits(self.contract_monitor)
+        gps = self.sensor_quality['gps']
+        imu = self.sensor_quality['imu']
         sensor_state = {
-            'gps_satellites': float(self.sensor_quality['gps']['satellites']),
-            'gps_hdop': self.sensor_quality['gps']['hdop'],
-            'imu_temperature_stable': 1.0 if abs(self.sensor_quality['imu']['temperature'] - 25.0) < 10.0 else 0.0,
+            'gps_satellites': float(gps['satellites']),
+            'gps_hdop': float(gps['hdop']),
+            'imu_temperature': float(imu['temperature']),
+            'imu_calibrated': 1.0 if imu['calibrated'] else 0.0,
         }
-        
-        # Check contracts using monitor
-        metrics = self.contract_monitor.monitor_runtime(
+
+        self.sensor_metrics = self.contract_monitor.monitor_runtime(
             component="sensors",
             values=sensor_state,
             timestamp=timestamp
         )
-        
-        # Determine which sensors are good
-        gps_ok = (self.sensor_quality['gps']['satellites'] >= 6 and 
-                  self.sensor_quality['gps']['hdop'] < 2.0)
-        imu_ok = self.sensor_quality['imu']['calibrated']
-        
+
+        # NaN fails every comparison, so a NaN field counts as not ok
+        gps_ok = (bool(gps['valid'])
+                  and sensor_state['gps_satellites'] >= limits.min_satellites
+                  and sensor_state['gps_hdop'] <= limits.max_hdop)
+        imu_ok = (bool(imu['valid'])
+                  and limits.imu_calibrated[0] <= sensor_state['imu_calibrated'] <= limits.imu_calibrated[1]
+                  and limits.min_imu_temperature <= sensor_state['imu_temperature']
+                  <= limits.max_imu_temperature)
+
         return gps_ok, imu_ok
     
     def update_full(self, measurements: Dict[str, np.ndarray]):
