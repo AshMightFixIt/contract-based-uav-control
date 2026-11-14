@@ -23,11 +23,13 @@ What W4-08 changed (K17, the core half of A-F7):
 - gps_ok / imu_ok come from the sensor contract (sensor_limits.py, T6).
 - mode='passthrough' takes PX4's own estimate, with its eph / epv covariance (T7).
 - The estimator contract is checked with its own quantities and inputs (T8).
-With every measurement valid and inside the gate, the numbers are as before.
+- The filter works on six independent 2-state blocks (see PAIRS): the same
+  numbers as the 12x12 form, up to rounding, at a fraction of the cost.
 """
 
+import math
 import numpy as np
-from typing import Dict, Tuple, Optional
+from typing import Dict, List, Tuple, Optional
 import logging
 from ..contracts.monitor import HierarchicalContractMonitor
 from ..contracts.spec import ContractMetrics
@@ -53,6 +55,13 @@ class ContractAwareEKF:
     - Velocity: vx, vy, vz (m/s)
     - Attitude: roll, pitch, yaw (rad)
     - Angular rates: p, q, r (rad/s)
+
+    The model, the process and measurement noise and the measurements never couple
+    two of the six pairs (a quantity and its rate) in PAIRS, so the covariance is
+    block diagonal in them, and it is kept as six 2x2 blocks [P_aa, P_ab, P_bb]:
+    predict and update are closed forms per pair, with no 12x12 product or inverse.
+    The P property assembles the 12x12 matrix (and takes one back, if it has that
+    structure); assign a whole matrix to change it, not single elements.
     """
 
     # The measurements update() reads (keys of its `measurements` dict, each shape (3,))
@@ -64,6 +73,11 @@ class ContractAwareEKF:
         'imu_rates': (9, 10, 11),
     }
     YAW = 8  # state row of the heading, kept in (-pi, pi]
+    # The six independent pairs (quantity row, rate row), and each row's (pair, slot 0 or 1)
+    PAIRS = ((0, 3), (1, 4), (2, 5), (6, 9), (7, 10), (8, 11))
+    _FIRST = np.array([a for a, _ in PAIRS])
+    _SECOND = np.array([b for _, b in PAIRS])
+    _SLOT = {row: (j, k) for j, pair in enumerate(PAIRS) for k, row in enumerate(pair)}
     # Per-axis validity flags in sensors['gps'] (PX4 vehicle_local_position names; see
     # interfaces.py): measurement -> {flag: components it covers}. An absent flag counts as valid.
     GPS_AXIS_FLAGS = {
@@ -73,6 +87,7 @@ class ContractAwareEKF:
 
     # Innovation gate (T2): a measurement whose normalised innovation squared
     # y' S^-1 y exceeds the chi-square 99.9 % quantile for its number of components is rejected.
+    # The components of one measurement lie in different pairs, so S is diagonal for it.
     CHI2_GATE = {1: 10.828, 2: 13.816, 3: 16.266}
     # After this many rejects in a row, the measurement's rows are reset to it ...
     GATE_RESET_COUNT = 10
@@ -81,7 +96,7 @@ class ContractAwareEKF:
 
     # Process noise (T4). self.Q holds the noise per Q_REFERENCE_DT, the 50 Hz step it was
     # tuned for; predict(dt) scales it by dt / Q_REFERENCE_DT, so the covariance grows per
-    # second, not per call (identical at dt = 0.02 s).
+    # second, not per call.
     Q_REFERENCE_DT = 0.02  # s
     # A velocity component that was not measured in the last update (no GPS velocity) keeps
     # its last value, and its variance grows by this per second instead of by Q's: the
@@ -113,14 +128,14 @@ class ContractAwareEKF:
             raise ValueError(f"mode must be one of {self.MODES}, not {mode!r}")
         self.mode = mode
         self.contract_monitor = contract_monitor
-        
+
         # State dimension
         self.n = 12
-        
+
         # Initialize state
         self.x = np.zeros(self.n)  # State estimate
-        self.P = np.eye(self.n) * 1.0  # Covariance
-        
+        self.P = np.eye(self.n) * 1.0  # Covariance (kept as the pairs' 2x2 blocks)
+
         # Process noise (motion model uncertainty)
         self.Q = np.diag([
             0.01, 0.01, 0.01,  # Position process noise
@@ -128,7 +143,7 @@ class ContractAwareEKF:
             0.01, 0.01, 0.01,  # Attitude process noise
             0.1, 0.1, 0.1      # Angular rate process noise
         ])
-        
+
         # Measurement noise (sensor quality)
         self.R_nominal = np.diag([
             1.0, 1.0, 1.0,     # GPS position noise
@@ -136,12 +151,12 @@ class ContractAwareEKF:
             0.01, 0.01, 0.01,  # IMU attitude noise
             0.05, 0.05, 0.05   # IMU rate noise
         ])
-        
+
         self.R_degraded = self.R_nominal * 5.0  # Higher uncertainty when GPS bad
-        
+
         self.dt = 0.02  # 50 Hz update rate
         self.last_update_time = 0.0
-        
+
         # Sensor quality tracking
         self.sensor_quality = {
             'gps': {'satellites': 0, 'hdop': 100.0, 'valid': False},
@@ -164,14 +179,13 @@ class ContractAwareEKF:
         # the estimate is still converging from the initial guess (zeros, variance 1), so
         # the measurement is fused without gating, as before W4-08.
         self.initialized = {key: False for key in self.MEASUREMENT_ROWS}
-        self._rows = {key: np.array(rows) for key, rows in self.MEASUREMENT_ROWS.items()}
 
         # T4: which velocity components the last update measured (the process noise of the
         # next predict depends on it), the step and process noise of the last predict, and
         # whether the published position is trusted
         self.velocity_observed = np.ones(3, dtype=bool)
         self.last_dt = self.dt
-        self.last_Q = self.Q
+        self._last_q = self.Q.diagonal().tolist()
         self.position_trusted = True
         # T5: the published position is self.x[0:3] + glide_offset while it glides back
         # (None otherwise); whether the GPS position was fused in the last update, and ever
@@ -180,35 +194,65 @@ class ContractAwareEKF:
         self._position_fused_ever = False
 
         logger.info("Contract-Aware EKF initialized")
-    
+
+    # --- the covariance, as six 2x2 blocks ---------------------------------------------------
+
+    @property
+    def P(self) -> np.ndarray:
+        """The 12x12 covariance, assembled from the pairs' blocks (a new array each time)."""
+        blocks = np.array(self._cov)
+        P = np.zeros((self.n, self.n))
+        P[self._FIRST, self._FIRST] = blocks[:, 0]
+        P[self._FIRST, self._SECOND] = blocks[:, 1]
+        P[self._SECOND, self._FIRST] = blocks[:, 1]
+        P[self._SECOND, self._SECOND] = blocks[:, 2]
+        return P
+
+    @P.setter
+    def P(self, value):
+        value = np.asarray(value, dtype=float)
+        if value.shape != (self.n, self.n):
+            raise ValueError(f"P must be {self.n}x{self.n}, not {value.shape}")
+        blocks = [[float(value[a, a]), float(value[a, b]), float(value[b, b])] for a, b in self.PAIRS]
+        previous, self._cov = getattr(self, '_cov', None), blocks
+        if not np.array_equal(self.P, value):
+            self._cov = previous
+            raise ValueError("P must be symmetric and couple only the rows of a pair in PAIRS "
+                             "(a quantity and its rate)")
+
     def predict(self, dt: Optional[float] = None):
         """
         Prediction step: propagate state forward using motion model
+
+        Constant velocity and constant rates: each quantity += its rate * dt, and per pair
+        P <- F P F' + Q with F = [[1, dt], [0, 1]].
         """
         if dt is None:
             dt = self.dt
-        
-        # Simple motion model: constant velocity + angular rates
-        F = np.eye(self.n)
-        
-        # Position updates from velocity
-        F[0, 3] = dt  # x += vx * dt
-        F[1, 4] = dt  # y += vy * dt
-        F[2, 5] = dt  # z += vz * dt
-        
-        # Attitude updates from angular rates (simplified)
-        F[6, 9] = dt   # roll += p * dt
-        F[7, 10] = dt  # pitch += q * dt
-        F[8, 11] = dt  # yaw += r * dt
-        
-        # Predict state
-        self.x = F @ self.x
+        dt = float(dt)
+
+        x = self.x.tolist()
+        for a, b in self.PAIRS:
+            x[a] += dt * x[b]
+        self.x = np.array(x)
         self.x[self.YAW] = wrap_angle(self.x[self.YAW])
 
         # Predict covariance, with the process noise of this step (T4)
         self.last_dt = dt
-        self.last_Q = self.process_noise(dt)
-        self.P = F @ self.P @ F.T + self.last_Q
+        q = self._process_noise(dt)
+        self._last_q = q
+        for j, (a, b) in enumerate(self.PAIRS):
+            paa, pab, pbb = self._cov[j]
+            self._cov[j] = [paa + dt * (2.0 * pab + dt * pbb) + q[a], pab + dt * pbb, pbb + q[b]]
+
+    def _process_noise(self, dt: float) -> List[float]:
+        """The diagonal of process_noise(dt), as a list."""
+        scale = dt / self.Q_REFERENCE_DT
+        q = [v * scale for v in self.Q.diagonal().tolist()]
+        for i in range(3):
+            if not self.velocity_observed[i]:
+                q[3 + i] = self.VEL_RANDOM_WALK_NO_GPS * dt
+        return q
 
     def process_noise(self, dt: float) -> np.ndarray:
         """The process noise of a step of dt seconds (T4).
@@ -216,11 +260,13 @@ class ContractAwareEKF:
         self.Q scaled by dt / Q_REFERENCE_DT (before W4-08: self.Q whatever dt was), with
         VEL_RANDOM_WALK_NO_GPS * dt for each velocity component the last update did not measure.
         """
-        Q = self.Q * (dt / self.Q_REFERENCE_DT)
-        for i in np.flatnonzero(~self.velocity_observed):
-            Q[3 + i, 3 + i] = self.VEL_RANDOM_WALK_NO_GPS * dt
-        return Q
-    
+        return np.diag(self._process_noise(dt))
+
+    @property
+    def last_Q(self) -> np.ndarray:
+        """The process noise the last predict added (12x12, diagonal)."""
+        return np.diag(self._last_q)
+
     def update_sensor_quality(self, sensors: Dict[str, any]):
         """
         Record the sensors' quality fields (the raw sensor dict keys are in interfaces.py).
@@ -283,10 +329,10 @@ class ContractAwareEKF:
                   <= limits.max_imu_temperature)
 
         return gps_ok, imu_ok
-    
-    def _measurement(self, key: str, measurements: Dict[str, np.ndarray],
-                     gps: Dict[str, any]) -> Optional[Tuple[np.ndarray, np.ndarray]]:
-        """(state rows, values) of one measurement's usable components, or None.
+
+    def _components(self, key: str, measurements: Dict[str, np.ndarray],
+                    gps: Dict[str, any]) -> Optional[List[Tuple[int, float]]]:
+        """[(state row, value)] of one measurement's usable components, or None.
 
         A component is usable if it is present and finite and no validity flag marks it
         invalid (GPS_AXIS_FLAGS). Before W4-08 a missing measurement was fused as zeros.
@@ -297,121 +343,102 @@ class ContractAwareEKF:
         z = np.asarray(value, dtype=float)
         if z.shape != (3,):
             raise ValueError(f"measurement {key!r} has shape {z.shape}, expected (3,)")
-        flags = self.GPS_AXIS_FLAGS.get(key, {})
-        if all(gps.get(flag, True) for flag in flags) and np.isfinite(z).all():
-            return self._rows[key], z
-        keep = np.isfinite(z)
-        for flag, components in flags.items():
+        dropped = set()
+        for flag, components in self.GPS_AXIS_FLAGS.get(key, {}).items():
             if not gps.get(flag, True):
-                keep[list(components)] = False
-        if not keep.any():
-            return None
-        return self._rows[key][keep], z[keep]
+                dropped.update(components)
+        rows = self.MEASUREMENT_ROWS[key]
+        found = [(rows[i], v) for i, v in enumerate(z.tolist()) if i not in dropped and math.isfinite(v)]
+        return found or None
 
-    def _nis(self, S: np.ndarray, y: np.ndarray, sizes) -> np.ndarray:
-        """Normalised innovation squared y_i' S_ii^-1 y_i of each measurement i, from its
-        diagonal block S_ii of S (one batched solve when every measurement has 3 rows)."""
-        if all(size == 3 for size in sizes):
-            g = np.arange(len(sizes))
-            blocks = S.reshape(len(sizes), 3, len(sizes), 3)[g, :, g, :]  # [k] = S[3k:3k+3, 3k:3k+3]
-            ys = y.reshape(-1, 3)
-            return np.einsum('ij,ij->i', ys, np.linalg.solve(blocks, ys[..., None])[..., 0])
-        nis, start = [], 0
-        for size in sizes:
-            block, yi = S[start:start + size, start:start + size], y[start:start + size]
-            nis.append(float(yi @ np.linalg.solve(block, yi)))
-            start += size
-        return np.array(nis)
+    def _variance(self, row: int) -> float:
+        j, k = self._SLOT[row]
+        return self._cov[j][2 * k]
 
-    def _reset(self, key: str, rows: np.ndarray, z: np.ndarray, r: np.ndarray, nis: float):
+    def _set_row(self, row: int, value: float, variance: float):
+        """Set one state row to a value, with a variance and no correlation (reset, pass-through)."""
+        j, k = self._SLOT[row]
+        self.x[row] = value
+        self._cov[j][2 * k] = variance
+        self._cov[j][1] = 0.0
+
+    def _reset(self, key: str, components, r: Dict[int, float], nis: float):
         """Set a measurement's rows to it (T2): variance RESET_VARIANCE_FACTOR * R, no correlation."""
-        self.x[rows] = z
+        for row, value in components:
+            self._set_row(row, value, r[row] * self.RESET_VARIANCE_FACTOR)
         self.x[self.YAW] = wrap_angle(self.x[self.YAW])
-        self.P[rows, :] = 0.0
-        self.P[:, rows] = 0.0
-        self.P[rows, rows] = r * self.RESET_VARIANCE_FACTOR
         logger.warning(f"EKF: {key} rejected {self.GATE_RESET_COUNT} times in a row "
-                       f"(NIS {nis:.1f} > {self.CHI2_GATE[len(rows)]:.1f}); state reset to the measurement")
+                       f"(NIS {nis:.1f} > {self.CHI2_GATE[len(components)]:.1f}); "
+                       f"state reset to the measurement")
 
     def _fuse(self, measurements: Dict[str, np.ndarray], sensors: Dict[str, any],
               keys: Tuple[str, ...], R: np.ndarray):
         """One Kalman update with the usable, gated measurements among `keys` (T1-T3).
 
-        z, H and R hold only the rows of the measurements that are present, finite and
-        not flagged invalid (_measurement); nothing is fused for the others. Each of
-        those is then gated on its normalised innovation (CHI2_GATE): a rejected one is
-        not fused, and after GATE_RESET_COUNT rejects in a row its rows are reset to it
-        (_reset), since then the measurement is right and the estimate is wrong. A
-        measurement is gated only once its innovation has been inside the gate: before
-        that the estimate is still converging from the initial guess.
-        H selects rows, so H x = x[idx], H P H' = P[idx, idx] and P H' = P[:, idx]
-        exactly: with all four measurements this is, operation for operation, the
-        update the estimator always did, and it gives the same numbers.
+        Only the components that are present, finite and not flagged invalid are used
+        (_components); nothing is fused for the others. Each measurement is then gated on
+        its normalised innovation (CHI2_GATE): a rejected one is not fused, and after
+        GATE_RESET_COUNT rejects in a row its rows are reset to it (_reset), since then the
+        measurement is right and the estimate is wrong. A measurement is gated only once its
+        innovation has been inside the gate: before that the estimate is still converging
+        from the initial guess.
+        The accepted components are fused one at a time (scalar updates, which equal the
+        joint update since R is diagonal), each in its pair's 2x2 block.
         """
         gps = sensors.get('gps') or {}
-        groups = []
+        r_all = R.diagonal().tolist()
+        x = self.x.tolist()
+        accepted = []
         for key in self.MEASUREMENT_ROWS:
-            found = self._measurement(key, measurements, gps) if key in keys else None
-            if found is None:
+            components = self._components(key, measurements, gps) if key in keys else None
+            if components is None:
                 self.reject_count[key] = 0
-            else:
-                groups.append((key,) + found)
-        if not groups:
-            return
-
-        idx = np.concatenate([rows for _, rows, _ in groups])
-        z = np.concatenate([values for _, _, values in groups])
-        full = len(idx) == self.n  # all 12 rows, in order: H is the identity
-        r = np.diag(R) if full else np.diag(R)[idx]
-
-        # Innovation, with the heading wrapped to (-pi, pi] (T3)
-        y = z - (self.x if full else self.x[idx])
-        for i in ((self.YAW,) if full else np.flatnonzero(idx == self.YAW)):
-            y[i] = wrap_angle(y[i])
-
-        # Innovation covariance
-        S = (self.P if full else self.P[np.ix_(idx, idx)]) + np.diag(r)
-
-        # Innovation gate, one verdict per measurement (T2)
-        nis = self._nis(S, y, [len(rows) for _, rows, _ in groups])
-        accepted, start = [], 0
-        for (key, rows, values), q in zip(groups, nis):
-            stop = start + len(rows)
-            inside = q <= self.CHI2_GATE[len(rows)]
+                continue
+            rows = tuple(row for row, _ in components)
+            # Normalised innovation squared, heading wrapped (T3); S is diagonal here
+            nis = 0.0
+            for row, value in components:
+                y = value - x[row]
+                if row == self.YAW:
+                    y = wrap_angle(y)
+                nis += y * y / (self._variance(row) + r_all[row])
+            inside = nis <= self.CHI2_GATE[len(components)]
             if inside or not self.initialized[key]:
                 self.reject_count[key] = 0
-                self.initialized[key] = self.initialized[key] or bool(inside)
-                accepted.extend(range(start, stop))
-                self.last_fused[key] = tuple(rows.tolist())
+                self.initialized[key] = self.initialized[key] or inside
+                accepted.extend((row, value, r_all[row]) for row, value in components)
+                self.last_fused[key] = rows
             elif self.reject_count[key] + 1 < self.GATE_RESET_COUNT:
                 self.reject_count[key] += 1
-                self.last_rejected[key] = tuple(rows.tolist())
+                self.last_rejected[key] = rows
             else:
                 self.reject_count[key] = 0
-                self._reset(key, rows, values, r[start:stop], float(q))
-                self.last_reset[key] = tuple(rows.tolist())
-            start = stop
-        if not accepted:
-            return
-        if len(accepted) < len(idx):
-            keep = np.array(accepted)
-            idx, y, S = idx[keep], y[keep], S[np.ix_(keep, keep)]
-            full = False
+                self._reset(key, components, {row: r_all[row] for row in rows}, nis)
+                x = self.x.tolist()
+                self.last_reset[key] = rows
 
-        # Kalman gain
-        K = (self.P if full else self.P[:, idx]) @ np.linalg.inv(S)
-
-        # Update state
-        self.x = self.x + K @ y
-        self.x[self.YAW] = wrap_angle(self.x[self.YAW])
-
-        # Update covariance
-        if full:
-            KH = K
-        else:
-            KH = np.zeros((self.n, self.n))
-            KH[:, idx] = K
-        self.P = (np.eye(self.n) - KH) @ self.P
+        # Scalar Kalman updates, in measurement order (a pair's quantity before its rate)
+        for row, value, r in accepted:
+            j, k = self._SLOT[row]
+            a, b = self.PAIRS[j]
+            paa, pab, pbb = self._cov[j]
+            if k == 0:                      # the quantity is measured: H = [1, 0]
+                y = value - x[a]
+                if a == self.YAW:
+                    y = wrap_angle(y)
+                s = paa + r
+                ka, kb = paa / s, pab / s
+                self._cov[j] = [paa - ka * paa, pab - ka * pab, pbb - kb * pab]
+            else:                           # its rate is measured: H = [0, 1]
+                y = value - x[b]
+                s = pbb + r
+                ka, kb = pab / s, pbb / s
+                self._cov[j] = [paa - ka * pab, pab - kb * pab, pbb - kb * pbb]
+            x[a] += ka * y
+            x[b] += kb * y
+        if accepted:
+            self.x = np.array(x)
+            self.x[self.YAW] = wrap_angle(self.x[self.YAW])
 
     def _pass_through(self, measurements: Dict[str, np.ndarray], sensors: Dict[str, any]):
         """mode='passthrough' (T7): PX4's position and velocity become the state.
@@ -429,21 +456,18 @@ class ContractAwareEKF:
         gps = sensors.get('gps') or {}
         if not gps.get('valid', False):
             return
+        r_nominal = self.R_nominal.diagonal().tolist()
         for key, (horizontal, vertical) in self.PASSTHROUGH_ACCURACY.items():
-            found = self._measurement(key, measurements, gps)
-            if found is None:
+            components = self._components(key, measurements, gps)
+            if components is None:
                 continue
-            rows, z = found
             first = self.MEASUREMENT_ROWS[key][0]
-            fallback = np.diag(self.R_nominal)[first:first + 3]
-            variance = np.array([self._accuracy_variance(gps, horizontal, 2.0, fallback[0]),
-                                 self._accuracy_variance(gps, horizontal, 2.0, fallback[1]),
-                                 self._accuracy_variance(gps, vertical, 1.0, fallback[2])])
-            self.x[rows] = z
-            self.P[rows, :] = 0.0
-            self.P[:, rows] = 0.0
-            self.P[rows, rows] = variance[rows - first]
-            self.last_fused[key] = tuple(rows.tolist())
+            variance = [self._accuracy_variance(gps, horizontal, 2.0, r_nominal[first]),
+                        self._accuracy_variance(gps, horizontal, 2.0, r_nominal[first + 1]),
+                        self._accuracy_variance(gps, vertical, 1.0, r_nominal[first + 2])]
+            for row, value in components:
+                self._set_row(row, value, variance[row - first])
+            self.last_fused[key] = tuple(row for row, _ in components)
 
     @staticmethod
     def _accuracy_variance(gps: Dict[str, any], name: str, axes: float, fallback: float) -> float:
@@ -502,7 +526,10 @@ class ContractAwareEKF:
             for key in self.reject_count:
                 self.reject_count[key] = 0
             # Dead reckoning: prediction already done in predict step; increase uncertainty
-            self.P += self.last_Q * self.DEAD_RECKONING_EXTRA_Q
+            extra = self.DEAD_RECKONING_EXTRA_Q
+            for j, (a, b) in enumerate(self.PAIRS):
+                self._cov[j][0] += self._last_q[a] * extra
+                self._cov[j][2] += self._last_q[b] * extra
         if self.mode == 'passthrough':
             self._pass_through(measurements, sensors)
         self._after_measurements(published_before)
@@ -539,14 +566,14 @@ class ContractAwareEKF:
           check (HDOP x UERE, ...). Before W4-08 none was passed, so the contract's
           assumptions never held and its relational bounds lost their input term.
         """
-        var = self.P.diagonal().tolist()
-        position_var = var[0] + var[1] + var[2]
+        cov = self._cov
+        position_var = cov[0][0] + cov[1][0] + cov[2][0]
         if self.glide_offset is not None:       # get_covariance's P + d d' (T5)
             position_var += float(self.glide_offset @ self.glide_offset)
         values = {
-            'position_error': float(np.sqrt(position_var)),
-            'velocity_error': float(np.sqrt(var[3] + var[4] + var[5])),
-            'attitude_error': float(np.sqrt(var[6] + var[7] + var[8])),
+            'position_error': math.sqrt(position_var),
+            'velocity_error': math.sqrt(cov[0][2] + cov[1][2] + cov[2][2]),
+            'attitude_error': math.sqrt(cov[3][0] + cov[4][0] + cov[5][0]),
         }
         bounds = self.sensor_metrics.predicted_bounds if self.sensor_metrics is not None else {}
         for name in self.MEAS_ERROR_INPUTS:
@@ -589,7 +616,7 @@ class ContractAwareEKF:
 
     def _eph(self) -> float:
         """sqrt(P_xx + P_yy) of the published position (get_covariance), in m."""
-        var = self.P[0, 0] + self.P[1, 1]
+        var = self._cov[0][0] + self._cov[1][0]
         if self.glide_offset is not None:
             var += self.glide_offset[0] ** 2 + self.glide_offset[1] ** 2
         return float(np.sqrt(var))
@@ -624,7 +651,7 @@ class ContractAwareEKF:
         While the position glides back (T5), the position block also holds the offset
         between the published position and the filter's estimate (P + d d').
         """
-        P = self.P.copy()
+        P = self.P
         if self.glide_offset is not None:
             P[0:3, 0:3] += np.outer(self.glide_offset, self.glide_offset)
         return P
@@ -639,12 +666,14 @@ class ContractAwareEKF:
         the published position minus the estimate; fused / rejected / reset: per
         measurement, the state rows fused, rejected by the gate, or reset to it.
         """
-        P = self.get_covariance()
+        epv_var = self._cov[2][0]
+        if self.glide_offset is not None:
+            epv_var += self.glide_offset[2] ** 2
         return {
             'quality': self.estimation_quality,
             'position_trusted': self.position_trusted,
             'eph': self._eph(),
-            'epv': float(np.sqrt(P[2, 2])),
+            'epv': float(np.sqrt(epv_var)),
             'gliding': self.glide_offset is not None,
             'glide_offset': np.zeros(3) if self.glide_offset is None else self.glide_offset.copy(),
             'fused': dict(self.last_fused),
@@ -660,48 +689,48 @@ if __name__ == "__main__":
     print("=" * 60)
     print("Contract-Aware EKF Test")
     print("=" * 60)
-    
+
     # Create contract monitor
     monitor = HierarchicalContractMonitor()
     monitor.define_contracts()
-    
+
     # Create EKF
     ekf = ContractAwareEKF(monitor)
-    
+
     # Simulate some sensor data
     print("\n[TEST 1] Nominal sensors (GPS + IMU good)")
-    
+
     measurements = {
         'gps_position': np.array([1.0, 2.0, -5.0]),
         'gps_velocity': np.array([0.1, 0.0, 0.0]),
         'imu_attitude': np.array([0.0, 0.0, 0.0]),
         'imu_rates': np.array([0.0, 0.0, 0.0])
     }
-    
+
     sensors = {
         'gps': {'satellites': 12, 'hdop': 1.0, 'valid': True},
         'imu': {'calibrated': True, 'temperature': 25.0, 'valid': True}
     }
-    
+
     # Predict
     ekf.predict()
-    
+
     # Update
     state, contract_ok = ekf.update(measurements, sensors, timestamp=1.0)
-    
+
     print(f"State estimate: {ekf.get_state()['position']}")
     print(f"Contract satisfied: {contract_ok}")
-    
+
     print("\n[TEST 2] GPS degraded (few satellites)")
-    
+
     sensors['gps']['satellites'] = 4  # Below threshold
-    
+
     ekf.predict()
     state, contract_ok = ekf.update(measurements, sensors, timestamp=2.0)
-    
+
     print(f"State estimate: {ekf.get_state()['position']}")
     print(f"Contract satisfied: {contract_ok}")
-    
+
     print("\n" + "=" * 60)
     print("[OK] Contract-Aware EKF Test Complete")
     print("=" * 60)

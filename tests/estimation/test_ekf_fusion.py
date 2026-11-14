@@ -155,7 +155,8 @@ def reference_update(x, P, z, rows, R):
 @pytest.mark.parametrize("satellites, rows", [(12, list(range(12))), (3, list(range(6, 12)))],
                          ids=['full', 'imu-only'])
 def test_update_is_the_old_update_when_everything_is_valid(satellites, rows):
-    """With every measurement valid and inside the gate, the numbers are the old ones, bit for bit."""
+    """With every measurement valid and inside the gate, the numbers are the old 12x12 update's,
+    to rounding (the filter now works per pair, with scalar updates)."""
     ekf = converged(1.0)
     rng = np.random.default_rng(0)
     sensors = good_sensors()
@@ -170,7 +171,8 @@ def test_update_is_the_old_update_when_everything_is_valid(satellites, rows):
         R = ekf.R_nominal if satellites == 12 else ekf.R_degraded
         x_ref, P_ref = reference_update(x0, P0, z, rows, R)
         ekf.update(meas, sensors, k * DT)
-        assert np.array_equal(ekf.x, x_ref) and np.array_equal(ekf.P, P_ref), k
+        assert np.allclose(ekf.x, x_ref, rtol=1e-12, atol=1e-14), k
+        assert np.allclose(ekf.P, P_ref, rtol=1e-11, atol=1e-15), k
 
 
 # --- T2: innovation gate ----------------------------------------------------------------------
@@ -273,3 +275,33 @@ def test_yaw_state_is_wrapped_by_predict():
     for k in range(5):
         ekf.predict(DT)
     assert ekf.x[8] == pytest.approx(3.2 - 2 * np.pi)
+
+
+# --- the covariance as six 2x2 blocks (S-5) ---------------------------------------------------
+
+def test_covariance_keeps_the_pair_structure():
+    """P only ever couples a quantity with its own rate (the pairs), so it is kept as 2x2 blocks."""
+    ekf = converged(1.0)
+    P = ekf.get_covariance()
+    pattern = np.zeros((12, 12), dtype=bool)
+    for a, b in ekf.PAIRS:
+        pattern[np.ix_([a, b], [a, b])] = True
+    assert not P[~pattern].any()
+    assert np.array_equal(P, P.T)
+
+
+def test_covariance_setter_round_trips_and_refuses_other_couplings():
+    ekf = make_ekf()
+    P = np.diag(np.arange(1.0, 13.0))
+    P[0, 3] = P[3, 0] = 0.25
+    ekf.P = P
+    assert np.array_equal(ekf.P, P)
+    bad = P.copy()
+    bad[0, 1] = bad[1, 0] = 0.1          # x with y: not a pair
+    with pytest.raises(ValueError, match="pair"):
+        ekf.P = bad
+    asymmetric = P.copy()
+    asymmetric[3, 0] = 0.3
+    with pytest.raises(ValueError):
+        ekf.P = asymmetric
+    assert np.array_equal(ekf.P, P)      # a refused matrix changes nothing

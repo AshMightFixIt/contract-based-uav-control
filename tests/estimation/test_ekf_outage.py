@@ -129,8 +129,9 @@ def test_twenty_second_outage_is_bounded_honest_and_untrusted():
 def test_untrusted_flag_follows_eph():
     ekf = make_ekf()
     for eph, trusted in [(4.99, True), (5.01, False)]:
-        ekf.P = np.eye(12) * 0.01
-        ekf.P[0, 0] = ekf.P[1, 1] = eph ** 2 / 2
+        P = np.eye(12) * 0.01
+        P[0, 0] = P[1, 1] = eph ** 2 / 2
+        ekf.P = P
         ekf.update({}, {'gps': NO_GPS, 'imu': IMU}, 0.0)
         assert ekf.position_trusted is trusted
         assert ekf.get_status()['eph'] == pytest.approx(eph)
