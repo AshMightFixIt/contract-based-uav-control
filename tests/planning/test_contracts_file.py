@@ -64,6 +64,9 @@ def test_planner_numbers_are_the_ones_used_before(doc):
     planner = doc["planner"]
     assert planner["dynamics_decay"] == OLD_DECAY
     assert {c: (p["wind_speed"], p["constant"]) for c, p in planner["steady_state_error"].items()} == OLD_SS_PARAMS
+    # Both terms the closed form leaves out are named (review R-09, N1).
+    assert "estimation-error term is not used" in planner["derivation"]
+    assert "its wind_speed term is not used either" in planner["derivation"]
 
 
 def test_controller_input_bounds(doc):

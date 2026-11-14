@@ -158,7 +158,10 @@ def planner_record(contracts: Dict[str, dict]) -> dict:
             "steady_state_error[c]: the wind_speed coefficient and the constant of controller c's "
             "guarantee tracking_error <= ... (its estimation-error term is not used); "
             "dynamics_decay: the tracking_error coefficient of the dynamics guarantee "
-            "next_tracking_error <= ...; e_ss(wind) = wind_speed * wind + constant"),
+            "next_tracking_error <= ... (its wind_speed term is not used either: the closed form "
+            "takes the wind's effect from each controller's e_ss instead, so that term would count "
+            "the wind twice); e_ss(wind) = wind_speed * wind + constant. "
+            "The planner left out both terms before W4-09 too"),
     }
 
 
