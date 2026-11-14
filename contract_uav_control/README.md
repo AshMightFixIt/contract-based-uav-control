@@ -61,7 +61,7 @@ source install/setup.bash
 > which colcon builds and installs next to this one (`exec_depend` in
 > `package.xml`), so no environment variable is needed. Outside colcon,
 > `pip install -e ./contract_uav_core` makes it importable too. Make sure
-> `numpy` (and optionally `pacti`) are on the same Python the node runs with.
+> `numpy` and `PyYAML` are on the same Python the node runs with.
 
 ## Run (PX4 SITL first — always validate in sim before flight)
 

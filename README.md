@@ -374,7 +374,7 @@ They check that two benchmarks still print the same tables as the saved copies i
 They also run small tests of single parts, including a check of the ROS 2 node with fake ROS modules.
 This took about 1 minute on our test computer.
 
-With Pacti installed, `make test-pacti` checks two more things: that the controller benchmark still prints its saved table, and that the planner's limits file (`config/contracts.json`) still matches what Pacti works out. It takes about 1 minute:
+With Pacti installed, `make test-pacti` checks that the controller benchmark still prints its saved table with Pacti too. It takes about 30 seconds. With Pacti installed, `make test` also checks that the planner's limits file (`config/contracts.json`) still matches what Pacti works out:
 
 ```bash
 python -m pip install -r requirements/pacti.txt
