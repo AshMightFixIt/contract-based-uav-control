@@ -21,12 +21,12 @@ NO_GPS = {'satellites': 0, 'hdop': 99.9, 'valid': False}
 IMU = {'calibrated': True, 'temperature': 25.0, 'valid': True}
 
 
-def make_ekf():
+def make_ekf(**kw):
     from contract_uav_core.contracts.monitor import HierarchicalContractMonitor
     from contract_uav_core.estimation.ekf import ContractAwareEKF
     monitor = HierarchicalContractMonitor()
     monitor.define_contracts()
-    return ContractAwareEKF(monitor)
+    return ContractAwareEKF(monitor, **kw)
 
 
 class Flight:
@@ -211,3 +211,80 @@ def test_short_dropout_does_not_glide():
     flight.step(gps=True)
     assert flight.ekf.glide_offset is None
     assert np.linalg.norm(flight.error()) < 0.05
+
+
+# --- T5, per-axis and gated returns (review R-08, B-1 and S-2) ---------------------------------
+
+def per_axis_outage(mode):
+    """10 s of GPS at 1 m/s; then 10 s in which the truth stops and PX4 marks the horizontal
+    position and velocity invalid (xy_valid, v_xy_valid False) while z stays valid (baro), as
+    PX4 does when it loses GPS; then everything valid again. Returns the published correction
+    rate beyond the estimated velocity at each step after the return, whether the estimator
+    was recovering then, and the estimator."""
+    ekf = make_ekf(mode=mode)
+    pos, vel = START.copy(), np.array([1.0, 0.0, 0.0])
+    accuracy = {'eph': 0.5, 'epv': 0.5, 'evh': 0.1, 'evv': 0.1}
+
+    def step(t, flags):
+        meas = {'gps_position': pos.copy(), 'gps_velocity': vel.copy(),
+                'imu_attitude': np.zeros(3), 'imu_rates': np.zeros(3)}
+        ekf.predict(DT)
+        ekf.update(meas, {'gps': {**GPS, **accuracy, **flags}, 'imu': IMU}, t)
+
+    t = 0.0
+    for _ in range(500):
+        t += DT
+        pos = pos + vel * DT
+        step(t, {})
+    vel = np.zeros(3)
+    for _ in range(500):
+        t += DT
+        step(t, {'xy_valid': False, 'v_xy_valid': False})
+        assert ekf.last_fused['gps_position'] == (2,)          # z was fused all along
+    assert np.linalg.norm(ekf.get_state()['position'] - pos) > 9.0
+    rates, recovering = [], []
+    for _ in range(400):
+        before = ekf.get_state()
+        t += DT
+        step(t, {})
+        after = ekf.get_state()
+        rates.append(np.linalg.norm(after['position'] - before['position'] - before['velocity'] * DT) / DT)
+        recovering.append(ekf.recovering or ekf.glide_offset is not None)
+    return np.array(rates), np.array(recovering), ekf, pos
+
+
+@pytest.mark.parametrize("mode", ['fusion', 'passthrough'])
+def test_per_axis_gps_return_glides(mode):
+    """B-1: a horizontal return while z stayed valid glides at <= 2 m/s (it snapped at 481 m/s)."""
+    rates, recovering, ekf, pos = per_axis_outage(mode)
+    assert recovering[0]
+    assert rates[recovering].max() <= ekf.MAX_RECOVERY_SPEED + 1e-9
+    assert rates[recovering].max() > 0.99 * ekf.MAX_RECOVERY_SPEED    # it glided at the limit
+    assert not recovering[-1]
+    assert np.linalg.norm(ekf.get_state()['position'] - pos) < 0.05
+    if mode == 'passthrough':                    # after the recovery: PX4's position as it is
+        assert np.array_equal(ekf.get_state()['position'], pos)
+
+
+def test_gated_gps_return_does_not_move_the_published_position_unglided():
+    """S-2: GPS back 100 m away after 20 s: the position is gated for 9 steps while the velocity
+    is fused, and the velocity must not move the published position faster than the glide
+    (it did at 13.6 m/s, 264 m/s with the kept velocity 0.5 m/s off)."""
+    flight = Flight([0.0, 0.0, 0.0])
+    flight.fly(10.0)
+    ekf = flight.ekf
+    ekf.x[3] += 0.5                              # the kept velocity is 0.5 m/s off
+    flight.fly(20.0, gps=False)
+    flight.pos = flight.pos + [100.0, 0.0, 0.0]  # the GPS fix comes back 100 m away
+    rates = []
+    for k in range(int(5.0 / DT)):
+        before = ekf.get_state()
+        flight.step(gps=True)
+        after = ekf.get_state()
+        rates.append(np.linalg.norm(after['position'] - before['position'] - before['velocity'] * DT) / DT)
+        if k < 9:
+            assert 'gps_position' in ekf.last_rejected and 'gps_velocity' in ekf.last_fused, k
+        if k == 9:
+            assert 'gps_position' in ekf.last_reset
+    assert max(rates) <= ekf.MAX_RECOVERY_SPEED + 1e-9
+    assert ekf.recovering and ekf.get_status()['gliding']

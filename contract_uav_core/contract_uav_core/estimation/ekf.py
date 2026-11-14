@@ -116,10 +116,13 @@ class ContractAwareEKF:
     MODES = ('fusion', 'passthrough')
     PASSTHROUGH_ACCURACY = {'gps_position': ('eph', 'epv'), 'gps_velocity': ('evh', 'evv')}
 
-    # Smooth recovery (T5): when the GPS position comes back after an outage, or after a gate
-    # reset, the published position glides to the new estimate at no more than this speed
-    # (on top of the estimated velocity) instead of jumping.
+    # Smooth recovery (T5): while the GPS recovers (from any GPS row coming back after an
+    # outage, or a gate reset, until the GPS position is fused again and the published
+    # position has caught up), the published position moves at no more than this speed beyond
+    # the estimated velocity, whatever moves the estimate, instead of jumping.
     MAX_RECOVERY_SPEED = 2.0  # m/s
+    GPS_ROWS = frozenset(range(6))
+    POSITION_ROWS = frozenset(range(3))
 
     def __init__(self, contract_monitor: HierarchicalContractMonitor, *, mode: str = 'fusion'):
         """mode: 'fusion' (default) fuses GPS and IMU measurements; 'passthrough' (T7) takes
@@ -188,10 +191,12 @@ class ContractAwareEKF:
         self._last_q = self.Q.diagonal().tolist()
         self.position_trusted = True
         # T5: the published position is self.x[0:3] + glide_offset while it glides back
-        # (None otherwise); whether the GPS position was fused in the last update, and ever
+        # (None otherwise); whether the GPS is recovering; the GPS state rows (0-5) used in
+        # the last update, and ever
         self.glide_offset: Optional[np.ndarray] = None
-        self._position_fused_last = False
-        self._position_fused_ever = False
+        self.recovering = False
+        self._gps_rows_last = frozenset()
+        self._gps_rows_ever = set()
 
         logger.info("Contract-Aware EKF initialized")
 
@@ -498,7 +503,7 @@ class ContractAwareEKF:
         flagged valid, with their eph / epv covariance (_pass_through, T7). Then (_after_measurements):
         an unmeasured velocity keeps its value with a growing variance (T4), the
         position is flagged untrusted once eph > POSITION_UNTRUSTED_EPH (T4), and a
-        GPS position that comes back glides in at <= MAX_RECOVERY_SPEED (T5).
+        GPS that comes back (any row, either mode) glides in at <= MAX_RECOVERY_SPEED (T5).
 
         Returns: (state_estimate, estimation_contract_satisfied); the state is the
         published one, as get_state()
@@ -585,32 +590,40 @@ class ContractAwareEKF:
         """Book-keeping after an update's measurements (T4, T5).
 
         - The velocity components measured in this update set the next step's process noise.
-        - Glide (T5): if the GPS position was fused or reset in this update after an update
-          without it (GPS back after an outage; not the very first fix), or after a gate
-          reset, the published position moves from where the prediction put it toward the new
-          estimate by at most MAX_RECOVERY_SPEED * dt per step. The filter itself takes the
-          measurement in full: only what is published glides, and get_covariance() adds the
-          remaining offset to the position covariance, so the covariance stays honest.
+        - Glide (T5): the GPS starts recovering when any GPS state row (position or velocity,
+          in either mode) is used in this update after an update without it, having been used
+          before (not the very first fix), or when the GPS position is reset by the gate. Per
+          row, so a horizontal return while z stayed valid (PX4's xy_valid) counts, and so
+          does a velocity that comes back while the position is still gated. While recovering,
+          the published position moves from where the prediction put it toward the estimate by
+          at most MAX_RECOVERY_SPEED * dt per step, whatever moved the estimate. Recovery ends
+          when the published position has caught up and the GPS position was fused (not
+          rejected) in this update. The filter itself takes the measurements in full: only
+          what is published glides, and get_covariance() adds the remaining offset to the
+          position covariance, so the covariance stays honest.
         - The position is trusted while the published eph <= POSITION_UNTRUSTED_EPH.
         """
-        used = set(self.last_fused.get('gps_velocity', ())) | set(self.last_reset.get('gps_velocity', ()))
+        used = set()
+        for key in ('gps_position', 'gps_velocity'):
+            used.update(self.last_fused.get(key, ()), self.last_reset.get(key, ()))
         self.velocity_observed = np.array([row in used for row in (3, 4, 5)])
 
-        position_fused = 'gps_position' in self.last_fused or 'gps_position' in self.last_reset
-        returned = position_fused and self._position_fused_ever and not self._position_fused_last
-        if returned or 'gps_position' in self.last_reset or self.glide_offset is not None:
+        returned = (used - self._gps_rows_last) & self._gps_rows_ever
+        if returned or 'gps_position' in self.last_reset:
+            if not self.recovering:
+                logger.info(f"EKF: GPS back on state rows {sorted(returned) or 'reset'}; the published "
+                            f"position glides at <= {self.MAX_RECOVERY_SPEED} m/s")
+            self.recovering = True
+        if self.recovering:
             offset = published_before - self.x[0:3]
             limit = self.MAX_RECOVERY_SPEED * self.last_dt
             distance = float(np.linalg.norm(offset))
-            if distance > limit:
-                if self.glide_offset is None:
-                    logger.info(f"EKF: GPS position back, {distance:.2f} m from the dead-reckoned one; "
-                                f"gliding at {self.MAX_RECOVERY_SPEED} m/s")
-                self.glide_offset = offset * (1.0 - limit / distance)
-            else:
-                self.glide_offset = None
-        self._position_fused_last = position_fused
-        self._position_fused_ever = self._position_fused_ever or position_fused
+            self.glide_offset = offset * (1.0 - limit / distance) if distance > limit else None
+            if (self.glide_offset is None and used & self.POSITION_ROWS
+                    and 'gps_position' not in self.last_rejected):
+                self.recovering = False
+        self._gps_rows_last = frozenset(used)
+        self._gps_rows_ever |= used
 
         self.position_trusted = bool(self._eph() <= self.POSITION_UNTRUSTED_EPH)
 
