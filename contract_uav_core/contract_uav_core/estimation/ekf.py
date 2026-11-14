@@ -16,9 +16,9 @@ What W4-08 changed (K17, the core half of A-F7):
   fused as zeros. Each is gated on its normalised innovation; 10 rejects in a row
   reset its rows to it (T1, T2).
 - The heading is wrapped to (-pi, pi], in the innovation and the state (T3).
-- The process noise is per second. Without GPS the velocity is kept, its
-  variance grows at VEL_RANDOM_WALK_NO_GPS, and the position is flagged
-  untrusted once eph > POSITION_UNTRUSTED_EPH (T4).
+- The process noise is per second. Without GPS the velocity is kept, with a
+  variance that covers any velocity within NO_GPS_SPEED_LIMIT, and the position
+  is flagged untrusted once eph > POSITION_UNTRUSTED_EPH (T4).
 - When GPS returns, the published position glides back at <= 2 m/s (T5).
 - gps_ok / imu_ok come from the sensor contract (sensor_limits.py, T6).
 - mode='passthrough' takes PX4's own estimate, with its eph / epv covariance (T7).
@@ -98,11 +98,16 @@ class ContractAwareEKF:
     # tuned for; predict(dt) scales it by dt / Q_REFERENCE_DT, so the covariance grows per
     # second, not per call.
     Q_REFERENCE_DT = 0.02  # s
-    # A velocity component that was not measured in the last update (no GPS velocity) keeps
-    # its last value, and its variance grows by this per second instead of by Q's: the
-    # vehicle is assumed to hold its velocity, up to an unmodelled acceleration of
-    # sqrt(0.04) = 0.2 m/s^2 (Q's 0.1 per 0.02 s, 2.2 m/s^2, is a tuning for GPS tracking).
-    VEL_RANDOM_WALK_NO_GPS = 0.04  # m^2/s^3
+    # Without GPS velocity a velocity component keeps its last value, v_i. The vehicle may
+    # then brake (the supervisor answers a GPS loss with HOVER), accelerate or turn, but its
+    # speed stays within NO_GPS_SPEED_LIMIT per axis, so the error of the kept value is at
+    # most |v_i| + limit_i. Its variance is therefore raised to ((|v_i| + limit_i) / 3)^2,
+    # so that 3 sigma covers any velocity in that envelope, and is held there (no further
+    # velocity process noise). The position error, the integral of the velocity error, then
+    # stays inside 3 sigma for any manoeuvre within the envelope (review R-08, S-1).
+    # The limits are the speeds the benchmark vehicle can fly (its simulation clips the
+    # horizontal speed at 3 m/s and the vertical at 2 m/s); set them from the airframe.
+    NO_GPS_SPEED_LIMIT = (3.0, 3.0, 2.0)  # m/s, x y z
     # When nothing is fused at all (both sensor contracts violated) the covariance grows by
     # this many more times the step's process noise (the legacy 2 Q).
     DEAD_RECKONING_EXTRA_Q = 2.0
@@ -256,14 +261,17 @@ class ContractAwareEKF:
         q = [v * scale for v in self.Q.diagonal().tolist()]
         for i in range(3):
             if not self.velocity_observed[i]:
-                q[3 + i] = self.VEL_RANDOM_WALK_NO_GPS * dt
+                q[3 + i] = 0.0      # held at the speed envelope instead (_after_measurements)
         return q
 
     def process_noise(self, dt: float) -> np.ndarray:
         """The process noise of a step of dt seconds (T4).
 
-        self.Q scaled by dt / Q_REFERENCE_DT (before W4-08: self.Q whatever dt was), with
-        VEL_RANDOM_WALK_NO_GPS * dt for each velocity component the last update did not measure.
+        self.Q scaled by dt / Q_REFERENCE_DT (before W4-08: self.Q whatever dt was), with no
+        noise on a velocity component the last update did not measure: its variance is held at
+        the speed envelope (NO_GPS_SPEED_LIMIT). The first predict after a GPS loss cannot know
+        of it yet and adds the nominal velocity noise once (0.1 m^2/s^2 at 50 Hz); the envelope
+        that the same update then sets is at least (limit / 3)^2 = 1 m^2/s^2, so it dominates.
         """
         return np.diag(self._process_noise(dt))
 
@@ -532,7 +540,7 @@ class ContractAwareEKF:
         and inside the innovation gate are fused (_fuse). In mode='passthrough' the GPS
         rows are not fused: PX4's position and velocity are taken as they are, when
         flagged valid, with their eph / epv covariance (_pass_through, T7). Then (_after_measurements):
-        an unmeasured velocity keeps its value with a growing variance (T4), the
+        an unmeasured velocity keeps its value with the speed-envelope variance (T4), the
         position is flagged untrusted once eph > POSITION_UNTRUSTED_EPH (T4), and a
         GPS that comes back (any row, either mode) glides in at <= MAX_RECOVERY_SPEED (T5).
 
@@ -620,7 +628,8 @@ class ContractAwareEKF:
     def _after_measurements(self, published_before: np.ndarray):
         """Book-keeping after an update's measurements (T4, T5).
 
-        - The velocity components measured in this update set the next step's process noise.
+        - The velocity components measured in this update set the next step's process noise,
+          and an unmeasured one gets the speed-envelope variance (NO_GPS_SPEED_LIMIT).
         - Glide (T5): the GPS starts recovering when any GPS state row (position or velocity,
           in either mode) is used in this update after an update without it, having been used
           before (not the very first fix), or when the GPS position is reset by the gate. Per
@@ -638,6 +647,10 @@ class ContractAwareEKF:
         for key in ('gps_position', 'gps_velocity'):
             used.update(self.last_fused.get(key, ()), self.last_reset.get(key, ()))
         self.velocity_observed = np.array([row in used for row in (3, 4, 5)])
+        for i in range(3):          # T4, S-1: an unmeasured velocity's error is bounded by the envelope
+            if not self.velocity_observed[i]:
+                bound = (abs(float(self.x[3 + i])) + self.NO_GPS_SPEED_LIMIT[i]) / 3.0
+                self._cov[i][2] = max(self._cov[i][2], bound * bound)
 
         returned = (used - self._gps_rows_last) & self._gps_rows_ever
         if returned or 'gps_position' in self.last_reset:

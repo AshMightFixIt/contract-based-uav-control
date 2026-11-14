@@ -4,7 +4,8 @@ Before W4-08 the process noise was added per call whatever the step, a velocity
 without GPS was frozen while its variance grew by 0.1 per step, so sqrt(P_xx)
 went from 0.3 to about 116 m in 20 s of IMU-only flight, and on GPS return the
 estimate snapped back. Now: per-second process noise, the last velocity kept
-with a variance that grows by VEL_RANDOM_WALK_NO_GPS per second, an untrusted
+with a variance that covers any velocity within NO_GPS_SPEED_LIMIT (fix round,
+S-1; first a 0.2 m/s^2 random walk, which a braking vehicle left), an untrusted
 flag, and a published position that glides back at <= MAX_RECOVERY_SPEED.
 """
 from __future__ import annotations
@@ -92,15 +93,20 @@ def test_ten_second_outage_keeps_the_velocity(speed):
     assert flight.ekf.estimation_quality == 'degraded'
 
 
-def test_velocity_variance_grows_at_the_no_gps_rate():
-    flight = Flight([1.0, 0.0, 0.0])
+def test_velocity_variance_is_the_speed_envelope():
+    """S-1: from the first update without GPS velocity, each velocity variance is
+    ((|v_i| + limit_i) / 3)^2, and it stays there for the whole outage."""
+    flight = Flight([1.0, -0.5, 0.0])
     flight.fly(10.0)
-    flight.step(gps=False)          # the first predict after the loss still had GPS velocity
-    p0 = flight.ekf.P[3, 3]
+    ekf = flight.ekf
+    flight.step(gps=False)
+    v = ekf.get_state()['velocity']
+    expected = [((abs(v[i]) + ekf.NO_GPS_SPEED_LIMIT[i]) / 3.0) ** 2 for i in range(3)]
+    assert np.diag(ekf.P)[3:6] == pytest.approx(expected)
     flight.fly(10.0, gps=False)
-    rate = (flight.ekf.P[3, 3] - p0) / 10.0
-    assert rate == pytest.approx(flight.ekf.VEL_RANDOM_WALK_NO_GPS, rel=1e-6)
-    assert not flight.ekf.velocity_observed.any()
+    assert np.diag(ekf.P)[3:6] == pytest.approx(expected)
+    assert np.array_equal(ekf.get_state()['velocity'], v)       # the velocity is kept
+    assert not ekf.velocity_observed.any()
 
 
 def test_twenty_second_outage_is_bounded_honest_and_untrusted():
@@ -118,10 +124,10 @@ def test_twenty_second_outage_is_bounded_honest_and_untrusted():
             flagged_at = (k + 1) * DT
     sigma = np.sqrt(flight.ekf.get_covariance()[0, 0])
     assert sigma0 < 0.5
-    assert 5.0 < sigma < 20.0          # base: 115.5 m
+    assert 20.0 < sigma < 30.0         # 26.9 m: the 4/3 m/s envelope sigma over 20 s (base: 115.5 m)
     assert worst < 1.0                 # the 3-sigma bound covers the true error throughout
     assert np.linalg.norm(flight.error()) < 1.0
-    assert flagged_at is not None and 5.0 < flagged_at < 15.0
+    assert flagged_at is not None and 1.0 < flagged_at < 5.0     # eph > 5 m after 2.7 s
     status = flight.ekf.get_status()
     assert status['position_trusted'] is False and status['eph'] > flight.ekf.POSITION_UNTRUSTED_EPH
 
@@ -145,7 +151,11 @@ def test_dead_reckoning_adds_the_extra_process_noise():
     P_pred, Q = ekf.P.copy(), ekf.last_Q.copy()
     ekf.update({}, {'gps': NO_GPS, 'imu': {**IMU, 'calibrated': False}}, 3.0)
     assert ekf.estimation_quality == 'emergency'
-    assert np.allclose(ekf.P, P_pred + ekf.DEAD_RECKONING_EXTRA_Q * Q)
+    expected = P_pred + ekf.DEAD_RECKONING_EXTRA_Q * Q
+    for i in range(3):                 # the unmeasured velocities: the speed envelope (S-1)
+        bound = (abs(ekf.x[3 + i]) + ekf.NO_GPS_SPEED_LIMIT[i]) / 3.0
+        expected[3 + i, 3 + i] = max(expected[3 + i, 3 + i], bound ** 2)
+    assert np.allclose(ekf.P, expected)
 
 
 # --- T5: smooth recovery -----------------------------------------------------------------------
@@ -267,15 +277,16 @@ def test_per_axis_gps_return_glides(mode):
 
 
 def test_gated_gps_return_does_not_move_the_published_position_unglided():
-    """S-2: GPS back 100 m away after 20 s: the position is gated for 9 steps while the velocity
-    is fused, and the velocity must not move the published position faster than the glide
-    (it did at 13.6 m/s, 264 m/s with the kept velocity 0.5 m/s off)."""
+    """S-2: GPS back 200 m away after 20 s (beyond the gate even with the no-GPS covariance):
+    the position is gated for 9 steps while the velocity is fused, and the velocity must not
+    move the published position faster than the glide (it did at 13.6 m/s, 264 m/s with the
+    kept velocity 0.5 m/s off, for a 100 m return)."""
     flight = Flight([0.0, 0.0, 0.0])
     flight.fly(10.0)
     ekf = flight.ekf
     ekf.x[3] += 0.5                              # the kept velocity is 0.5 m/s off
     flight.fly(20.0, gps=False)
-    flight.pos = flight.pos + [100.0, 0.0, 0.0]  # the GPS fix comes back 100 m away
+    flight.pos = flight.pos + [200.0, 0.0, 0.0]  # the GPS fix comes back 200 m away
     rates = []
     for k in range(int(5.0 / DT)):
         before = ekf.get_state()
@@ -288,3 +299,62 @@ def test_gated_gps_return_does_not_move_the_published_position_unglided():
             assert 'gps_position' in ekf.last_reset
     assert max(rates) <= ekf.MAX_RECOVERY_SPEED + 1e-9
     assert ekf.recovering and ekf.get_status()['gliding']
+
+
+# --- S-1: honest without GPS for manoeuvres, not only at constant velocity ----------------------
+
+LIMIT = np.array([3.0, 3.0, 2.0])
+
+
+def brake(a):
+    return lambda v, rng: -np.sign(v) * np.minimum(np.abs(v) / DT, a)
+
+
+def to_velocity(target, a):
+    return lambda v, rng: np.clip((np.asarray(target, dtype=float) - v) / DT, -a, a)
+
+
+def random_within_envelope(sigma):
+    def accel(v, rng):
+        a = np.r_[rng.standard_normal(2) * sigma / np.sqrt(DT), 0.0]
+        return (np.clip(v + a * DT, -LIMIT, LIMIT) - v) / DT
+    return accel
+
+
+def outage_coverage(v0, accel, seed, seconds=20.0):
+    """Share of axis-steps of a GPS outage in which the published position is within 3 sigma."""
+    flight = Flight(v0, seed=seed)
+    flight.fly(10.0)
+    inside = total = 0
+    for _ in range(int(seconds / DT)):
+        flight.vel = flight.vel + accel(flight.vel, flight.rng) * DT
+        flight.step(gps=False)
+        sigma = np.sqrt(np.diag(flight.ekf.get_covariance())[0:3])
+        inside += int(np.sum(np.abs(flight.error()) <= 3.0 * sigma))
+        total += 3
+    return inside / total, flight
+
+
+@pytest.mark.parametrize("name, v0, accel, seeds", [
+    ('brake 3 m/s to hover at 2 m/s^2', [3.0, 0.0, 0.0], brake(2.0), 2),
+    ('stop by the sim drag from 3 m/s', [3.0, 0.0, 0.0], lambda v, rng: -v * (0.03 / DT), 2),
+    ('hover to 3 m/s at 1 m/s^2', [0.0, 0.0, 0.0], to_velocity([3.0, 0.0, 0.0], 1.0), 2),
+    ('reverse 3 m/s to -3 m/s at 1 m/s^2', [3.0, 0.0, 0.0], to_velocity([-3.0, 0.0, 0.0], 1.0), 2),
+    ('turn 3 m/s x to 3 m/s y at 1 m/s^2', [3.0, 0.0, 0.0], to_velocity([0.0, 3.0, 0.0], 1.0), 2),
+    ('random 1 m/s^2 within the speed envelope', [1.0, 0.0, 0.0], random_within_envelope(1.0), 8),
+])
+def test_outage_covariance_covers_manoeuvres_within_the_envelope(name, v0, accel, seeds):
+    """S-1: braking (what the supervisor's GPS-loss HOVER commands), accelerating, reversing,
+    turning or random accelerations of 1 m/s^2, with the speed inside NO_GPS_SPEED_LIMIT:
+    the 3-sigma bound covers >= 95 % of axis-steps over seeded runs (measured: 100 %;
+    with the earlier 0.2 m/s^2 random walk 46-91 %)."""
+    coverage = [outage_coverage(v0, accel, seed)[0] for seed in range(seeds)]
+    assert min(coverage) >= 0.95, coverage
+
+
+def test_outage_at_constant_velocity_is_no_worse_than_base():
+    """The velocity is still kept, so at constant velocity the error stays centimetres (base: the
+    same 0.15 m after 20 s for this seed), while the bound is wider."""
+    coverage, flight = outage_coverage([3.0, 0.0, 0.0], lambda v, rng: np.zeros(3), seed=0)
+    assert coverage == 1.0
+    assert np.linalg.norm(flight.error()) < 0.3

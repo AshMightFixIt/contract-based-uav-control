@@ -170,6 +170,10 @@ def test_update_is_the_old_update_when_everything_is_valid(satellites, rows):
                             meas['imu_attitude'], meas['imu_rates']])[rows]
         R = ekf.R_nominal if satellites == 12 else ekf.R_degraded
         x_ref, P_ref = reference_update(x0, P0, z, rows, R)
+        if satellites != 12:           # without GPS velocity: the speed envelope (S-1), after the update
+            for i in range(3):
+                bound = (abs(x_ref[3 + i]) + ekf.NO_GPS_SPEED_LIMIT[i]) / 3.0
+                P_ref[3 + i, 3 + i] = max(P_ref[3 + i, 3 + i], bound ** 2)
         ekf.update(meas, sensors, k * DT)
         assert np.allclose(ekf.x, x_ref, rtol=1e-12, atol=1e-14), k
         assert np.allclose(ekf.P, P_ref, rtol=1e-11, atol=1e-15), k

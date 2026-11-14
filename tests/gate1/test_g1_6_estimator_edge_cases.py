@@ -123,7 +123,8 @@ def test_g1_6_yaw_error_below_1_degree_crossing_180():
 def test_g1_6_twenty_second_outage_bounded_honest_and_untrusted():
     """G1.6: a 20 s GPS outage at constant velocity: the position error stays bounded, the
     3-sigma bound covers the true error, and the untrusted flag is set (before: sqrt(P_xx)
-    115.5 m, no flag)."""
+    115.5 m, no flag). The covariance covers any manoeuvre within the speed envelope: see
+    tests/estimation/test_ekf_outage.py for braking and accelerating truths."""
     truth = Truth(vel=(1.0, 0.5, 0.0))
     truth.fly(10.0)
     assert truth.ekf.position_trusted
@@ -132,7 +133,7 @@ def test_g1_6_twenty_second_outage_bounded_honest_and_untrusted():
         P, err = truth.ekf.get_covariance(), truth.position_error()
         assert all(abs(err[i]) <= 3.0 * np.sqrt(P[i, i]) for i in range(3))
     assert np.linalg.norm(truth.position_error()) < 1.0
-    assert np.sqrt(truth.ekf.get_covariance()[0, 0]) < 20.0
+    assert np.sqrt(truth.ekf.get_covariance()[0, 0]) < 30.0     # 26.9 m (base 115.5 m)
     assert truth.ekf.position_trusted is False
 
 
