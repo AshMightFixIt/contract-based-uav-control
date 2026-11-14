@@ -129,8 +129,10 @@ class ContractAwareEKF:
             'gps': {'satellites': 0, 'hdop': 100.0, 'valid': False},
             'imu': {'calibrated': False, 'temperature': 25.0, 'valid': False}
         }
-        # The latest sensor-contract check (ContractMetrics), set by check_sensor_contracts
+        # The latest sensor-contract check (ContractMetrics), set by check_sensor_contracts,
+        # and the latest estimator-contract check, set by update (T8)
         self.sensor_metrics: Optional[ContractMetrics] = None
+        self.estimator_metrics: Optional[ContractMetrics] = None
 
         # What the last update() did: 'nominal' | 'degraded' | 'emergency', and per
         # measurement the state rows fused, rejected by the gate, or reset to it
@@ -491,22 +493,48 @@ class ContractAwareEKF:
             log(f"EKF fusion: {self.estimation_quality} -> {estimation_quality}")
             self.estimation_quality = estimation_quality
 
-        # Check estimator contract
-        estimation_state = {
-            'position_error': np.linalg.norm(self.P[0:3, 0:3]),  # Position uncertainty
-            'velocity_error': np.linalg.norm(self.P[3:6, 3:6]),  # Velocity uncertainty
-            'attitude_error': np.linalg.norm(self.P[6:9, 6:9]),  # Attitude uncertainty
-        }
-
+        # Check estimator contract (T8)
         metrics = self.contract_monitor.monitor_runtime(
             component="estimator",
-            values=estimation_state,
+            values=self.estimator_contract_values(),
             timestamp=timestamp
         )
+        self.estimator_metrics = metrics
 
         logger.debug(f"EKF update: {estimation_quality}, contract: {metrics.assumptions_met}")
 
         return self._published_state(), metrics.guarantees_met
+
+    # The estimator contract's inputs, from the sensor contract's predicted bounds (T8)
+    MEAS_ERROR_INPUTS = ('position_meas_error', 'velocity_meas_error', 'rate_meas_error', 'attitude_meas_error')
+
+    def estimator_contract_values(self) -> Dict[str, float]:
+        """The values update() checks the estimator contract with (contracts/library.py, EKF_Estimator).
+
+        - Outputs: position_error, velocity_error, attitude_error, the RMS error magnitude
+          the published covariance implies, sqrt(trace(P_block)) in m, m/s and rad: the
+          same position_error the switching policy feeds the controller contracts
+          (switching_policy.py). Before W4-08: the Frobenius norm of each covariance block,
+          i.e. a variance (m^2, ...), against bounds in m.
+        - Inputs: position_meas_error, velocity_meas_error, rate_meas_error and
+          attitude_meas_error, the sensor contract's predicted bounds for the latest sensor
+          check (HDOP x UERE, ...). Before W4-08 none was passed, so the contract's
+          assumptions never held and its relational bounds lost their input term.
+        """
+        var = self.P.diagonal().tolist()
+        position_var = var[0] + var[1] + var[2]
+        if self.glide_offset is not None:       # get_covariance's P + d d' (T5)
+            position_var += float(self.glide_offset @ self.glide_offset)
+        values = {
+            'position_error': float(np.sqrt(position_var)),
+            'velocity_error': float(np.sqrt(var[3] + var[4] + var[5])),
+            'attitude_error': float(np.sqrt(var[6] + var[7] + var[8])),
+        }
+        bounds = self.sensor_metrics.predicted_bounds if self.sensor_metrics is not None else {}
+        for name in self.MEAS_ERROR_INPUTS:
+            if f'{name}_max' in bounds:
+                values[name] = float(bounds[f'{name}_max'])
+        return values
 
     def _after_measurements(self, published_before: np.ndarray):
         """Book-keeping after an update's measurements (T4, T5).
