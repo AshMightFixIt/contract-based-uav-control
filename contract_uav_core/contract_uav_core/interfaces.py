@@ -33,6 +33,12 @@ dict. The keys the estimator reads (W4-08 added the optional ones marked *):
     * xy_valid, z_valid: bool, default True. The horizontal / vertical position
       may be used (PX4 vehicle_local_position's flags of the same names).
     * v_xy_valid, v_z_valid: bool, default True. The same for the velocity.
+    * eph, epv: float, m. 1-sigma accuracy of the horizontal / vertical
+      position (PX4 vehicle_local_position; eph is sqrt(var_N + var_E)).
+    * evh, evv: float, m/s. The same for the velocity.
+      The four accuracies are read only by ContractAwareEKF(mode='passthrough'),
+      where position and velocity are PX4's own estimate; missing ones fall back
+      to the estimator's nominal measurement noise.
 - 'imu': dict
     attitude: shape (3,), [roll, pitch, yaw], rad. rates: shape (3,), rad/s.
     valid: bool. calibrated: bool. temperature: float, degrees C.

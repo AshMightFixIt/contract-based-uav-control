@@ -77,12 +77,23 @@ class ContractAwareEKF:
     # eph = sqrt(P_xx + P_yy) (PX4's eph convention) exceeds this (T4).
     POSITION_UNTRUSTED_EPH = 5.0  # m
 
+    # mode='passthrough' (T7, decision D7): the accuracy keys in sensors['gps'] (PX4
+    # vehicle_local_position: 1-sigma, eph and evh horizontal as sqrt(var_N + var_E), epv and evv
+    # vertical) that give the covariance of PX4's position and velocity.
+    MODES = ('fusion', 'passthrough')
+    PASSTHROUGH_ACCURACY = {'gps_position': ('eph', 'epv'), 'gps_velocity': ('evh', 'evv')}
+
     # Smooth recovery (T5): when the GPS position comes back after an outage, or after a gate
     # reset, the published position glides to the new estimate at no more than this speed
     # (on top of the estimated velocity) instead of jumping.
     MAX_RECOVERY_SPEED = 2.0  # m/s
 
-    def __init__(self, contract_monitor: HierarchicalContractMonitor):
+    def __init__(self, contract_monitor: HierarchicalContractMonitor, *, mode: str = 'fusion'):
+        """mode: 'fusion' (default) fuses GPS and IMU measurements; 'passthrough' (T7) takes
+        PX4's own position and velocity estimate as the state (see update())."""
+        if mode not in self.MODES:
+            raise ValueError(f"mode must be one of {self.MODES}, not {mode!r}")
+        self.mode = mode
         self.contract_monitor = contract_monitor
         
         # State dimension
@@ -382,6 +393,50 @@ class ContractAwareEKF:
             KH[:, idx] = K
         self.P = (np.eye(self.n) - KH) @ self.P
 
+    def _pass_through(self, measurements: Dict[str, np.ndarray], sensors: Dict[str, any]):
+        """mode='passthrough' (T7): PX4's position and velocity become the state.
+
+        measurements['gps_position'] / ['gps_velocity'] are then PX4's own estimate (the node
+        sends vehicle_local_position). A component is taken if sensors['gps']['valid'] is set
+        and the component is usable as in fusion mode (present, finite, its per-axis flag not
+        False): its state row is set to it, its correlations are cleared, and its variance
+        comes from PX4's accuracy keys: eph^2 / 2 for x and y, epv^2 for z (evh, evv for the
+        velocity). A missing, non-finite or negative accuracy falls back to R_nominal's
+        variance. The sensor contract (satellites, HDOP) does not decide this: PX4's estimate
+        may be valid without GPS, and its own flags and accuracies say how good it is. An
+        invalid component is not used: its row is predicted on, as without GPS in fusion mode.
+        """
+        gps = sensors.get('gps') or {}
+        if not gps.get('valid', False):
+            return
+        for key, (horizontal, vertical) in self.PASSTHROUGH_ACCURACY.items():
+            found = self._measurement(key, measurements, gps)
+            if found is None:
+                continue
+            rows, z = found
+            first = self.MEASUREMENT_ROWS[key][0]
+            fallback = np.diag(self.R_nominal)[first:first + 3]
+            variance = np.array([self._accuracy_variance(gps, horizontal, 2.0, fallback[0]),
+                                 self._accuracy_variance(gps, horizontal, 2.0, fallback[1]),
+                                 self._accuracy_variance(gps, vertical, 1.0, fallback[2])])
+            self.x[rows] = z
+            self.P[rows, :] = 0.0
+            self.P[:, rows] = 0.0
+            self.P[rows, rows] = variance[rows - first]
+            self.last_fused[key] = tuple(rows.tolist())
+
+    @staticmethod
+    def _accuracy_variance(gps: Dict[str, any], name: str, axes: float, fallback: float) -> float:
+        """Per-axis variance from a 1-sigma accuracy over `axes` axes (sigma^2 / axes), or fallback."""
+        sigma = gps.get(name)
+        try:
+            sigma = float(sigma)
+        except (TypeError, ValueError):
+            return float(fallback)
+        if not np.isfinite(sigma) or sigma < 0.0:
+            return float(fallback)
+        return sigma * sigma / axes
+
     def update(self,
                measurements: Dict[str, np.ndarray],
                sensors: Dict[str, any],
@@ -394,7 +449,9 @@ class ContractAwareEKF:
         - IMU ok only ("degraded"): IMU attitude and rates, R_degraded;
         - otherwise ("emergency"): nothing, and the covariance grows by 2 Q more.
         Of those, only the components that are present, finite, not flagged invalid
-        and inside the innovation gate are fused (_fuse). Then (_after_measurements):
+        and inside the innovation gate are fused (_fuse). In mode='passthrough' the GPS
+        rows are not fused: PX4's position and velocity are taken as they are, when
+        flagged valid, with their eph / epv covariance (_pass_through, T7). Then (_after_measurements):
         an unmeasured velocity keeps its value with a growing variance (T4), the
         position is flagged untrusted once eph > POSITION_UNTRUSTED_EPH (T4), and a
         GPS position that comes back glides in at <= MAX_RECOVERY_SPEED (T5).
@@ -417,6 +474,8 @@ class ContractAwareEKF:
             keys, R, estimation_quality = ('imu_attitude', 'imu_rates'), self.R_degraded, "degraded"
         else:
             keys, R, estimation_quality = (), None, "emergency"
+        if self.mode == 'passthrough':
+            keys = tuple(key for key in keys if key not in self.PASSTHROUGH_ACCURACY)
         if keys:
             self._fuse(measurements, sensors, keys, R)
         else:
@@ -424,6 +483,8 @@ class ContractAwareEKF:
                 self.reject_count[key] = 0
             # Dead reckoning: prediction already done in predict step; increase uncertainty
             self.P += self.last_Q * self.DEAD_RECKONING_EXTRA_Q
+        if self.mode == 'passthrough':
+            self._pass_through(measurements, sensors)
         self._after_measurements(published_before)
         if estimation_quality != self.estimation_quality:
             log = logger.warning if estimation_quality == "emergency" else logger.info
