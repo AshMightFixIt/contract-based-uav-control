@@ -358,3 +358,57 @@ def test_outage_at_constant_velocity_is_no_worse_than_base():
     coverage, flight = outage_coverage([3.0, 0.0, 0.0], lambda v, rng: np.zeros(3), seed=0)
     assert coverage == 1.0
     assert np.linalg.norm(flight.error()) < 0.3
+
+
+def test_position_is_untrusted_while_a_far_glide_is_in_progress():
+    """S-4 (R-08 mutation M3): the untrusted flag uses the published covariance (P + d d').
+    Right after the return the filter's own eph is small, but the published position is still
+    about 10 m from the estimate, so it is not trusted until the glide has brought it within 5 m."""
+    flight = outage_then_stop()
+    ekf = flight.ekf
+    flight.step(gps=True)
+    own_eph = np.sqrt(ekf.P[0, 0] + ekf.P[1, 1])
+    assert own_eph < ekf.POSITION_UNTRUSTED_EPH
+    assert np.linalg.norm(ekf.glide_offset[0:2]) > 8.0
+    assert ekf.position_trusted is False
+    trusted_at = None
+    for k in range(int(8.0 / DT)):
+        flight.step(gps=True)
+        offset = ekf.get_status()['glide_offset']
+        published_eph = np.sqrt(ekf.P[0, 0] + ekf.P[1, 1] + offset[0] ** 2 + offset[1] ** 2)
+        assert ekf.position_trusted is bool(published_eph <= ekf.POSITION_UNTRUSTED_EPH), k
+        if trusted_at is None and ekf.position_trusted:
+            trusted_at = k
+    assert trusted_at is not None and ekf.position_trusted
+
+
+def test_recovery_lasts_until_the_position_is_fused():
+    """S-2: while the returning GPS position is still gated, recovery goes on even if the
+    published position has caught up in between: a velocity fix that then moves the estimate
+    (through the position-velocity correlation of the outage) is glided too."""
+    ekf = make_ekf()
+    pos, t = START.copy(), 0.0
+
+    def step(gps, velocity=np.zeros(3)):
+        nonlocal t
+        t += DT
+        meas = {'imu_attitude': np.zeros(3), 'imu_rates': np.zeros(3)}
+        if gps:
+            meas.update(gps_position=pos + np.array([200.0, 0.0, 0.0]) * (t > 30.0), gps_velocity=velocity)
+        ekf.predict(DT)
+        ekf.update(meas, {'gps': GPS if gps else NO_GPS, 'imu': IMU}, t)
+
+    for _ in range(500):
+        step(True)
+    for _ in range(1000):
+        step(False)
+    step(True)                                   # back: position gated, velocity exact (0)
+    assert 'gps_position' in ekf.last_rejected and ekf.glide_offset is None
+    assert ekf.recovering                        # the position is not fused yet
+    for k in range(8):                           # now the GPS velocity reads 0.5 m/s
+        before = ekf.get_state()
+        step(True, velocity=np.array([0.5, 0.0, 0.0]))
+        after = ekf.get_state()
+        rate = np.linalg.norm(after['position'] - before['position'] - before['velocity'] * DT) / DT
+        assert 'gps_position' in ekf.last_rejected, k
+        assert rate <= ekf.MAX_RECOVERY_SPEED + 1e-9, (k, rate)

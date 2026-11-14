@@ -139,3 +139,15 @@ def test_passthrough_glides_back_after_an_outage():
     moved = ekf.get_state()['position'] - before - np.array([1.0, 0.0, 0.0]) * DT
     assert np.linalg.norm(moved) == pytest.approx(ekf.MAX_RECOVERY_SPEED * DT)   # ... published: glides
     assert ekf.get_status()['gliding']
+
+
+def test_passthrough_without_a_valid_key_uses_nothing():
+    """S-4 (R-08 mutation M4): a GPS dict without 'valid' counts as invalid in pass-through."""
+    ekf = make_ekf(mode='passthrough')
+    meas, sensors = px4([10.0, -4.0, -5.0], [1.0, 0.0, 0.0], eph=0.5, epv=0.5)
+    step(ekf, meas, sensors)
+    later, later_sensors = px4([50.0, 50.0, -20.0], [0.0, 0.0, 0.0], eph=0.5, epv=0.5)
+    del later_sensors['gps']['valid']
+    step(ekf, later, later_sensors)
+    assert 'gps_position' not in ekf.last_fused and 'gps_velocity' not in ekf.last_fused
+    assert np.allclose(ekf.get_state()["position"], [10.0 + DT, -4.0, -5.0])   # predicted on at 1 m/s

@@ -348,3 +348,50 @@ def test_noisy_fixes_inside_the_contract_are_not_mostly_rejected(hdop, eph):
             reset += 'gps_position' in ekf.last_reset
     assert rejected / n < 0.005, rejected / n
     assert reset == 0
+
+
+# --- S-4: the gate's thresholds per degree of freedom, and its normalisation ---------------------
+
+def gate_case(flags, offsets_for):
+    """A converged estimator after its predict step, and the GPS position measurement whose
+    normalised innovation over the components the flags leave is the given value."""
+    ekf = converged()
+    ekf.predict(DT)
+    S = np.diag(ekf.P)[0:3] + np.diag(ekf.R_nominal)[0:3]          # HDOP 0.8: nominal R
+    return ekf, offsets_for(S)
+
+
+@pytest.mark.parametrize("flags, components, nis, accepted", [
+    ({'z_valid': False}, (0, 1), 13.5, True),       # 2 components: gate 13.816
+    ({'z_valid': False}, (0, 1), 15.0, False),      # (inside the 3-component gate 16.266)
+    ({'xy_valid': False}, (2,), 10.5, True),        # 1 component: gate 10.828
+    ({'xy_valid': False}, (2,), 12.0, False),       # (inside the 2- and 3-component gates)
+    ({}, (0, 1, 2), 16.0, True),                    # 3 components: gate 16.266
+    ({}, (0, 1, 2), 16.5, False),
+])
+def test_gate_threshold_follows_the_number_of_components(flags, components, nis, accepted):
+    """S-4 (R-08 mutation M1): the chi-square gate of 1, 2 or 3 components."""
+    def offsets(S):
+        d = np.zeros(3)
+        for i in components:                         # the NIS split evenly over the components
+            d[i] = np.sqrt(nis / len(components) * S[i])
+        return d
+    ekf, d = gate_case(flags, offsets)
+    meas = measurements(pos=TRUTH + d)
+    ekf.update(meas, good_sensors(**flags), 10.0)
+    assert ('gps_position' in ekf.last_fused) is accepted
+    assert ('gps_position' in ekf.last_rejected) is (not accepted)
+    assert (ekf.last_fused if accepted else ekf.last_rejected)['gps_position'] == components
+
+
+def test_gate_normalises_by_the_innovation_covariance():
+    """S-4 (R-08 mutation M5): the gate divides by S = P + R, not P. Here R (1 m^2) is about ten
+    times P, so an innovation inside the gate on S is far outside it on P alone."""
+    def offsets(S):
+        return np.sqrt(15.0 / 3 * S)                 # NIS 15 on S = P + R
+    ekf, d = gate_case({}, offsets)
+    P = np.diag(ekf.P)[0:3]
+    assert np.all(np.diag(ekf.R_nominal)[0:3] > 5 * P)
+    assert np.sum(d ** 2 / P) > 100                  # on P alone: far outside 16.266
+    ekf.update(measurements(pos=TRUTH + d), good_sensors(), 10.0)
+    assert ekf.last_fused['gps_position'] == (0, 1, 2)
