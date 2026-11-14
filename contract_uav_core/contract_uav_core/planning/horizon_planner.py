@@ -130,16 +130,16 @@ class HorizonPlanner:
     Plans over a horizon using contract bounds composed offline (ContractBounds).
 
     Architecture:
-        Current State -> Cascade Contracts -> Optimize Margins -> Plan/Replan
+        Current State -> Assumption Check -> Closed-form Error Bound -> Margins -> Plan
 
-    At each planning step:
-    1. Build horizon contract by composing dynamics over N steps
-    2. For each step, compute safety margin (safety_limit - tracking_error_bound)
-    3. If margin < threshold, try:
-       a. Shorter horizon
-       b. Different controller
-       c. Modified target
-    4. Return best feasible plan
+    plan():
+    1. Try PID, MPC, then H-inf at max_horizon; a controller is tried only if the
+       state and wind lie inside its contract's input bounds
+    2. For each step t, bound the tracking error in closed form (_propagate_error)
+       and compute the safety margin (safety_limit - tracking_error_bound)
+    3. If no controller is safe, try MPC, then H-inf, at each shorter horizon
+    4. Return the first safe plan, else an INFEASIBLE plan; AdaptiveRePlanner
+       then returns the emergency plan (H-inf)
     """
 
     def __init__(self, config: Optional[PlannerConfig] = None):
