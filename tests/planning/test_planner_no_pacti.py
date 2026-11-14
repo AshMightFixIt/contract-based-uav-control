@@ -133,8 +133,19 @@ def test_contract_bounds_come_from_the_file():
 
 
 @pytest.mark.parametrize('ctrl', ['pid', 'mpc', 'hinf'])
-def test_planner_safety_trigger_uses_the_wind_envelope(ctrl):
-    """IntegratedPlanner._safety_critical replans when the wind exceeds the plan's controller limit."""
+def test_planner_safety_trigger_matches_the_wind_envelope(ctrl):
+    """IntegratedPlanner._safety_critical replans just above the plan's controller limit in wind_envelope().
+
+    The trigger keeps its own literal limits (the wind_limits dicts in
+    integrated_planner.py and horizon_planner.py); this test checks that they
+    agree with wind_envelope(), not that the code reads it. The literals stay
+    because the contracts tool reads them, with ast, as its "third copy" of the
+    wind limits (tools/contracts_offline/extract.py, third_copy, which needs a
+    dict literal), and its test test_wind_rows_carry_all_three_copies needs
+    that line once in each file. Reading wind_envelope() instead would empty
+    the third copy, change the tool's reconciliation output and fail that test.
+    That belongs with the single contract source (W4-11, decision DC).
+    """
     from contract_uav_core.contracts.envelope import wind_envelope
     from contract_uav_core.planning.horizon_planner import Plan, PlanStatus
     from contract_uav_core.planning.integrated_planner import IntegratedPlanner
