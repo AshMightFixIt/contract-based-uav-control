@@ -1,7 +1,10 @@
 """
 RuntimeMonitor: runtime monitors for environmental conditions (wind, GPS
-quality, compute delay). Moved unchanged from cbf_filter.py.
+quality, compute delay). Moved unchanged from cbf_filter.py; since W4-07 (A-R4)
+each history keeps only the newest HISTORY_LEN values.
 """
+
+from collections import deque
 
 import numpy as np
 from typing import Dict
@@ -12,16 +15,20 @@ class RuntimeMonitor:
     Runtime monitors for environmental conditions
     Compatible with agrt-cbf-mini framework
     """
-    
+
+    # Each history keeps the newest this many values, oldest first: one per update,
+    # so the last 60 s at 50 Hz (control_step updates wind and GPS once per step).
+    HISTORY_LEN = 3000
+
     def __init__(self):
         self.wind_estimate = 0.0
         self.gps_quality = 1.0  # 1.0 = good, 0.0 = bad
         self.compute_delay = 0.0
         
         self.history = {
-            'wind': [],
-            'gps': [],
-            'compute': []
+            'wind': deque(maxlen=self.HISTORY_LEN),
+            'gps': deque(maxlen=self.HISTORY_LEN),
+            'compute': deque(maxlen=self.HISTORY_LEN)
         }
     
     def update_wind_estimate(self, velocity: np.ndarray, expected_velocity: np.ndarray):
