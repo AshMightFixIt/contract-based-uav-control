@@ -96,17 +96,27 @@ class TelemetryMixin:
         return active_controller, flight_mode
 
     def save_flight_log(self, filename: str):
-        """Save flight log for analysis."""
-        import json
+        """Save the flight log as JSON to filename, and the contract metrics next to it.
 
+        The contract metrics (contract_monitor.export_metrics: its newest HISTORY_LEN
+        metrics) go to filename with '_contracts' before a '.json' extension
+        (flight.json -> flight_contracts.json), or with '_contracts.json' appended to
+        any other name (flight -> flight_contracts.json), so they never overwrite the log.
+        The arrays are converted to lists in copies: the flight log in memory keeps them.
+        (W4-07: before, the conversion wrote into the log itself, and a name without
+        '.json' was overwritten by the contract metrics.)
+        """
+        import json
+        import os
+
+        filename = os.fspath(filename)
         log_serializable = []
         for entry in self.flight_log:
             entry_copy = entry.copy()
             for key in ['state', 'control', 'system_conditions']:
                 if key in entry_copy:
-                    for subkey, val in entry_copy[key].items():
-                        if isinstance(val, np.ndarray):
-                            entry_copy[key][subkey] = val.tolist()
+                    entry_copy[key] = {subkey: val.tolist() if isinstance(val, np.ndarray) else val
+                                       for subkey, val in entry_copy[key].items()}
             log_serializable.append(entry_copy)
 
         with open(filename, 'w') as f:
@@ -114,5 +124,6 @@ class TelemetryMixin:
 
         logger.info(f"Flight log saved to {filename}")
 
-        contract_log = filename.replace('.json', '_contracts.json')
+        root, extension = os.path.splitext(filename)
+        contract_log = (root if extension.lower() == '.json' else filename) + '_contracts.json'
         self.contract_monitor.export_metrics(contract_log)
