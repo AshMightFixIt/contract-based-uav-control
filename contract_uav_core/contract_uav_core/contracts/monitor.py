@@ -9,7 +9,8 @@ verify_mission_feasibility from preflight.py.
 Self-test: python -m contract_uav_core.contracts.monitor
 """
 
-from typing import Dict, List, Tuple, Optional
+from collections import deque
+from typing import Deque, Dict, Tuple, Optional
 import logging
 
 from .library import ContractLibraryMixin
@@ -27,6 +28,11 @@ class HierarchicalContractMonitor(ContractLibraryMixin, ContractPreflightMixin):
     Each component has contracts, and we compose them for system-level guarantees
     """
 
+    # history keeps the newest this many ContractMetrics (W4-07, A-R4). control_step
+    # records 5 per step, so this is the last 2000 steps (40 s at 50 Hz): a whole
+    # demos/simulation_demo.py run (1100 steps), which export_metrics writes out.
+    HISTORY_LEN = 10000
+
     def __init__(self, use_pacti: bool = False):
         self.use_pacti = use_pacti and PACTI_AVAILABLE
 
@@ -40,8 +46,10 @@ class HierarchicalContractMonitor(ContractLibraryMixin, ContractPreflightMixin):
         self.pipeline_contracts = {}  # For each controller
         self.current_pipeline = None
 
-        # Monitoring history
-        self.history: List[ContractMetrics] = []
+        # Monitoring history: the newest HISTORY_LEN metrics, oldest first (W4-07, A-R4)
+        self.history: Deque[ContractMetrics] = deque(maxlen=self.HISTORY_LEN)
+        # The newest metrics per component, read by get_contract_status in O(1)
+        self._latest: Dict[str, ContractMetrics] = {}
 
         logger.info(f"Contract Monitor initialized (Pacti: {self.use_pacti})")
 
@@ -97,20 +105,19 @@ class HierarchicalContractMonitor(ContractLibraryMixin, ContractPreflightMixin):
         )
 
         self.history.append(metrics)
+        self._latest[component] = metrics
 
         return metrics
 
     def get_contract_status(self, component: str) -> ContractStatus:
-        """Get current contract status for a component"""
-        if not self.history:
-            return ContractStatus.UNKNOWN
+        """Get current contract status for a component.
 
-        # Get latest metrics for this component
-        recent = [m for m in self.history if m.component_name == component]
-        if not recent:
+        From the newest metrics monitor_runtime recorded for it (UNKNOWN if none), kept
+        per component, so the call is O(1) and does not depend on the bounded history.
+        """
+        latest = self._latest.get(component)
+        if latest is None:
             return ContractStatus.UNKNOWN
-
-        latest = recent[-1]
 
         if latest.assumptions_met and latest.guarantees_met:
             return ContractStatus.SATISFIED
@@ -187,7 +194,7 @@ class HierarchicalContractMonitor(ContractLibraryMixin, ContractPreflightMixin):
         return False, None, "Already in Hinf, no alternatives"
 
     def export_metrics(self, filename: str):
-        """Export contract monitoring history for analysis"""
+        """Export contract monitoring history for analysis: the newest HISTORY_LEN metrics."""
         import json
 
         data = {
