@@ -395,3 +395,19 @@ def test_gate_normalises_by_the_innovation_covariance():
     assert np.sum(d ** 2 / P) > 100                  # on P alone: far outside 16.266
     ekf.update(measurements(pos=TRUTH + d), good_sensors(), 10.0)
     assert ekf.last_fused['gps_position'] == (0, 1, 2)
+
+
+def test_writing_one_element_of_P_raises():
+    """P is assembled from the blocks, so an element write could not reach the filter: it raises
+    instead of being lost (R-08 re-check NIT). get_covariance() is a writable copy."""
+    ekf = make_ekf()
+    with pytest.raises(ValueError):
+        ekf.P[0, 0] = 5.0
+    assert ekf.P[0, 0] == 1.0
+    P = ekf.get_covariance()
+    P[0, 0] = 5.0                                  # the caller's own copy
+    assert ekf.P[0, 0] == 1.0
+    P = ekf.P.copy()
+    P[0, 0] = 5.0
+    ekf.P = P                                      # the way to change P
+    assert ekf.P[0, 0] == 5.0

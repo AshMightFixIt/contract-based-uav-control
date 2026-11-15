@@ -60,8 +60,8 @@ class ContractAwareEKF:
     two of the six pairs (a quantity and its rate) in PAIRS, so the covariance is
     block diagonal in them, and it is kept as six 2x2 blocks [P_aa, P_ab, P_bb]:
     predict and update are closed forms per pair, with no 12x12 product or inverse.
-    The P property assembles the 12x12 matrix (and takes one back, if it has that
-    structure); assign a whole matrix to change it, not single elements.
+    The P property assembles the 12x12 matrix, read-only (and takes one back, if it has
+    that structure); assign a whole matrix to change it: writing one element raises.
     """
 
     # The measurements update() reads (keys of its `measurements` dict, each shape (3,))
@@ -209,7 +209,14 @@ class ContractAwareEKF:
 
     @property
     def P(self) -> np.ndarray:
-        """The 12x12 covariance, assembled from the pairs' blocks (a new array each time)."""
+        """The 12x12 covariance, assembled from the pairs' blocks: a new, read-only array, so
+        writing one element raises instead of being silently lost. Assign a whole matrix to
+        change P; get_covariance() returns a writable copy."""
+        P = self._assemble_P()
+        P.flags.writeable = False
+        return P
+
+    def _assemble_P(self) -> np.ndarray:
         blocks = np.array(self._cov)
         P = np.zeros((self.n, self.n))
         P[self._FIRST, self._FIRST] = blocks[:, 0]
@@ -225,7 +232,7 @@ class ContractAwareEKF:
             raise ValueError(f"P must be {self.n}x{self.n}, not {value.shape}")
         blocks = [[float(value[a, a]), float(value[a, b]), float(value[b, b])] for a, b in self.PAIRS]
         previous, self._cov = getattr(self, '_cov', None), blocks
-        if not np.array_equal(self.P, value):
+        if not np.array_equal(self._assemble_P(), value):
             self._cov = previous
             raise ValueError("P must be symmetric and couple only the rows of a pair in PAIRS "
                              "(a quantity and its rate)")
@@ -708,7 +715,7 @@ class ContractAwareEKF:
         While the position glides back (T5), the position block also holds the offset
         between the published position and the filter's estimate (P + d d').
         """
-        P = self.P
+        P = self._assemble_P()
         if self.glide_offset is not None:
             P[0:3, 0:3] += np.outer(self.glide_offset, self.glide_offset)
         return P
