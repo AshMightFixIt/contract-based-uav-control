@@ -61,7 +61,8 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
     DT_MAX_FACTOR = 2.0
     OVERRUN_FACTOR = 1.5
 
-    def __init__(self, dt: float = 0.02, use_horizon_planner: bool = True):
+    def __init__(self, dt: float = 0.02, use_horizon_planner: bool = True,
+                 flight_log_len: Optional[int] = None):
         self.dt = dt
         self.time = 0.0
 
@@ -125,8 +126,9 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
         # Multi-factor switching state
         self._prev_tracking_error = 0.0   # for error-trend detection
 
-        # Data logging
-        self.flight_log = []
+        # Data logging. flight_log_len: None keeps every step (a list), N > 0 the
+        # newest N (a deque), 0 none (telemetry.py; W4-07, A-R4)
+        self.flight_log = self._new_flight_log(flight_log_len)
 
         logger.info("Adaptive Drone Controller initialized")
 

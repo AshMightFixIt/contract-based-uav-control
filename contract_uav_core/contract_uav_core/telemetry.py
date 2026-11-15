@@ -3,12 +3,23 @@ Per-step bookkeeping and flight-log export for AdaptiveDroneController (core.py)
 
 _record_step holds steps 11-14 of control_step (runtime monitors, contract
 monitoring, the flight-log entry) and save_flight_log writes the log; both are
-moved unchanged from adaptive_control_system.py. The telemetry dict that
-control_step returns is still built in core.py.
+moved from adaptive_control_system.py. The telemetry dict that control_step
+returns is still built in core.py.
+
+The flight log (W4-07, A-R4) is AdaptiveDroneController(flight_log_len=...):
+- None (the default): a list with one entry per step, as before W4-07. It
+  grows by about 2 KB per step (6 MB per simulated minute at 50 Hz), so the
+  benchmark and demo scripts keep and save whole runs; a long run, or the ROS
+  node, should pass a length.
+- N > 0: a collections.deque(maxlen=N) of the newest N entries.
+- 0: no flight log; _record_step does not build the entry.
 """
 
+from collections import deque
+import numbers
+
 import numpy as np
-from typing import Dict, Tuple
+from typing import Deque, Dict, List, Optional, Tuple, Union
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,6 +27,16 @@ logger = logging.getLogger(__name__)
 
 class TelemetryMixin:
     """Runtime and contract monitor updates, the flight log and its export."""
+
+    @staticmethod
+    def _new_flight_log(flight_log_len: Optional[int]) -> Union[List[Dict], Deque[Dict]]:
+        """The empty flight log for AdaptiveDroneController(flight_log_len=...); see the module docstring."""
+        if flight_log_len is None:
+            return []
+        if isinstance(flight_log_len, bool) or not isinstance(flight_log_len, numbers.Integral) \
+                or flight_log_len < 0:
+            raise ValueError(f"flight_log_len must be None or an integer >= 0, got {flight_log_len!r}")
+        return deque(maxlen=int(flight_log_len))
 
     def _record_step(self,
                      raw_sensors: Dict[str, any],
@@ -55,8 +76,10 @@ class TelemetryMixin:
         }
         self.contract_monitor.monitor_runtime('actuators', actuator_state, self.time)
 
-        # 14. Log data
+        # 14. Log data (not with flight_log_len=0: a deque that keeps nothing)
         flight_mode = self.supervisor.get_mode().value
+        if getattr(self.flight_log, 'maxlen', None) == 0:
+            return active_controller, flight_mode
         log_entry = {
             'time': self.time,
             'state': state_dict.copy(),
