@@ -33,26 +33,27 @@ def make_ekf(**kw):
 class Flight:
     """Truth moving at a constant velocity (or any velocity set on it), with measurements."""
 
-    def __init__(self, velocity, seed=0):
+    def __init__(self, velocity, seed=0, dt=DT):
         self.ekf = make_ekf()
         self.pos = START.copy()
         self.vel = np.array(velocity, dtype=float)
         self.t = 0.0
+        self.dt = dt
         self.rng = np.random.default_rng(seed)
 
     def step(self, gps=True):
-        self.t += DT
-        self.pos = self.pos + self.vel * DT
+        self.t += self.dt
+        self.pos = self.pos + self.vel * self.dt
         meas = {'imu_attitude': self.rng.standard_normal(3) * 0.001,
                 'imu_rates': self.rng.standard_normal(3) * 0.001}
         if gps:
             meas['gps_position'] = self.pos + self.rng.standard_normal(3) * 0.01
             meas['gps_velocity'] = self.vel + self.rng.standard_normal(3) * 0.01
-        self.ekf.predict(DT)
+        self.ekf.predict(self.dt)
         return self.ekf.update(meas, {'gps': GPS if gps else NO_GPS, 'imu': IMU}, self.t)
 
     def fly(self, seconds, gps=True):
-        for _ in range(int(round(seconds / DT))):
+        for _ in range(int(round(seconds / self.dt))):
             self.step(gps)
 
     def error(self):
@@ -160,27 +161,31 @@ def test_dead_reckoning_adds_the_extra_process_noise():
 
 # --- T5: smooth recovery -----------------------------------------------------------------------
 
-def outage_then_stop():
+def outage_then_stop(dt=DT):
     """10 s of GPS at 1 m/s, then a 10 s outage in which the truth stops: the dead-reckoned
-    estimate keeps going and ends about 10 m off."""
-    flight = Flight([1.0, 0.0, 0.0])
+    estimate keeps going and ends about 10 m off. dt: the estimator's step."""
+    flight = Flight([1.0, 0.0, 0.0], dt=dt)
     flight.fly(10.0)
     flight.vel = np.zeros(3)
     flight.fly(10.0, gps=False)
     return flight
 
 
-def test_gps_return_glides_at_most_2_m_s():
-    flight = outage_then_stop()
+@pytest.mark.parametrize("dt", [0.01, 0.02, 0.04])
+def test_gps_return_glides_at_most_2_m_s(dt):
+    """T5, at the step the estimator is given (R-08 re-check R-1: the node runs the core on the
+    measured step, so the limit must use it, not the nominal 0.02 s; with the nominal step a
+    0.01 s loop would glide at 4 m/s)."""
+    flight = outage_then_stop(dt)
     ekf = flight.ekf
     assert np.linalg.norm(flight.error()) > 9.0
     published = ekf.get_state()['position']
     rates, covered = [], []
-    for k in range(int(8.0 / DT)):
+    for k in range(int(round(8.0 / dt))):
         v = ekf.get_state()['velocity']
         flight.step(gps=True)
         now = ekf.get_state()['position']
-        rates.append(np.linalg.norm(now - published - v * DT) / DT)   # beyond the estimated velocity
+        rates.append(np.linalg.norm(now - published - v * dt) / dt)   # beyond the estimated velocity
         P = ekf.get_covariance()
         covered.append(all(abs(flight.error()[i]) <= 3 * np.sqrt(P[i, i]) for i in range(3)))
         published = now
@@ -225,12 +230,12 @@ def test_short_dropout_does_not_glide():
 
 # --- T5, per-axis and gated returns (review R-08, B-1 and S-2) ---------------------------------
 
-def per_axis_outage(mode):
+def per_axis_outage(mode, dt=DT):
     """10 s of GPS at 1 m/s; then 10 s in which the truth stops and PX4 marks the horizontal
     position and velocity invalid (xy_valid, v_xy_valid False) while z stays valid (baro), as
-    PX4 does when it loses GPS; then everything valid again. Returns the published correction
-    rate beyond the estimated velocity at each step after the return, whether the estimator
-    was recovering then, and the estimator."""
+    PX4 does when it loses GPS; then everything valid again, for 8 s; all at the step dt.
+    Returns the published correction rate beyond the estimated velocity at each step after
+    the return, whether the estimator was recovering then, and the estimator."""
     ekf = make_ekf(mode=mode)
     pos, vel = START.copy(), np.array([1.0, 0.0, 0.0])
     accuracy = {'eph': 0.5, 'epv': 0.5, 'evh': 0.1, 'evv': 0.1}
@@ -238,35 +243,37 @@ def per_axis_outage(mode):
     def step(t, flags):
         meas = {'gps_position': pos.copy(), 'gps_velocity': vel.copy(),
                 'imu_attitude': np.zeros(3), 'imu_rates': np.zeros(3)}
-        ekf.predict(DT)
+        ekf.predict(dt)
         ekf.update(meas, {'gps': {**GPS, **accuracy, **flags}, 'imu': IMU}, t)
 
-    t = 0.0
-    for _ in range(500):
-        t += DT
-        pos = pos + vel * DT
+    t, steps = 0.0, int(round(10.0 / dt))
+    for _ in range(steps):
+        t += dt
+        pos = pos + vel * dt
         step(t, {})
     vel = np.zeros(3)
-    for _ in range(500):
-        t += DT
+    for _ in range(steps):
+        t += dt
         step(t, {'xy_valid': False, 'v_xy_valid': False})
         assert ekf.last_fused['gps_position'] == (2,)          # z was fused all along
     assert np.linalg.norm(ekf.get_state()['position'] - pos) > 9.0
     rates, recovering = [], []
-    for _ in range(400):
+    for _ in range(int(round(8.0 / dt))):
         before = ekf.get_state()
-        t += DT
+        t += dt
         step(t, {})
         after = ekf.get_state()
-        rates.append(np.linalg.norm(after['position'] - before['position'] - before['velocity'] * DT) / DT)
+        rates.append(np.linalg.norm(after['position'] - before['position'] - before['velocity'] * dt) / dt)
         recovering.append(ekf.recovering or ekf.glide_offset is not None)
     return np.array(rates), np.array(recovering), ekf, pos
 
 
+@pytest.mark.parametrize("dt", [0.01, 0.02, 0.04])
 @pytest.mark.parametrize("mode", ['fusion', 'passthrough'])
-def test_per_axis_gps_return_glides(mode):
-    """B-1: a horizontal return while z stayed valid glides at <= 2 m/s (it snapped at 481 m/s)."""
-    rates, recovering, ekf, pos = per_axis_outage(mode)
+def test_per_axis_gps_return_glides(mode, dt):
+    """B-1: a horizontal return while z stayed valid glides at <= 2 m/s (it snapped at 481 m/s),
+    at the step the estimator is given (R-08 re-check R-1)."""
+    rates, recovering, ekf, pos = per_axis_outage(mode, dt)
     assert recovering[0]
     assert rates[recovering].max() <= ekf.MAX_RECOVERY_SPEED + 1e-9
     assert rates[recovering].max() > 0.99 * ekf.MAX_RECOVERY_SPEED    # it glided at the limit
