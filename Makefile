@@ -20,7 +20,7 @@ export SDL_AUDIODRIVER := dummy
 export PYTHONDONTWRITEBYTECODE := 1
 
 .DEFAULT_GOAL := help
-.PHONY: help test golden golden-update test-pacti golden-update-pacti test-all
+.PHONY: help test golden golden-update test-pacti golden-update-pacti test-perf test-all
 
 help:
 	@echo "make test                 default suite: module smoke tests + requirements-only goldens (~1 min)"
@@ -28,6 +28,7 @@ help:
 	@echo "make golden-update        rewrite the requirements-only goldens (reviewed behaviour change only)"
 	@echo "make test-pacti           opt-in: pacti reproduction of docs/RESULTS.md section 1 (~30-90 s)"
 	@echo "make golden-update-pacti  rewrite the pacti golden (reviewed behaviour change only)"
+	@echo "make test-perf            opt-in: G1.4, a 30-minute simulated run in budget (~3-5 min)"
 	@echo "make test-all             everything, slow tests included (needs pacti)"
 	@echo "Options: PYTHON=<interpreter> (default python3), PYTEST_ARGS=<extra pytest args>"
 
@@ -47,6 +48,9 @@ test-pacti:
 golden-update-pacti:
 	$(REQUIRE_PACTI)
 	$(PYTEST) -m "golden and slow" --update-goldens $(PYTEST_ARGS)
+
+test-perf:
+	$(PYTEST) -m perf $(PYTEST_ARGS)
 
 test-all:
 	$(REQUIRE_PACTI)

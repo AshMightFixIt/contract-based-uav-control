@@ -27,7 +27,11 @@ default, -1, leaves the constructor's default) and print one JSON line.
   (time.thread_time), so neither other processes nor NumPy's BLAS threads count
   (W4-09). Where that clock is coarse (Windows updates it every 15.6 ms) the
   wall clock (time.perf_counter) is used instead, and 'clock' says so. Reports
-  p99 and max, and the medians of the first and the last --window minutes.
+  p99 and max, and for each window of --window minutes the median: plain,
+  and adjusted for the controller mix (adjusted_ms: each tier's median in the
+  window, weighted by the tier's share of the whole run). The mix matters: an
+  MPC step takes about 0.30 ms, a PID or H-infinity step about 0.22 ms, and
+  the share of each tier in a window varies with the path flown.
 - memory: tracemalloc traces the whole run; the growth is the memory traced
   at the end minus that traced after --warmup minutes (whole minutes; also
   reported for each later minute). Tracing from the first step, not from the
@@ -141,25 +145,38 @@ def clock_tick(clock, samples=20):
     return min(ticks)
 
 
+def mix_adjusted_median(ms, tiers, share):
+    """The median step time per tier, weighted by each tier's share of the whole run (share)."""
+    medians = {tier: float(np.median(ms[tiers == tier])) for tier in share if np.any(tiers == tier)}
+    return sum(share[t] * medians[t] for t in medians) / sum(share[t] for t in medians), medians
+
+
 def measure_time(minutes, window, controller_kwargs):
     tick = clock_tick(time.thread_time)
     clock, name = (time.thread_time, 'thread_time') if tick <= FINE_CLOCK else (time.perf_counter, 'perf_counter')
     patrol = Patrol(**controller_kwargs)
     steps = int(round(minutes * STEPS_PER_MINUTE))
     per_step = np.empty(steps)
-    controllers, modes, replans = {}, {}, 0
+    tiers = np.empty(steps, dtype=object)
+    modes, replans = {}, 0
     for k in range(steps):
         _, telemetry, per_step[k] = patrol.step(clock)
-        controllers[telemetry['active_controller']] = controllers.get(telemetry['active_controller'], 0) + 1
+        tiers[k] = telemetry['active_controller']
         modes[telemetry['flight_mode']] = modes.get(telemetry['flight_mode'], 0) + 1
         replans += bool(telemetry['planner']['replanned'])
     n = int(round(window * STEPS_PER_MINUTE))
     ms = 1e3 * per_step
+    controllers = {tier: int(np.sum(tiers == tier)) for tier in sorted(set(tiers))}
+    share = {tier: count / steps for tier, count in controllers.items()}
+    windows = []
+    for i in range(0, steps - n + 1, n):
+        adjusted, tier_medians = mix_adjusted_median(ms[i:i + n], tiers[i:i + n], share)
+        windows.append({'adjusted_ms': adjusted, 'median_ms': float(np.median(ms[i:i + n])),
+                        'tier_medians_ms': tier_medians})
     return {
         'measure': 'time', 'minutes': minutes, 'steps': steps, 'clock': name, 'thread_time_tick_s': tick,
         'p99_ms': float(np.percentile(ms, 99)), 'max_ms': float(ms.max()), 'median_ms': float(np.median(ms)),
-        'window_minutes': window,
-        'first_median_ms': float(np.median(ms[:n])), 'last_median_ms': float(np.median(ms[-n:])),
+        'window_minutes': window, 'windows': windows,
         'minute_medians_ms': [round(float(np.median(ms[i:i + STEPS_PER_MINUTE])), 4)
                               for i in range(0, steps, STEPS_PER_MINUTE)],
         'controllers': controllers, 'modes': modes, 'replans': replans, 'reloads': patrol.reloads,
