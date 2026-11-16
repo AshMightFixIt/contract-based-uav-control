@@ -1,6 +1,6 @@
-Running Adaptive... COMPLETE  (WP: 3/4, RMS: 3.22m, DR: 0.0%)
-Running PID-only... COMPLETE  (WP: 3/4, RMS: 3.19m, DR: 0.0%)
-Running MPC-only... COMPLETE  (WP: 3/4, RMS: 3.40m, DR: 0.0%)
+Running Adaptive... COMPLETE  (WP: 3/4, RMS: 3.14m, DR: 0.0%)
+Running PID-only... COMPLETE  (WP: 3/4, RMS: 3.14m, DR: 0.0%)
+Running MPC-only... COMPLETE  (WP: 3/4, RMS: 3.21m, DR: 0.0%)
 Running H-inf-only... COMPLETE  (WP: 3/4, RMS: 3.47m, DR: 0.0%)
 
 ====================================================================================================
@@ -8,16 +8,16 @@ SENSOR DEGRADATION BENCHMARK RESULTS
 ====================================================================================================
 Metric                                adaptive               PID               MPC              Hinf
 ----------------------------------------------------------------------------------------------------
-RMS Tracking Error (m)                   3.224           3.194 *             3.399           3.467 !
+RMS Tracking Error (m)                   3.144           3.137 *             3.211           3.467 !
 Max Tracking Error (m)                   5.533           5.518 *             5.531           6.297 !
 Waypoints Completed                          3                 3                 3                 3
 Mission Time (s)                      30.020 !          30.020 !          30.020 !          26.260 *
-Total Energy (N·s)                      17.675            17.559          17.731 !          15.678 *
-Control Effort                           1.023             0.848           0.611 *           2.854 !
+Total Energy (N·s)                      17.407            17.455          17.536 !          15.674 *
+Control Effort                           1.125             0.890           0.605 *           2.839 !
 CBF Interventions                            0                 0                 0                 0
-Max Tilt (rad)                           0.140           0.135 *             0.141           0.196 !
-Control Smoothness                       2.847             1.991           1.672 *          15.807 !
-Max Speed (m/s)                          0.859             0.857           0.745 *           0.959 !
+Max Tilt (rad)                           0.157           0.135 *             0.138           0.196 !
+Control Smoothness                       3.050             2.025           1.681 *          15.818 !
+Max Speed (m/s)                          0.859             0.857           0.688 *           0.959 !
 Max Drift (Combined)                         0                 0                 0                 0
 IMU-Only Time (%)                     14.212 !          14.212 !          14.212 !           4.089 *
 Dead Reckoning (%)                           0                 0                 0                 0
@@ -28,8 +28,8 @@ PER-PHASE RMS TRACKING ERROR (m):
 Phase                         adaptive               PID               MPC              Hinf
 --------------------------------------------------------------------------------------------
 Nominal                        3.446 *             3.465             3.456           3.809 !
-GPS Degrade                      2.901             2.795           3.315 !           2.761 *
-GPS Recovery                     3.386           2.769 *           5.018 !               N/A
+GPS Degrade                      2.695           2.642 *           2.855 !             2.762
+GPS Recovery                     0.534           0.404 *           0.725 !               N/A
 IMU Degrade                        N/A               N/A               N/A               N/A
 Combined Fail                      N/A               N/A               N/A               N/A
 Partial Recov                      N/A               N/A               N/A               N/A
@@ -38,7 +38,7 @@ Full Recovery                      N/A               N/A               N/A      
 ========================================================================
 QUALITATIVE SUMMARY
 ========================================================================
-  Best tracking accuracy    : PID-only (RMS 3.194m)
+  Best tracking accuracy    : PID-only (RMS 3.137m)
   Best drift resilience     : Adaptive (max drift 0.00m during combined failure)
   Most waypoints completed  : Adaptive (3/4)
   Smoothest control         : MPC-only (smoothness 1.7)
