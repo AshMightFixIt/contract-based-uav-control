@@ -168,9 +168,13 @@ class ContractAwareEKF:
     # bias itself. Without an anchor yet, it is zero (no wind).
     LOW_SPEED = 1.0                       # m/s
     # And the held bias may be wrong by up to its own size (wind change, a drag law other than
-    # quadratic): its velocity variance also grows by (max(|bias|, |anchor|) / 3)^2 per s^2 of
-    # outage, so that 3 sigma covers a bias that is off by that much from the loss on.
-    BIAS_HOLD_SIGMAS = 3.0
+    # quadratic): its velocity variance also grows by (max(|bias|, |anchor|) / BIAS_HOLD_SIGMAS)^2
+    # per s^2 of outage. A constant acceleration error e gives a velocity error e t and a
+    # position error e t^2 / 2; grown as a random walk (2 t dt per step) the position variance
+    # reaches only sigma^2 t^4 / 6, so sigma = |bias| / 2: 3 sigma covers 1.5 times the velocity
+    # error and 1.22 times the position error of the whole bias vanishing (with / 3, 0.82: the
+    # position left the bound, test_covariance_covers_a_held_bias_that_vanishes).
+    BIAS_HOLD_SIGMAS = 2.0
     # When nothing is fused at all (both sensor contracts violated) the covariance grows by
     # this many more times the step's process noise (the legacy 2 Q).
     DEAD_RECKONING_EXTRA_Q = 2.0

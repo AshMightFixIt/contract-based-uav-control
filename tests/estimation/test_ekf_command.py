@@ -205,7 +205,8 @@ def test_commanded_velocity_variance_grows_by_the_mismatch_noise_capped_by_the_e
     assert np.all(p_loss < 0.2)
     for k in range(1, 126):                          # 2.5 s
         truth.step(np.zeros(3), gps=False)
-    expected = p_loss + ekf.COMMAND_MISMATCH_PSD * 2.5
+    hold = np.array([ekf._bias_hold_sigma(i) for i in range(3)]) ** 2 * 2.5 ** 2   # fix round: ~1e-5
+    expected = p_loss + ekf.COMMAND_MISMATCH_PSD * 2.5 + hold
     assert np.diag(ekf.P)[3:6] == pytest.approx(expected)
     for _ in range(1000):                            # 20 s more: the envelope caps it
         truth.step(np.zeros(3), gps=False)
@@ -488,3 +489,24 @@ def test_a_plausible_hover_thrust_error_is_learned_in_full():
     for _ in range(500):
         truth.step(command)
     assert truth.ekf.command_bias[2] == pytest.approx(0.3 * G, abs=0.02)
+
+
+def test_covariance_covers_a_held_bias_that_vanishes():
+    """The held bias's own term is not capped by the speed envelope: a wind that drops at the loss
+    (a learned 1 m/s^2 of drag that vanishes) drives the velocity error to 8 m/s in 8 s, beyond the
+    3 m/s envelope, and the 3 sigma bound still covers it (review R-08b: the wind 6 -> 0 case was
+    1.5 x 3 sigma in velocity)."""
+    truth = Truth(bias=(1.0, 0.0, 0.0))
+    command = np.array([-1.0, 0.0, 0.0])
+    for _ in range(500):
+        truth.step(command)
+    assert truth.ekf._speed_limit(0) == truth.ekf.NO_GPS_SPEED_LIMIT[0]
+    worst = 0.0
+    for _ in range(400):                              # the wind drops with the GPS loss
+        truth.step(command, gps=False, accel=command)
+        P = truth.ekf.get_covariance()
+        verr = truth.ekf.get_state()['velocity'] - truth.vel
+        worst = max(worst, max(abs(verr[i]) / (3 * np.sqrt(P[3 + i, 3 + i])) for i in range(3)),
+                    max(abs(truth.error()[i]) / (3 * np.sqrt(P[i, i])) for i in range(3)))
+    assert np.linalg.norm(truth.ekf.get_state()['velocity'] - truth.vel) > 7.0
+    assert worst <= 1.0
