@@ -393,3 +393,87 @@ def test_bias_is_not_learned_with_less_than_half_the_hover_thrust():
     for _ in range(250):
         truth.step(command)
     assert truth.ekf.command_bias[0] == pytest.approx(0.3, abs=0.03)
+
+
+# --- the held bias as the speed changes (fix round, review R-08b B-1) ----------------------------
+
+def drag_truth(wind=(1.0, 0.0), k=0.025, cruise=8.0):
+    """A truth with quadratic drag k |v - w| (v - w) horizontally (as sim/quadrotor.py) and a hover-
+    thrust error of 0.4 m/s^2 vertically, under a controller that balances it: 5 s hover, then
+    a 2 m/s^2 acceleration to `cruise` m/s along x and 6 s of cruise, with GPS. Returns (truth,
+    drag function)."""
+    w = np.array([wind[0], wind[1], 0.0])
+
+    def accel_extra(v):
+        rel = v - w
+        rel[2] = 0.0
+        return -k * np.linalg.norm(rel) * rel + np.array([0.0, 0.0, 0.4])
+
+    truth = Truth()
+    for _ in range(250):
+        command = -accel_extra(truth.vel)
+        truth.step(command, accel=command + accel_extra(truth.vel))
+    for _ in range(int(round(cruise / 2.0 / DT)) + 300):
+        push = np.array([min(2.0, (cruise - truth.vel[0]) / DT), 0.0, 0.0])
+        command = push - accel_extra(truth.vel)
+        truth.step(command, accel=command + accel_extra(truth.vel))
+    return truth, accel_extra
+
+
+def test_held_bias_goes_back_to_the_low_speed_anchor_as_the_vehicle_stops():
+    """GPS lost while cruising, then the HOVER brake: the cruise drag held as it was (3de3b82) ran
+    the estimate tens of metres off; scheduled by the speed between the learned bias and the one
+    learned in hover (the anchor: wind drag, hover-thrust error), the estimate follows."""
+    truth, extra = drag_truth()
+    ekf = truth.ekf
+    assert ekf.command_bias[0] == pytest.approx(extra(np.array([8.0, 0.0, 0.0]))[0], abs=0.05)
+    assert ekf.command_bias_anchor[0] == pytest.approx(extra(np.zeros(3))[0], abs=0.02)
+    assert ekf.command_bias_anchor[2] == pytest.approx(0.4, abs=0.02)
+    for _ in range(500):                             # 10 s: brake at 2 m/s^2, then hold
+        brake = np.array([-min(2.0, truth.vel[0] / DT), 0.0, 0.0])
+        command = brake - extra(truth.vel)           # the controller's model is right here
+        truth.step(command, gps=False, accel=command + extra(truth.vel))
+    assert abs(truth.vel[0]) < 0.05
+    assert np.linalg.norm(truth.error()) < 1.0       # held as learned: ~40 m (see below)
+    held = ekf._held_bias(np.zeros(3))
+    assert held == pytest.approx(ekf.command_bias_anchor.tolist())    # stopped: the anchor
+    assert ekf._held_bias(np.array([8.0, 0.0, 0.0]))[0] == pytest.approx(ekf.command_bias[0])
+    assert ekf._held_bias(np.array([8.0, 0.0, 0.0]))[2] == pytest.approx(0.4, abs=0.02)
+
+
+def test_without_the_schedule_the_cruise_drag_runs_the_estimate_off():
+    """The mechanism of review R-08b B-1, open loop: the same flight with the anchor forced to the
+    cruise bias (i.e. the bias held as learned) ends tens of metres off."""
+    truth, extra = drag_truth()
+    ekf = truth.ekf
+    ekf.command_bias_anchor = ekf.command_bias.copy()
+    for _ in range(500):
+        brake = np.array([-min(2.0, truth.vel[0] / DT), 0.0, 0.0])
+        command = brake - extra(truth.vel)
+        truth.step(command, gps=False, accel=command + extra(truth.vel))
+    assert np.linalg.norm(truth.error()) > 30.0
+
+
+def test_held_bias_variance_grows_with_the_bias_and_the_envelope_widens_to_the_speed_flown():
+    """The held bias may be wrong by up to its own size: the velocity variance also grows by
+    (max(|bias|, |anchor|) / 3)^2 (2 tau dt + dt^2) per step, not capped by the envelope below that
+    term; and the envelope's limit is at least the largest speed flown with GPS."""
+    truth, extra = drag_truth()
+    ekf = truth.ekf
+    assert ekf._speed_limit(0) == pytest.approx(8.0, abs=0.05)       # flown at 8 m/s
+    assert ekf._speed_limit(1) == ekf.NO_GPS_SPEED_LIMIT[1]
+    command = -extra(truth.vel)
+    truth.step(command, gps=False, accel=command + extra(truth.vel))  # the loss step
+    p0 = np.diag(ekf.P)[3:6].copy()
+    n = 150
+    for _ in range(n):
+        command = -extra(truth.vel)
+        truth.step(command, gps=False, accel=command + extra(truth.vel))
+    tau = DT * n                                     # the outage clock starts after the loss step
+    for i in range(3):
+        sigma_b = max(abs(ekf.command_bias[i]), abs(ekf.command_bias_anchor[i])) / ekf.BIAS_HOLD_SIGMAS
+        grown = p0[i] + ekf.COMMAND_MISMATCH_PSD * tau + sigma_b ** 2 * tau ** 2
+        cap = max((abs(ekf.x[3 + i]) + ekf._speed_limit(i)) / 3.0, sigma_b * tau)
+        assert ekf.P[3 + i, 3 + i] == pytest.approx(min(grown, cap ** 2), rel=1e-6), i
+    assert np.diag(ekf.P)[5] == pytest.approx(((abs(ekf.x[5]) + 2.0) / 3.0) ** 2, rel=1e-6)
+    assert np.diag(ekf.P)[3] > p0[0] + ekf.COMMAND_MISMATCH_PSD * tau + 0.9 * (abs(ekf.command_bias[0]) / 3 * tau) ** 2

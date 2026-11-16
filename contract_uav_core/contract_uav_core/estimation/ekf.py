@@ -35,6 +35,10 @@ What W4-08b changed (closed loop without GPS):
 - A GPS return more than RESET_OFFSET (5 m) away is reset, not glided, with a
   PX4-style reset event in get_status(); in pass-through, PX4's own reset
   counters reset too (T2). Smaller offsets still glide at <= 2 m/s.
+- Fix round (review R-08b): the held bias is scheduled by the speed between
+  the last learned one and a low-speed anchor, its error grows the velocity
+  variance, and the envelope widens to the speeds flown (B-1); it is bounded
+  and not learned near the ground (S-2).
 """
 
 import math
@@ -119,6 +123,8 @@ class ContractAwareEKF:
     # The limits are the speeds the benchmark vehicle can fly (its simulation clips the
     # horizontal speed at 3 m/s and the vertical at 2 m/s); set them from the airframe.
     NO_GPS_SPEED_LIMIT = (3.0, 3.0, 2.0)  # m/s, x y z
+    # (Fix round, R-08b B-1: the core itself cruises faster, 10 m/s on the reference plant, so
+    # each limit is raised to the largest speed flown on that axis with GPS: _speed_limit.)
     # W4-08b, T1: with a command (predict's accel_cmd, or set_command), a velocity component
     # without GPS velocity is instead propagated with the commanded acceleration plus
     # command_bias (below), and the position with it, so the estimate follows the vehicle's
@@ -149,6 +155,20 @@ class ContractAwareEKF:
     # "below 0.5 m" too), or while the command asks for less than half the hover's specific force
     # (idle, landing, or not yet flying; a_z > g / 2).
     GROUND_CLEARANCE = 0.5                # m
+    # Held without GPS, the bias must stay right as the speed changes (fix round, review R-08b
+    # B-1). It is mostly drag, which goes with the square of the airspeed: learned while
+    # cruising at 10 m/s it held -1.9 m/s^2 after the GPS-loss HOVER had stopped the vehicle, and
+    # the controller flew on at cruise speed. So, per channel (horizontal by |v_xy|, vertical by
+    # |v_z|), the bias is also kept as it was last learned below LOW_SPEED (the anchor: wind
+    # drag, a hover-thrust error), and the bias held is scheduled between the anchor and the
+    # last learned one by the square of the estimated speed: the learned bias at the speed it
+    # was learned at, the anchor at or below LOW_SPEED (_held_bias). In hover it is the learned
+    # bias itself. Without an anchor yet, it is zero (no wind).
+    LOW_SPEED = 1.0                       # m/s
+    # And the held bias may be wrong by up to its own size (wind change, a drag law other than
+    # quadratic): its velocity variance also grows by (max(|bias|, |anchor|) / 3)^2 per s^2 of
+    # outage, so that 3 sigma covers a bias that is off by that much from the loss on.
+    BIAS_HOLD_SIGMAS = 3.0
     # When nothing is fused at all (both sensor contracts violated) the covariance grows by
     # this many more times the step's process noise (the legacy 2 Q).
     DEAD_RECKONING_EXTRA_Q = 2.0
@@ -258,6 +278,12 @@ class ContractAwareEKF:
         self._step_accel: Optional[List[float]] = None
         self.command_bias = np.zeros(3)
         self._bias_velocity: Optional[List[float]] = None
+        # Fix round (B-1): the bias's low-speed anchor, the speeds (horizontal, vertical) it was
+        # last learned at, the largest speed per axis flown with GPS, the outage time per axis
+        self.command_bias_anchor = np.zeros(3)
+        self._bias_speed = [0.0, 0.0]
+        self._speed_seen = [0.0, 0.0, 0.0]
+        self._outage_time = [0.0, 0.0, 0.0]
         # T5: the published position is self.x[0:3] + glide_offset while it glides back
         # (None otherwise); whether the GPS is recovering; the GPS state rows (0-5) used in
         # the last update, and ever
@@ -356,9 +382,10 @@ class ContractAwareEKF:
         else:
             observed = self.velocity_observed.tolist()
             bias = self.command_bias.tolist()
+            held = self._held_bias(x[3:6]) if not all(observed) else bias
             for j, (a, b) in enumerate(self.PAIRS):
                 if j < 3 and not observed[j]:
-                    acc = accel[j] + bias[j]
+                    acc = accel[j] + held[j]
                     x[a] += dt * (x[b] + 0.5 * dt * acc)
                     x[b] += dt * acc
                 else:
@@ -375,6 +402,10 @@ class ContractAwareEKF:
         self.last_dt = dt
         q = self._process_noise(dt)
         self._last_q = q
+        if accel is not None:
+            for i in range(3):
+                if not self.velocity_observed[i]:
+                    self._outage_time[i] += dt
         for j, (a, b) in enumerate(self.PAIRS):
             paa, pab, pbb = self._cov[j]
             self._cov[j] = [paa + dt * (2.0 * pab + dt * pbb) + q[a], pab + dt * pbb, pbb + q[b]]
@@ -385,10 +416,44 @@ class ContractAwareEKF:
         q = [v * scale for v in self.Q.diagonal().tolist()]
         for i in range(3):
             if not self.velocity_observed[i]:
-                # with a command: the mismatch noise (T1, W4-08b); without: held at the speed
-                # envelope instead (_after_measurements)
-                q[3 + i] = self.COMMAND_MISMATCH_PSD * dt if self.command_available else 0.0
+                # with a command: the mismatch noise (T1, W4-08b), and the held bias's growing
+                # error (fix round, B-1); without: held at the speed envelope instead
+                # (_after_measurements)
+                if self.command_available:
+                    tau, sigma_b = self._outage_time[i], self._bias_hold_sigma(i)
+                    q[3 + i] = self.COMMAND_MISMATCH_PSD * dt + sigma_b * sigma_b * dt * (2.0 * tau + dt)
+                else:
+                    q[3 + i] = 0.0
         return q
+
+    def _bias_hold_sigma(self, i: int) -> float:
+        """How fast the held bias's error may grow the velocity error of axis i, 1 sigma, m/s^2
+        (fix round, B-1): max(|bias|, |anchor|) / BIAS_HOLD_SIGMAS."""
+        return max(abs(float(self.command_bias[i])),
+                   abs(float(self.command_bias_anchor[i]))) / self.BIAS_HOLD_SIGMAS
+
+    def _held_bias(self, velocity) -> List[float]:
+        """The bias predict adds without GPS velocity (fix round, B-1): per channel, the anchor
+        (learned below LOW_SPEED) plus f (learned - anchor), f = (s^2 - L^2) / (s_l^2 - L^2) clipped
+        to [0, 1], s the estimated speed (|v_xy|, |v_z|), s_l the speed the bias was last learned at,
+        L = LOW_SPEED; f = 1 if s_l <= L. Quadratic, as drag is in the airspeed."""
+        b, anchor = self.command_bias.tolist(), self.command_bias_anchor.tolist()
+        low = self.LOW_SPEED * self.LOW_SPEED
+        held = list(b)
+        for rows, speed2, learned in (((0, 1), velocity[0] ** 2 + velocity[1] ** 2, self._bias_speed[0]),
+                                      ((2,), velocity[2] ** 2, self._bias_speed[1])):
+            learned2 = learned * learned
+            if learned2 <= low:
+                continue
+            f = min(max((speed2 - low) / (learned2 - low), 0.0), 1.0)
+            for i in rows:
+                held[i] = anchor[i] + f * (b[i] - anchor[i])
+        return held
+
+    def _speed_limit(self, i: int) -> float:
+        """The speed envelope of axis i: NO_GPS_SPEED_LIMIT, or the largest speed flown on it with
+        GPS velocity if larger (fix round, B-1)."""
+        return max(self.NO_GPS_SPEED_LIMIT[i], self._speed_seen[i])
 
     def process_noise(self, dt: float) -> np.ndarray:
         """The process noise of a step of dt seconds (T4).
@@ -794,14 +859,20 @@ class ContractAwareEKF:
                     self.x[3 + i] += acc * dt
                     self.x[i] += 0.5 * acc * dt * dt
         for i in range(3):          # T4, S-1: an unmeasured velocity's error is bounded by the envelope
-            if not self.velocity_observed[i]:
-                bound = (abs(float(self.x[3 + i])) + self.NO_GPS_SPEED_LIMIT[i]) / 3.0
+            if self.velocity_observed[i]:
+                self._outage_time[i] = 0.0
+                self._speed_seen[i] = max(self._speed_seen[i], abs(float(self.x[3 + i])))
+            else:
+                bound = (abs(float(self.x[3 + i])) + self._speed_limit(i)) / 3.0
                 if self.command_available:
                     # T1 (W4-08b): grown by the mismatch noise in predict; the envelope caps
-                    # it, keeping the correlation coefficient (so the block stays positive)
+                    # it, keeping the correlation coefficient (so the block stays positive).
+                    # Not below the held bias's own term (fix round, B-1): a wrong bias drives the
+                    # vehicle, through the controller, beyond the speeds of the envelope
                     paa, pab, pbb = self._cov[i]
-                    if pbb > bound * bound:
-                        self._cov[i] = [paa, pab * bound / math.sqrt(pbb), bound * bound]
+                    cap = max(bound, self._bias_hold_sigma(i) * self._outage_time[i])
+                    if pbb > cap * cap:
+                        self._cov[i] = [paa, pab * cap / math.sqrt(pbb), cap * cap]
                 else:
                     self._cov[i][2] = max(self._cov[i][2], bound * bound)
 
@@ -919,6 +990,17 @@ class ContractAwareEKF:
         bias[2] = min(max(bias[2], -self.BIAS_LIMIT_Z), self.BIAS_LIMIT_Z)
         self._bias_velocity = w
         self.command_bias = np.array(bias)
+        if not fresh:               # the speed it was learned at, and the low-speed anchor (B-1)
+            anchor = self.command_bias_anchor.tolist()
+            if self.velocity_observed[0] and self.velocity_observed[1] and observed_before[0] and observed_before[1]:
+                self._bias_speed[0] = math.hypot(v[0], v[1])
+                if self._bias_speed[0] < self.LOW_SPEED:
+                    anchor[0:2] = bias[0:2]
+            if self.velocity_observed[2] and observed_before[2]:
+                self._bias_speed[1] = abs(v[2])
+                if self._bias_speed[1] < self.LOW_SPEED:
+                    anchor[2] = bias[2]
+            self.command_bias_anchor = np.array(anchor)
 
     def _eph(self) -> float:
         """sqrt(P_xx + P_yy) of the published position (get_covariance), in m."""
@@ -972,7 +1054,8 @@ class ContractAwareEKF:
         the published position minus the estimate; fused / rejected / reset: per
         measurement, the state rows fused, rejected by the gate, or reset to it.
         W4-08b: command: the last predict had a commanded acceleration (T1); command_bias:
-        the learned acceleration beyond the command, NED m/s^2. Reset events (T2), as PX4's
+        the learned acceleration beyond the command, NED m/s^2, and command_bias_anchor the one
+        learned last below LOW_SPEED (fix round). Reset events (T2), as PX4's
         vehicle_local_position: xy_reset_counter / z_reset_counter count the resets of the
         horizontal / vertical position (RESET_OFFSET; in pass-through also PX4's own), and
         delta_xy (2,) / delta_z hold the jump of the published position at the last one. A
@@ -993,6 +1076,7 @@ class ContractAwareEKF:
             'reset': dict(self.last_reset),
             'command': self.command_available,
             'command_bias': self.command_bias.copy(),
+            'command_bias_anchor': self.command_bias_anchor.copy(),
             'xy_reset_counter': self.reset_counter['xy'],
             'delta_xy': self.reset_delta['xy'].copy(),
             'z_reset_counter': self.reset_counter['z'],
