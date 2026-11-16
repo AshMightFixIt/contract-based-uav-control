@@ -10,12 +10,11 @@ steps at 50 Hz. Each measurement runs in a fresh process (run_python).
 
 Step time: the CPU time of each control_step on the calling thread's clock
 (time.thread_time: neither other processes nor NumPy's BLAS threads count,
-W4-09; where that clock is coarse, as on Windows, patrol.py uses the wall
-clock and says so). Checks: p99 < 2 ms, and the median does not grow. The
-medians compared are those of 5-minute windows, adjusted for the controller
-mix (each tier's median weighted by its share of the run; an MPC step costs
-about 0.30 ms, a PID or H-infinity step about 0.22 ms, and the mix of a window
-depends on the path flown):
+W4-09; for the wall clock, see below). Checks: p99 < 2 ms, and the median does
+not grow. The medians compared are those of 5-minute windows, adjusted for the
+controller mix (each tier's median weighted by its share of the run; an MPC
+step costs about 0.30 ms, a PID or H-infinity step about 0.22 ms, and the mix
+of a window depends on the path flown):
 - the last 5 minutes within 10 % of minutes 5 to 10;
 - the last 5 minutes within 20 % of the first 5.
 The first 5 minutes are a warm-up, as for the memory: they are 2 to 6 % faster
@@ -26,6 +25,17 @@ over 60 minutes it stays flat after the first window). Measured with the
 first 5 minutes as the reference, the plain median ratio reached 1.10 in 11
 runs and the mix-adjusted one 1.08, too close to a 10 % bound.
 
+The wall-clock fallback (Windows): where the thread clock is coarse (Windows
+updates it every 15.6 ms), patrol.py times each step with the wall clock
+(time.perf_counter) and reports clock 'perf_counter'. The wall clock charges a
+step that the OS preempts with all the time the process waits, so under CPU
+load its tail measures the machine, not the core: with the fallback forced on
+Linux and 7 busy processes on 4 cores, 3-minute runs gave p95 4.4 ms and p99
+8.5 ms, while the medians stayed at 0.31 ms and within 8 % of each other
+(review R-07, S2). So on the wall clock the p99 check is skipped, and the
+median step is held to the same bound instead (2 ms; 4 ms in the 3-minute
+run); the median-growth checks are the same on both clocks.
+
 Memory: tracemalloc traces the whole run (a separate run, as tracing slows each
 step); the memory traced at minute 30 minus that at minute 5 < 1 MB, and the
 growth of sys.getallocatedblocks() (the number of live objects) over the same
@@ -34,9 +44,10 @@ step, which a byte bound alone can miss (review R-07, S1).
 
 The 30-minute run is marked ``perf``, so ``make test`` leaves it out; run it
 with ``make test-perf`` (``make test-all`` includes it). A 3-minute run, in
-``make test``, checks the same with 1-minute windows: p99 < 4 ms, the last
-minute within 25 % of the first, and from minute 1 to minute 3 (every bounded
-buffer is full after 60 s) under 64 kB and under 1000 blocks of growth.
+``make test``, checks the same with 1-minute windows: p99 < 4 ms (on the wall
+clock: the median < 4 ms), the last minute within 25 % of the first, and from
+minute 1 to minute 3 (every bounded buffer is full after 60 s) under 64 kB and
+under 1000 blocks of growth.
 Measured at this change, 3 minutes, 3.11 and 3.10: -7.7 to +1.5 kB and -143
 to -37 blocks; with one runtime history unbounded again (a leak of one float
 per step, R-07's RM6) +190 kB and +5900 blocks. 30 minutes: +1495 blocks (the
@@ -84,14 +95,17 @@ def patrol(run_python, tmp_path, *args):
 
 @pytest.mark.parametrize('run', RUNS)
 def test_g1_4_step_time_stays_in_budget(run, run_python, tmp_path):
-    """G1.4: p99 of the step's CPU time under budget, and the median does not grow."""
+    """G1.4: p99 of the step's CPU time under budget (wall clock: the median), and no median growth."""
     out = patrol(run_python, tmp_path, '--minutes', run['minutes'], '--measure', 'time', '--window', run['window'])
     print(f"G1.4 step time, {run['minutes']} min: {json.dumps(out)}")
     assert out['steps'] == run['minutes'] * 3000
     # the run is the intended one: all three tiers, the GPS hover, the planner's replans (every 0.5 s)
     assert set(out['controllers']) == {'PID', 'MPC', 'Hinf'}, out['controllers']
     assert out['modes'].get('hover', 0) > 0 and out['replans'] >= 0.9 * run['minutes'] * 60 / 0.5, out
-    assert out['p99_ms'] < run['p99_ms'], out
+    if out['clock'] == 'thread_time':
+        assert out['p99_ms'] < run['p99_ms'], out
+    else:                   # the wall clock: its tail is the machine's load (see the module docstring)
+        assert out['clock'] == 'perf_counter' and out['median_ms'] < run['p99_ms'], out
     medians = [w['adjusted_ms'] for w in out['windows']]
     if run['after_warmup'] is not None:
         assert abs(medians[-1] / medians[1] - 1.0) <= run['after_warmup'], medians

@@ -178,7 +178,8 @@ def measure_time(minutes, window, controller_kwargs):
                         'tier_medians_ms': tier_medians})
     return {
         'measure': 'time', 'minutes': minutes, 'steps': steps, 'clock': name, 'thread_time_tick_s': tick,
-        'p99_ms': float(np.percentile(ms, 99)), 'max_ms': float(ms.max()), 'median_ms': float(np.median(ms)),
+        'p99_ms': float(np.percentile(ms, 99)), 'p95_ms': float(np.percentile(ms, 95)),
+        'max_ms': float(ms.max()), 'median_ms': float(np.median(ms)),
         'window_minutes': window, 'windows': windows,
         'minute_medians_ms': [round(float(np.median(ms[i:i + STEPS_PER_MINUTE])), 4)
                               for i in range(0, steps, STEPS_PER_MINUTE)],
