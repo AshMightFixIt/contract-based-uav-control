@@ -44,6 +44,7 @@ import logging
 from ..contracts.monitor import HierarchicalContractMonitor
 from ..contracts.spec import ContractMetrics
 from .sensor_limits import sensor_limits
+from ..frames import GRAVITY
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,18 @@ class ContractAwareEKF:
     # 1.25 m, 2 s: 0.31 m), and a wind change is followed within about 4 s (in a saturating
     # 9 m/s wind the estimate ended 5.8 m off after 8 s; 0.5 s: 3.0 m, 2 s: 12.2 m).
     COMMAND_BIAS_TIME = 1.0       # s
+    # The bias is bounded to what it can plausibly be (fix round, review R-08b S-2). Horizontally
+    # the norm stays within the largest horizontal acceleration the tiers command (the MPC's
+    # max_lateral_accel, 3 m/s^2; the PID's and H-inf's 0.22 rad tilt gives 2.2 m/s^2): a
+    # drag the vehicle can hold against. Vertically, a hover-thrust error of +-20 %
+    # (|hover_tier / hover_true - 1| g <= 0.25 g). Unbounded, ground contact taught it +8.8 m/s^2.
+    BIAS_LIMIT_XY = 3.0                   # m/s^2, norm
+    BIAS_LIMIT_Z = 0.25 * GRAVITY         # m/s^2
+    # Nor is it learned where the vehicle may be on the ground, whose reaction the command model
+    # does not know: within GROUND_CLEARANCE of z = 0 (NED, the take-off point; the CBF filter's
+    # "below 0.5 m" too), or while the command asks for less than half the hover's specific force
+    # (idle, landing, or not yet flying; a_z > g / 2).
+    GROUND_CLEARANCE = 0.5                # m
     # When nothing is fused at all (both sensor contracts violated) the covariance grows by
     # this many more times the step's process noise (the legacy 2 Q).
     DEAD_RECKONING_EXTRA_Q = 2.0
@@ -881,10 +894,14 @@ class ContractAwareEKF:
         this update and the one before: otherwise w restarts from the filter's velocity and
         the bias is held, so neither an outage nor the correction at the return teaches it.
         The observer also starts from the filter's velocity at the first command, or after
-        a step without one.
+        a step without one. Not learned where the vehicle may be on the ground (z within
+        GROUND_CLEARANCE of 0, or a command below half the hover's specific force), and
+        clipped to BIAS_LIMIT_XY (horizontal norm) and BIAS_LIMIT_Z (fix round, S-2).
         """
         dt, T = self.last_dt, self.COMMAND_BIAS_TIME
-        fresh = self._bias_velocity is None
+        grounded = (self.x[2] > -self.GROUND_CLEARANCE
+                    or self._step_accel[2] > 0.5 * GRAVITY)
+        fresh = self._bias_velocity is None or grounded
         v = self.x[3:6].tolist()
         w = v if fresh else list(self._bias_velocity)
         bias = self.command_bias.tolist()
@@ -895,6 +912,11 @@ class ContractAwareEKF:
                 bias[i] += dt / (T * T) * e
             else:
                 w[i] = v[i]
+        horizontal = math.hypot(bias[0], bias[1])
+        if horizontal > self.BIAS_LIMIT_XY:
+            bias[0] *= self.BIAS_LIMIT_XY / horizontal
+            bias[1] *= self.BIAS_LIMIT_XY / horizontal
+        bias[2] = min(max(bias[2], -self.BIAS_LIMIT_Z), self.BIAS_LIMIT_Z)
         self._bias_velocity = w
         self.command_bias = np.array(bias)
 

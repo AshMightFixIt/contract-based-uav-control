@@ -351,3 +351,45 @@ def test_the_core_passes_the_command_after_the_safety_filter():
     assert telemetry['cbf_intervened'] and control['thrust'] == 0.95
     assert nominal[0]['thrust'] != control['thrust']
     assert np.array_equal(sent[0], attitude_thrust_to_accel(telemetry['attitude'], 0.95, 0.5))
+
+
+# --- the bias's bounds (fix round, review R-08b S-2) ---------------------------------------------
+
+def test_bias_is_clipped_to_a_plausible_size():
+    """Horizontally to BIAS_LIMIT_XY (the largest horizontal acceleration a tier commands), as a
+    norm; vertically to BIAS_LIMIT_Z (a +-20 % hover-thrust error). Unbounded, ground contact
+    taught it +8.8 m/s^2."""
+    truth = Truth(bias=(4.0, 3.0, 4.0))
+    command = np.array([-4.0, -3.0, -4.0])          # the truth hovers: the bias is "learned" as 5, 4
+    for _ in range(500):
+        truth.step(command)
+    b = truth.ekf.command_bias
+    assert np.hypot(b[0], b[1]) == pytest.approx(truth.ekf.BIAS_LIMIT_XY)
+    assert b[0] / b[1] == pytest.approx(4.0 / 3.0, rel=0.05)      # the direction is kept
+    assert b[2] == pytest.approx(truth.ekf.BIAS_LIMIT_Z)
+    assert truth.ekf.BIAS_LIMIT_Z == pytest.approx(0.25 * G)
+
+
+def test_bias_is_not_learned_near_the_ground():
+    """Within GROUND_CLEARANCE of z = 0 the ground's reaction would be learned as a bias."""
+    truth = Truth(bias=(0.3, 0.0, -2.0))
+    truth.pos = np.array([0.0, 0.0, -0.3])
+    command = np.array([-0.3, 0.0, 2.0])             # the truth stays put (on the ground, say)
+    for _ in range(250):
+        truth.step(command)
+    assert np.array_equal(truth.ekf.command_bias, np.zeros(3))
+
+
+def test_bias_is_not_learned_with_less_than_half_the_hover_thrust():
+    """A command below half the hover's specific force (a_z > g / 2: idle, landing, not flying
+    yet) teaches nothing either."""
+    truth = Truth(bias=(0.3, 0.0, -0.6 * G))
+    command = np.array([-0.3, 0.0, 0.6 * G])         # the truth hovers (held up by the ground)
+    for _ in range(250):
+        truth.step(command)
+    assert np.array_equal(truth.ekf.command_bias, np.zeros(3))
+    command = np.array([-0.3, 0.0, 0.4 * G])         # above half the hover: learned again
+    truth.bias = np.array([0.3, 0.0, -0.4 * G])
+    for _ in range(250):
+        truth.step(command)
+    assert truth.ekf.command_bias[0] == pytest.approx(0.3, abs=0.03)
