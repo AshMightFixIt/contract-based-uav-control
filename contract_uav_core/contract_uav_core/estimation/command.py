@@ -33,16 +33,17 @@ from ..frames import attitude_thrust_to_accel
 
 
 def commanded_acceleration(control: Mapping[str, Any], estimated_attitude, imu_ok: bool,
-                           hover_thrust: float) -> Optional[np.ndarray]:
+                           hover_thrust: float, max_thrust: Optional[float] = None) -> Optional[np.ndarray]:
     """NED acceleration (m/s^2, gravity included) of the command just sent, or None.
 
     control: the final control dict (after the CBF filter): its 'thrust', and its
     'desired_attitude' when imu_ok is False. estimated_attitude: the estimator's
-    [roll, pitch, yaw]. hover_thrust: the sending tier's. None if the dict has no
+    [roll, pitch, yaw]. hover_thrust, max_thrust: the sending tier's (the thrust is clipped
+    at max_thrust, as the vehicle does: the CBF filter may write 0.95). None if the dict has no
     thrust (or no attitude to use); the estimator then keeps the velocity, as before.
     """
     thrust = control.get('thrust')
     attitude = estimated_attitude if imu_ok else control.get('desired_attitude')
     if thrust is None or attitude is None:
         return None
-    return attitude_thrust_to_accel(attitude, thrust, hover_thrust)
+    return attitude_thrust_to_accel(attitude, thrust, hover_thrust, max_thrust)

@@ -100,6 +100,22 @@ def test_attitude_thrust_to_accel_inverts_the_tiers_mapping_for_small_demands():
         assert np.allclose(attitude_thrust_to_accel(attitude, thrust, 0.5), demand, atol=0.02)
 
 
+def test_attitude_thrust_to_accel_clips_at_max_thrust():
+    """N-2 (review R-08b): above the vehicle's max_thrust the plant gives max_thrust; so does the
+    inverse when max_thrust is known (e.g. the CBF's 0.95 with an airframe of 0.8)."""
+    from contract_uav_core.frames import attitude_thrust_to_accel
+    from contract_uav_core.interfaces import AttitudeThrustCommand
+    from contract_uav_core.sim.quadrotor import QuadrotorParams, QuadrotorPlant
+    params = QuadrotorParams(mass=2.0, hover_thrust=0.5, max_thrust=0.8, attitude_time_constant=DT,
+                             drag_coefficient=0.0)
+    plant = QuadrotorPlant(params, position=(0.0, 0.0, -50.0))
+    attitude = np.array([0.05, -0.1, 0.4])
+    v1 = plant.step(AttitudeThrustCommand(attitude=attitude, thrust=0.95), DT).velocity
+    assert np.allclose(v1 / DT, attitude_thrust_to_accel(attitude, 0.95, 0.5, 0.8), atol=1e-9)
+    assert np.array_equal(attitude_thrust_to_accel(attitude, 0.95, 0.5, 0.8), attitude_thrust_to_accel(attitude, 0.8, 0.5))
+    assert np.array_equal(attitude_thrust_to_accel(attitude, 0.95, 0.5), attitude_thrust_to_accel(attitude, 0.95, 0.5, None))
+
+
 def test_commanded_acceleration_uses_the_final_thrust_at_the_estimated_attitude():
     from contract_uav_core.estimation.command import commanded_acceleration
     from contract_uav_core.frames import attitude_thrust_to_accel
@@ -110,6 +126,8 @@ def test_commanded_acceleration_uses_the_final_thrust_at_the_estimated_attitude(
     # without a usable IMU, the commanded attitude
     assert np.allclose(commanded_acceleration(control, estimated, False, 0.5),
                        attitude_thrust_to_accel(control['desired_attitude'], 0.55, 0.5))
+    assert np.allclose(commanded_acceleration({'thrust': 0.95}, estimated, True, 0.5, 0.8),
+                       attitude_thrust_to_accel(estimated, 0.8, 0.5))
     assert commanded_acceleration({}, estimated, True, 0.5) is None
     assert commanded_acceleration({'thrust': 0.5}, estimated, False, 0.5) is None
 
@@ -300,9 +318,9 @@ def test_the_core_passes_the_command_it_sent_to_the_next_predict():
     original = ctrl.ekf.set_command
     ctrl.ekf.set_command = lambda accel: (sent.append(accel), original(accel))
     control, telemetry = ctrl.control_step(raw)
-    hover = ctrl.controller_switcher.controllers[telemetry['active_controller']].hover_thrust
-    assert hover == 0.5
-    expected = attitude_thrust_to_accel(telemetry['attitude'], control['thrust'], hover)
+    tier = ctrl.controller_switcher.controllers[telemetry['active_controller']]
+    assert tier.hover_thrust == 0.5 and tier.max_thrust == 1.0
+    expected = attitude_thrust_to_accel(telemetry['attitude'], control['thrust'], 0.5, 1.0)
     assert len(sent) == 1 and np.array_equal(sent[0], expected)
     assert not ctrl.ekf.command_available            # the first predict had none
     ctrl.control_step(raw)

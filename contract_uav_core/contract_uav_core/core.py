@@ -277,9 +277,10 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
 
         # 10b. The command just sent, as the acceleration it produces, for the EKF's next
         # predict (W4-08b; estimation/command.py): after the CBF filter, with the hover
-        # thrust of the tier that made it
+        # and maximum thrust of the tier that made it
         tier = self.controller_switcher.controllers[self.controller_switcher.get_active_controller()]
-        self.ekf.set_command(commanded_acceleration(control, state_dict['attitude'], imu_ok, tier.hover_thrust))
+        self.ekf.set_command(commanded_acceleration(control, state_dict['attitude'], imu_ok,
+                                                    tier.hover_thrust, tier.max_thrust))
 
         # 11.-14. Runtime monitors, contract monitoring and the flight log (telemetry.py)
         active_controller, flight_mode = self._record_step(
