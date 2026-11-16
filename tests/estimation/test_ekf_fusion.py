@@ -214,11 +214,11 @@ def test_real_jump_is_accepted_after_ten_rejects(caplog):
         step(ekf, measurements(pos=jumped), good_sensors())
         assert ekf.last_fused['gps_position'] == (0, 1, 2)
     assert np.allclose(ekf.x[0:3], jumped, atol=1e-2)   # the filter took the jump ...
-    # ... and, 25 m being beyond RESET_OFFSET, the published position was reset with it, with a
-    # reset event (W4-08b T2; before, it glided there at 2 m/s for 12.5 s)
+    # ... and the published position glides there (T5): the estimate was trusted and the GPS never
+    # left, so this is not a return after an outage and the 25 m are not reset (W4-08b fix round,
+    # review R-08b S-1; a GPS glitch longer than the gate's 0.2 s ends with such a gate reset)
     status = ekf.get_status()
-    assert not status['gliding'] and np.allclose(ekf.get_state()['position'], jumped, atol=1e-2)
-    assert status['xy_reset_counter'] == 1 and np.allclose(status['delta_xy'], [20.0, -15.0], atol=0.1)
+    assert status['gliding'] and status['xy_reset_counter'] == 0
     assert len(caplog.records) == 1
 
 

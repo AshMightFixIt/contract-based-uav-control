@@ -170,3 +170,49 @@ def test_passthrough_px4_reset_during_an_outage_is_a_reset_at_the_return():
     status = ekf.get_status()
     assert status['xy_reset_counter'] == 1 and not status['gliding']
     assert np.array_equal(ekf.get_state()['position'], START + [2.0, 0.0, 0.0])
+
+
+def test_a_gate_reset_of_a_trusted_estimate_glides():
+    """S-1 (review R-08b): a 15 m GPS glitch longer than the gate's 10 rejects ends with a gate
+    reset; the estimate was trusted and the GPS never left, so it glides (at <= 2 m/s) and no reset
+    event is recorded, also when the glitch ends and the GPS comes back to the truth. (3de3b82
+    snapped it into the controller twice.)"""
+    ekf = make_ekf()
+    t = 0.0
+    for _ in range(500):
+        t += DT
+        step(ekf, START, np.zeros(3), GPS, t)
+    published = ekf.get_state()['position']
+    for k in range(150):                              # 3 s of GPS 15 m off in x
+        t += DT
+        step(ekf, START + [15.0, 0.0, 0.0], np.zeros(3), GPS, t)
+        now = ekf.get_state()['position']
+        assert np.linalg.norm(now - published) <= ekf.MAX_RECOVERY_SPEED * DT + 1e-9, k
+        published = now
+    for k in range(400):                              # and back to the truth
+        t += DT
+        step(ekf, START, np.zeros(3), GPS, t)
+        now = ekf.get_state()['position']
+        assert np.linalg.norm(now - published) <= ekf.MAX_RECOVERY_SPEED * DT + 1e-9, k
+        published = now
+    status = ekf.get_status()
+    assert status['xy_reset_counter'] == 0 and status['z_reset_counter'] == 0
+
+
+def test_a_gate_reset_of_an_untrusted_estimate_is_reset():
+    """...but when the filter's own position was already untrusted (eph > 5 m) before the update,
+    a far gate reset is reset, as a return after an outage is."""
+    ekf = make_ekf()
+    t = 0.0
+    for _ in range(500):
+        t += DT
+        step(ekf, START, np.zeros(3), GPS, t)
+    P = ekf.P.copy()
+    P[0, 0] = P[1, 1] = 30.0                         # eph 7.7 m, yet the GPS never left
+    P[0, 3] = P[3, 0] = P[1, 4] = P[4, 1] = 0.0
+    ekf.P = P
+    for _ in range(10):                               # 200 m away: gated 9 times, then reset
+        t += DT
+        step(ekf, START + [200.0, 0.0, 0.0], np.zeros(3), GPS, t)
+    status = ekf.get_status()
+    assert status['xy_reset_counter'] == 1 and not status['gliding']

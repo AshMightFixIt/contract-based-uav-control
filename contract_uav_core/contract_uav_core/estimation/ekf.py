@@ -197,7 +197,9 @@ class ContractAwareEKF:
     # position) so that a controller can shift its setpoints by it. 5 m: a glide then hides
     # at most the error at which the position is already called untrusted
     # (POSITION_UNTRUSTED_EPH), and lasts at most 2.5 s at MAX_RECOVERY_SPEED; a larger real
-    # error reaches the controller at once (before: a 52 m error took 26 s).
+    # error reaches the controller at once (before: a 52 m error took 26 s). Only for a return
+    # after an outage, or an estimate already untrusted (fix round, R-08b S-1): a gate reset of a
+    # trusted estimate glides, as a GPS glitch longer than the gate's 0.2 s ends with one.
     RESET_OFFSET = 5.0  # m, horizontal norm and vertical, each
     RESET_CHANNELS = (('xy', (0, 1)), ('z', (2,)))
     # In mode='passthrough', a change of PX4's own reset counter in sensors['gps'] (PX4
@@ -289,6 +291,10 @@ class ContractAwareEKF:
         # the last update, and ever
         self.glide_offset: Optional[np.ndarray] = None
         self.recovering = False
+        # Fix round (S-1): whether this recovery began with a GPS return after an outage (not
+        # only a gate reset of a GPS that never left)
+        self._recovery_after_outage = False
+        self._gps_rows_offered_last = frozenset()
         self._gps_rows_last = frozenset()
         self._gps_rows_ever = set()
         # T2 (W4-08b): reset events, as PX4 reports them (counter, and the jump of the last
@@ -752,6 +758,10 @@ class ContractAwareEKF:
         # Contract-based fusion strategy
         self.last_fused, self.last_rejected, self.last_reset = {}, {}, {}
         self._fused_values = []
+        # the filter's own position uncertainty before this update's measurements, per reset
+        # channel (fix round, S-1): eph and sqrt(P_zz) of the prediction
+        self._own_sigma_before = {'xy': math.sqrt(self._cov[0][0] + self._cov[1][0]),
+                                  'z': math.sqrt(self._cov[2][0])}
         published_before = self._published_position()
         if gps_ok and imu_ok:
             keys, R, estimation_quality = tuple(self.MEASUREMENT_ROWS), self.R_nominal, "nominal"
@@ -881,7 +891,17 @@ class ContractAwareEKF:
             if not self.recovering:
                 logger.info(f"EKF: GPS back on state rows {sorted(returned) or 'reset'}; the published "
                             f"position glides at <= {self.MAX_RECOVERY_SPEED} m/s")
+                self._recovery_after_outage = False
             self.recovering = True
+        # A return after an outage: a GPS row offered again (fused, gated or reset) that was not
+        # offered at all in the last update (absent, invalid, or the contract violated). Rows the
+        # gate rejected were offered: a glitch is not an outage (fix round, S-1)
+        offered = set(used)
+        for key in ('gps_position', 'gps_velocity'):
+            offered.update(self.last_rejected.get(key, ()))
+        if self.recovering and (offered - self._gps_rows_offered_last) & self._gps_rows_ever:
+            self._recovery_after_outage = True
+        self._gps_rows_offered_last = frozenset(offered)
         snapped = self._reset_on_return(published_before, used, px4_counters or {})
         if self.recovering:
             offset = published_before - self.x[0:3]
@@ -894,6 +914,7 @@ class ContractAwareEKF:
             if (self.glide_offset is None and used & self.POSITION_ROWS
                     and 'gps_position' not in self.last_rejected):
                 self.recovering = False
+                self._recovery_after_outage = False
         self._gps_rows_last = frozenset(used)
         self._gps_rows_ever |= used
         if self.command_available:          # after a reset, so the reset itself teaches nothing
@@ -920,7 +941,12 @@ class ContractAwareEKF:
 
         A channel ('xy': x and y; 'z') whose GPS position rows are used in this update is
         reset if, while recovering, its published position is more than RESET_OFFSET from the
-        estimate (horizontal norm; vertical distance), or if PX4's reset counter of it changed
+        estimate (horizontal norm; vertical distance) and either the recovery began with a GPS
+        return after an outage (a row offered again after an update without it; a gated row was
+        offered) or the filter's own uncertainty of the channel before this update exceeded
+        POSITION_UNTRUSTED_EPH (its own: the glide offset itself does not count) - a gate reset of
+        a trusted estimate glides, since a GPS glitch longer than 0.2 s ends with one (fix round,
+        review R-08b S-1) - or if PX4's reset counter of it changed
         since the last update that used it (pass-through: px4_counters). Reset: the channel's
         position rows fused in this update, and its velocity rows if fused, are set to the
         measurement, variance R, no correlation (rows the gate reset already are, with 10 R;
@@ -939,7 +965,9 @@ class ContractAwareEKF:
             if channel in px4_counters:
                 last, self._px4_counters[channel] = self._px4_counters[channel], px4_counters[channel]
                 px4_reset = last is not None and px4_counters[channel] != last
-            far = self.recovering and float(np.linalg.norm(offset[list(rows)])) > self.RESET_OFFSET
+            untrusted = self._own_sigma_before[channel] > self.POSITION_UNTRUSTED_EPH
+            far = (self.recovering and (self._recovery_after_outage or untrusted)
+                   and float(np.linalg.norm(offset[list(rows)])) > self.RESET_OFFSET)
             if not (far or px4_reset):
                 continue
             fused = {row: (value, r) for row, value, r in self._fused_values if row < 6}
