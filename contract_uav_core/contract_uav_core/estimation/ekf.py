@@ -836,6 +836,8 @@ class ContractAwareEKF:
         delta = estimate - published_before: reset_counter[channel] += 1 and
         reset_delta[channel] = delta (get_status), as PX4's xy_reset_counter / delta_xy.
         """
+        if not (self.recovering or px4_counters):
+            return ()
         snapped = []
         offset = published_before - self.x[0:3]
         for channel, rows in self.RESET_CHANNELS:
@@ -874,15 +876,18 @@ class ContractAwareEKF:
         """
         dt, T = self.last_dt, self.COMMAND_BIAS_TIME
         fresh = self._bias_velocity is None
-        if fresh:
-            self._bias_velocity = self.x[3:6].copy()
+        v = self.x[3:6].tolist()
+        w = v if fresh else self._bias_velocity.tolist()
+        bias = self.command_bias.tolist()
         for i in range(3):
             if self.velocity_observed[i] and observed_before[i] and not fresh:
-                e = float(self.x[3 + i] - self._bias_velocity[i])
-                self._bias_velocity[i] += 2.0 * dt / T * e
-                self.command_bias[i] += dt / (T * T) * e
+                e = v[i] - w[i]
+                w[i] += 2.0 * dt / T * e
+                bias[i] += dt / (T * T) * e
             else:
-                self._bias_velocity[i] = self.x[3 + i]
+                w[i] = v[i]
+        self._bias_velocity = np.array(w)
+        self.command_bias = np.array(bias)
 
     def _eph(self) -> float:
         """sqrt(P_xx + P_yy) of the published position (get_covariance), in m."""
