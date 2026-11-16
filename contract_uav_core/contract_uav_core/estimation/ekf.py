@@ -146,10 +146,12 @@ class ContractAwareEKF:
     # The bias is bounded to what it can plausibly be (fix round, review R-08b S-2). Horizontally
     # the norm stays within the largest horizontal acceleration the tiers command (the MPC's
     # max_lateral_accel, 3 m/s^2; the PID's and H-inf's 0.22 rad tilt gives 2.2 m/s^2): a
-    # drag the vehicle can hold against. Vertically, a hover-thrust error of +-20 %
-    # (|hover_tier / hover_true - 1| g <= 0.25 g). Unbounded, ground contact taught it +8.8 m/s^2.
+    # drag the vehicle can hold against. Vertically, a hover-thrust error of up to +-50 %
+    # (|hover_true / hover_tier - 1| g <= 0.5 g; a plant hover of 0.65 against the tiers' 0.5 is
+    # +30 %, and a +-20 % bound, 0.25 g, sank it into the ground). Unbounded, ground contact
+    # taught it +8.8 m/s^2 (0.9 g); that is excluded below, not by this bound.
     BIAS_LIMIT_XY = 3.0                   # m/s^2, norm
-    BIAS_LIMIT_Z = 0.25 * GRAVITY         # m/s^2
+    BIAS_LIMIT_Z = 0.5 * GRAVITY          # m/s^2
     # Nor is it learned where the vehicle may be on the ground, whose reaction the command model
     # does not know: within GROUND_CLEARANCE of z = 0 (NED, the take-off point; the CBF filter's
     # "below 0.5 m" too), or while the command asks for less than half the hover's specific force

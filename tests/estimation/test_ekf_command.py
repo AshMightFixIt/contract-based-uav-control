@@ -357,17 +357,17 @@ def test_the_core_passes_the_command_after_the_safety_filter():
 
 def test_bias_is_clipped_to_a_plausible_size():
     """Horizontally to BIAS_LIMIT_XY (the largest horizontal acceleration a tier commands), as a
-    norm; vertically to BIAS_LIMIT_Z (a +-20 % hover-thrust error). Unbounded, ground contact
+    norm; vertically to BIAS_LIMIT_Z (a +-50 % hover-thrust error). Unbounded, ground contact
     taught it +8.8 m/s^2."""
-    truth = Truth(bias=(4.0, 3.0, 4.0))
-    command = np.array([-4.0, -3.0, -4.0])          # the truth hovers: the bias is "learned" as 5, 4
+    truth = Truth(bias=(4.0, 3.0, 6.0))
+    command = np.array([-4.0, -3.0, -6.0])          # the truth hovers: the bias is "learned" as 5, 6
     for _ in range(500):
         truth.step(command)
     b = truth.ekf.command_bias
     assert np.hypot(b[0], b[1]) == pytest.approx(truth.ekf.BIAS_LIMIT_XY)
     assert b[0] / b[1] == pytest.approx(4.0 / 3.0, rel=0.05)      # the direction is kept
     assert b[2] == pytest.approx(truth.ekf.BIAS_LIMIT_Z)
-    assert truth.ekf.BIAS_LIMIT_Z == pytest.approx(0.25 * G)
+    assert truth.ekf.BIAS_LIMIT_Z == pytest.approx(0.5 * G)
 
 
 def test_bias_is_not_learned_near_the_ground():
@@ -477,3 +477,14 @@ def test_held_bias_variance_grows_with_the_bias_and_the_envelope_widens_to_the_s
         assert ekf.P[3 + i, 3 + i] == pytest.approx(min(grown, cap ** 2), rel=1e-6), i
     assert np.diag(ekf.P)[5] == pytest.approx(((abs(ekf.x[5]) + 2.0) / 3.0) ** 2, rel=1e-6)
     assert np.diag(ekf.P)[3] > p0[0] + ekf.COMMAND_MISMATCH_PSD * tau + 0.9 * (abs(ekf.command_bias[0]) / 3 * tau) ** 2
+
+
+def test_a_plausible_hover_thrust_error_is_learned_in_full():
+    """The vertical bound must not cut a real hover-thrust error: a plant hover of 0.65 against the
+    tiers' 0.5 (+30 %) is a bias of +0.3 g, learned in full (with a 0.25 g bound the vehicle sank
+    into the ground in a 20 s outage, closed loop)."""
+    truth = Truth(bias=(0.0, 0.0, 0.3 * G))
+    command = np.array([0.0, 0.0, -0.3 * G])
+    for _ in range(500):
+        truth.step(command)
+    assert truth.ekf.command_bias[2] == pytest.approx(0.3 * G, abs=0.02)
