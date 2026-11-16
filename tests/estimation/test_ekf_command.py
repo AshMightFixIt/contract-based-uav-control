@@ -307,3 +307,29 @@ def test_the_core_passes_the_command_it_sent_to_the_next_predict():
     assert not ctrl.ekf.command_available            # the first predict had none
     ctrl.control_step(raw)
     assert ctrl.ekf.command_available                # the second used the first step's command
+
+
+def test_the_core_passes_the_command_after_the_safety_filter():
+    """The command handed over is the one sent, after the CBF filter: below 0.5 m the filter
+    replaces the tier's thrust with 0.95, and that is what the estimator gets."""
+    from contract_uav_core.core import AdaptiveDroneController
+    from contract_uav_core.frames import attitude_thrust_to_accel
+    ctrl = AdaptiveDroneController(dt=DT, use_horizon_planner=False)
+    target = np.array([0.0, 0.0, -5.0])
+    conditions = {'gps_satellites': 12.0, 'gps_hdop': 0.8, 'imu_temperature': 25.0, 'imu_calibrated': 1.0,
+                  'battery_voltage': 12.4, 'motor_temperature': 25.0, 'wind_speed': 1.0, 'disturbance': 0.2}
+    assert ctrl.pre_flight_check(conditions, {'target_position': target, 'waypoints': [target]})[0]
+    assert ctrl.start_mission()
+    raw = {'gps': {'position': np.array([0.0, 0.0, -0.2]), 'velocity': np.zeros(3), 'valid': True,
+                   'satellites': 12, 'hdop': 0.8},
+           'imu': {'attitude': np.zeros(3), 'rates': np.zeros(3), 'valid': True,
+                   'calibrated': True, 'temperature': 25.0},
+           'battery': {'voltage': 12.4}, 'motors': {'temperature': 25.0}}
+    sent, nominal = [], []
+    original_set, original_compute = ctrl.ekf.set_command, ctrl.controller_switcher.compute_control
+    ctrl.ekf.set_command = lambda accel: (sent.append(accel), original_set(accel))
+    ctrl.controller_switcher.compute_control = lambda *a: nominal.append(original_compute(*a)) or nominal[-1]
+    control, telemetry = ctrl.control_step(raw)
+    assert telemetry['cbf_intervened'] and control['thrust'] == 0.95
+    assert nominal[0]['thrust'] != control['thrust']
+    assert np.array_equal(sent[0], attitude_thrust_to_accel(telemetry['attitude'], 0.95, 0.5))
