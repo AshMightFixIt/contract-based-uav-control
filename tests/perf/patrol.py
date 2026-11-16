@@ -36,8 +36,11 @@ default, -1, leaves the constructor's default) and print one JSON line.
   at the end minus that traced after --warmup minutes (whole minutes; also
   reported for each later minute). Tracing from the first step, not from the
   warm-up, matters: a bounded buffer that is full when tracing starts would
-  count as growing while its untraced entries are replaced by traced ones. The
-  plant and the patrol's own bookkeeping are constant in size.
+  count as growing while its untraced entries are replaced by traced ones.
+  Also the growth of sys.getallocatedblocks() over the same minutes: the
+  number of live objects, which a leak of one small object per step raises by
+  one per step whatever its size. The plant and the patrol's own bookkeeping
+  are constant in size.
 The core's warnings (each controller switch and mode change) are formatted and
 dropped, so a run pays for its logging but keeps none of it.
 """
@@ -186,19 +189,22 @@ def measure_time(minutes, window, controller_kwargs):
 def measure_memory(minutes, warmup, controller_kwargs):
     patrol = Patrol(**controller_kwargs)
     steps = int(round(minutes * STEPS_PER_MINUTE))
-    traced = {}                                # whole minute -> bytes traced since the first step
+    traced, blocks = {}, {}                    # whole minute -> bytes traced since the first step, blocks
     tracemalloc.start()
     for k in range(steps):
         patrol.step()
         if (k + 1) % STEPS_PER_MINUTE == 0:
             traced[(k + 1) // STEPS_PER_MINUTE] = tracemalloc.get_traced_memory()[0]
+            blocks[(k + 1) // STEPS_PER_MINUTE] = sys.getallocatedblocks()
     tracemalloc.stop()
     warm, end = int(round(warmup)), int(round(minutes))
     c = patrol.controller
     return {
         'measure': 'memory', 'minutes': minutes, 'warmup_minutes': warmup, 'steps': steps,
         'growth_bytes': traced[end] - traced[warm],
+        'growth_blocks': blocks[end] - blocks[warm],
         'growth_by_minute_bytes': {str(m): b - traced[warm] for m, b in traced.items() if m > warm},
+        'growth_by_minute_blocks': {str(m): b - blocks[warm] for m, b in blocks.items() if m > warm},
         'traced_by_minute_bytes': {str(m): b for m, b in traced.items()},
         'lengths': {'flight_log': len(c.flight_log), 'contract_history': len(c.contract_monitor.history),
                     **{f'runtime_{k}': len(v) for k, v in c.runtime_monitor.history.items()},

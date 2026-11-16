@@ -27,13 +27,20 @@ first 5 minutes as the reference, the plain median ratio reached 1.10 in 11
 runs and the mix-adjusted one 1.08, too close to a 10 % bound.
 
 Memory: tracemalloc traces the whole run (a separate run, as tracing slows each
-step); the memory traced at minute 30 minus that at minute 5 < 1 MB.
+step); the memory traced at minute 30 minus that at minute 5 < 1 MB, and the
+growth of sys.getallocatedblocks() (the number of live objects) over the same
+minutes < 10 000 blocks. The block count catches a leak of a small object per
+step, which a byte bound alone can miss (review R-07, S1).
 
 The 30-minute run is marked ``perf``, so ``make test`` leaves it out; run it
 with ``make test-perf`` (``make test-all`` includes it). A 3-minute run, in
-``make test``, checks the same with looser bounds and 1-minute windows: p99 <
-4 ms, the last minute within 25 % of the first, and under 256 kB of growth
-from minute 1 to minute 3 (every bounded buffer is full after 60 s).
+``make test``, checks the same with 1-minute windows: p99 < 4 ms, the last
+minute within 25 % of the first, and from minute 1 to minute 3 (every bounded
+buffer is full after 60 s) under 64 kB and under 1000 blocks of growth.
+Measured at this change, 3 minutes, 3.11 and 3.10: -7.7 to +1.5 kB and -143
+to -37 blocks; with one runtime history unbounded again (a leak of one float
+per step, R-07's RM6) +190 kB and +5900 blocks. 30 minutes: +1495 blocks (the
+switch_history filling); one object per step would add about 75 000.
 
 Before W4-07 (291fa13) the bookkeeping grew without limit (A-R4). Measured on
 this patrol at 291fa13 (its default, unbounded flight log): over 3 minutes the
@@ -61,10 +68,10 @@ FLIGHT_LOG_LEN = 3000
 
 RUNS = [
     pytest.param(dict(minutes=30, window=5, p99_ms=2.0, after_warmup=0.10, from_start=0.20,
-                      growth_bytes=1_000_000),
+                      growth_bytes=1_000_000, growth_blocks=10_000),
                  marks=pytest.mark.perf, id='30min'),
     pytest.param(dict(minutes=3, window=1, p99_ms=4.0, after_warmup=None, from_start=0.25,
-                      growth_bytes=256_000),
+                      growth_bytes=64_000, growth_blocks=1_000),
                  id='3min'),
 ]
 
@@ -93,8 +100,9 @@ def test_g1_4_step_time_stays_in_budget(run, run_python, tmp_path):
 
 @pytest.mark.parametrize('run', RUNS)
 def test_g1_4_memory_stays_flat(run, run_python, tmp_path):
-    """G1.4: the memory traced after the warm-up does not grow."""
+    """G1.4: neither the memory traced nor the number of live blocks grows after the warm-up."""
     out = patrol(run_python, tmp_path, '--minutes', run['minutes'], '--measure', 'memory', '--warmup', run['window'])
     print(f"G1.4 memory, {run['minutes']} min: {json.dumps(out)}")
     assert out['lengths']['flight_log'] == FLIGHT_LOG_LEN, out
     assert out['growth_bytes'] < run['growth_bytes'], out
+    assert out['growth_blocks'] < run['growth_blocks'], out
