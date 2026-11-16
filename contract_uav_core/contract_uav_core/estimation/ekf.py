@@ -242,9 +242,9 @@ class ContractAwareEKF:
         # (None until the first command)
         self._command: Optional[np.ndarray] = None
         self.command_available = False
-        self._step_accel: Optional[np.ndarray] = None
+        self._step_accel: Optional[List[float]] = None
         self.command_bias = np.zeros(3)
-        self._bias_velocity: Optional[np.ndarray] = None
+        self._bias_velocity: Optional[List[float]] = None
         # T5: the published position is self.x[0:3] + glide_offset while it glides back
         # (None otherwise); whether the GPS is recovering; the GPS state rows (0-5) used in
         # the last update, and ever
@@ -253,11 +253,11 @@ class ContractAwareEKF:
         self._gps_rows_last = frozenset()
         self._gps_rows_ever = set()
         # T2 (W4-08b): reset events, as PX4 reports them (counter, and the jump of the last
-        # one); the GPS values fused in this update {row: (value, variance R)}; PX4's last
+        # one); the measurements fused in this update [(row, value, variance R)]; PX4's last
         # reset counters seen (pass-through)
         self.reset_counter = {'xy': 0, 'z': 0}
         self.reset_delta = {'xy': np.zeros(2), 'z': 0.0}
-        self._gps_fused_values: Dict[int, Tuple[float, float]] = {}
+        self._fused_values: List[Tuple[int, float, float]] = []
         self._px4_counters: Dict[str, Optional[float]] = {'xy': None, 'z': None}
 
         logger.info("Contract-Aware EKF initialized")
@@ -324,30 +324,39 @@ class ContractAwareEKF:
         if dt is None:
             dt = self.dt
         dt = float(dt)
-        accel = self._command if accel_cmd is None else np.array(accel_cmd, dtype=float)
+        command = self._command if accel_cmd is None else np.array(accel_cmd, dtype=float)
         self._command = None
-        if accel is not None:
-            if accel.shape != (3,):
-                raise ValueError(f"accel_cmd has shape {accel.shape}, expected (3,)")
-            if not np.all(np.isfinite(accel)):
+        accel = None
+        if command is not None:
+            if command.shape != (3,):
+                raise ValueError(f"accel_cmd has shape {command.shape}, expected (3,)")
+            accel = command.tolist()
+            if not (math.isfinite(accel[0]) and math.isfinite(accel[1]) and math.isfinite(accel[2])):
                 accel = None
         self.command_available = accel is not None
         self._step_accel = accel
 
         x = self.x.tolist()
-        for j, (a, b) in enumerate(self.PAIRS):
-            if accel is not None and j < 3 and not self.velocity_observed[j]:
-                acc = float(accel[j]) + float(self.command_bias[j])
-                x[a] += dt * (x[b] + 0.5 * dt * acc)
-                x[b] += dt * acc
-            else:
+        if accel is None:
+            for a, b in self.PAIRS:
                 x[a] += dt * x[b]
+        else:
+            observed = self.velocity_observed.tolist()
+            bias = self.command_bias.tolist()
+            for j, (a, b) in enumerate(self.PAIRS):
+                if j < 3 and not observed[j]:
+                    acc = accel[j] + bias[j]
+                    x[a] += dt * (x[b] + 0.5 * dt * acc)
+                    x[b] += dt * acc
+                else:
+                    x[a] += dt * x[b]
         self.x = np.array(x)
         self.x[self.YAW] = wrap_angle(self.x[self.YAW])
         if accel is None:                           # the bias observer restarts after a gap
             self._bias_velocity = None
         elif self._bias_velocity is not None:       # its own prediction
-            self._bias_velocity = self._bias_velocity + (accel + self.command_bias) * dt
+            w = self._bias_velocity
+            self._bias_velocity = [w[i] + (accel[i] + bias[i]) * dt for i in range(3)]
 
         # Predict covariance, with the process noise of this step (T4)
         self.last_dt = dt
@@ -529,8 +538,6 @@ class ContractAwareEKF:
                 self.initialized[key] = self.initialized[key] or inside
                 accepted.extend((row, value, r_all[row]) for row, value in components)
                 self.last_fused[key] = rows
-                if key in self.GPS_AXIS_FLAGS:          # for a reset on return (T2, W4-08b)
-                    self._gps_fused_values.update((row, (value, r_all[row])) for row, value in components)
             elif self.reject_count[key] + 1 < self.GATE_RESET_COUNT:
                 self.reject_count[key] += 1
                 self.last_rejected[key] = rows
@@ -540,6 +547,7 @@ class ContractAwareEKF:
                 x = self.x.tolist()
                 self.last_reset[key] = rows
 
+        self._fused_values = accepted              # for a reset on return (T2, W4-08b)
         # Scalar Kalman updates, in measurement order (a pair's quantity before its rate)
         for row, value, r in accepted:
             j, k = self._SLOT[row]
@@ -665,7 +673,7 @@ class ContractAwareEKF:
 
         # Contract-based fusion strategy
         self.last_fused, self.last_rejected, self.last_reset = {}, {}, {}
-        self._gps_fused_values = {}
+        self._fused_values = []
         published_before = self._published_position()
         if gps_ok and imu_ok:
             keys, R, estimation_quality = tuple(self.MEASUREMENT_ROWS), self.R_nominal, "nominal"
@@ -769,7 +777,7 @@ class ContractAwareEKF:
                 if observed_before[i] and not self.velocity_observed[i]:
                     # T1, the step GPS velocity is lost: this step's predict still kept the
                     # velocity (it was measured until now), so add the command it left out
-                    acc = float(self._step_accel[i]) + float(self.command_bias[i])
+                    acc = self._step_accel[i] + float(self.command_bias[i])
                     self.x[3 + i] += acc * dt
                     self.x[i] += 0.5 * acc * dt * dt
         for i in range(3):          # T4, S-1: an unmeasured velocity's error is bounded by the envelope
@@ -850,9 +858,10 @@ class ContractAwareEKF:
             far = self.recovering and float(np.linalg.norm(offset[list(rows)])) > self.RESET_OFFSET
             if not (far or px4_reset):
                 continue
+            fused = {row: (value, r) for row, value, r in self._fused_values if row < 6}
             for row in rows + tuple(row + 3 for row in rows):
-                if row in self._gps_fused_values:
-                    self._set_row(row, *self._gps_fused_values[row])
+                if row in fused:
+                    self._set_row(row, *fused[row])
             delta = self.x[list(rows)] - published_before[list(rows)]
             self.reset_counter[channel] += 1
             self.reset_delta[channel] = delta.copy() if channel == 'xy' else float(delta[0])
@@ -877,7 +886,7 @@ class ContractAwareEKF:
         dt, T = self.last_dt, self.COMMAND_BIAS_TIME
         fresh = self._bias_velocity is None
         v = self.x[3:6].tolist()
-        w = v if fresh else self._bias_velocity.tolist()
+        w = v if fresh else list(self._bias_velocity)
         bias = self.command_bias.tolist()
         for i in range(3):
             if self.velocity_observed[i] and observed_before[i] and not fresh:
@@ -886,7 +895,7 @@ class ContractAwareEKF:
                 bias[i] += dt / (T * T) * e
             else:
                 w[i] = v[i]
-        self._bias_velocity = np.array(w)
+        self._bias_velocity = w
         self.command_bias = np.array(bias)
 
     def _eph(self) -> float:

@@ -37,6 +37,8 @@ How the three copies compared (checked line by line in W4-04):
   damping term plus an attitude term, with no rate setpoint.
 """
 
+import math
+
 import numpy as np
 
 GRAVITY = 9.81  # m/s^2; the same constant as sim/quadrotor.py
@@ -118,11 +120,12 @@ def attitude_thrust_to_accel(attitude, thrust, hover_thrust) -> np.ndarray:
     """
     roll, pitch, yaw = (float(v) for v in attitude)
     specific_force = max(float(thrust), 0.0) / float(hover_thrust) * GRAVITY
-    cr, sr = np.cos(roll), np.sin(roll)
-    cp, sp = np.cos(pitch), np.sin(pitch)
-    cy, sy = np.cos(yaw), np.sin(yaw)
-    body_z = np.array([cy * sp * cr + sy * sr, sy * sp * cr - cy * sr, cp * cr])
-    return np.array([0.0, 0.0, GRAVITY]) - specific_force * body_z
+    cr, sr = math.cos(roll), math.sin(roll)
+    cp, sp = math.cos(pitch), math.sin(pitch)
+    cy, sy = math.cos(yaw), math.sin(yaw)
+    return np.array([0.0 - specific_force * (cy * sp * cr + sy * sr),
+                     0.0 - specific_force * (sy * sp * cr - cy * sr),
+                     GRAVITY - specific_force * (cp * cr)])
 
 
 def attitude_to_rates_torques(desired_attitude: np.ndarray,
