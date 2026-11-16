@@ -228,7 +228,7 @@ def main(argv=None):
     parser.add_argument('--minutes', type=float, required=True)
     parser.add_argument('--measure', choices=('time', 'memory'), required=True)
     parser.add_argument('--window', type=float, default=5.0, help='time: minutes at the start and the end')
-    parser.add_argument('--warmup', type=float, default=5.0, help='memory: minutes before tracing starts')
+    parser.add_argument('--warmup', type=float, default=5.0, help='memory: the minute the growth is measured from')
     parser.add_argument('--flight-log-len', type=int, default=-1)
     args = parser.parse_args(argv)
     kwargs = {} if args.flight_log_len < 0 else {'flight_log_len': args.flight_log_len}

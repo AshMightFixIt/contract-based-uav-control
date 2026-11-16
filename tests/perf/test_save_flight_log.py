@@ -9,7 +9,8 @@ both reproduced at 291fa13 before the fix:
   (and a '.json' inside a directory name was replaced too).
 
 The fixture ``legacy_save`` is save_flight_log at 291fa13, verbatim: for a
-name ending in '.json' the new one writes the same two files, byte for byte.
+name whose only '.json' is its extension, the new one writes the same two
+files, byte for byte.
 """
 from __future__ import annotations
 
