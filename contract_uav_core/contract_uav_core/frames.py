@@ -100,6 +100,31 @@ def accel_to_thrust(accel_z, hover_thrust, min_thrust=0.0, max_thrust=1.0):
     return desired_thrust
 
 
+def attitude_thrust_to_accel(attitude, thrust, hover_thrust) -> np.ndarray:
+    """NED acceleration that an attitude and a normalised collective thrust produce (W4-08b).
+
+    The inverse of the command the tiers send (accel_to_attitude, accel_to_thrust,
+    after the safety filter): the thrust model of sim/quadrotor.py and PX4's
+    MPC_THR_HOVER, without drag or wind. The specific force (thrust / hover_thrust) * g
+    acts along body -z, the third column of Rz(yaw) Ry(pitch) Rx(roll), and gravity
+    adds +g along NED z:
+        a = g e_z - (thrust / hover_thrust) g R e_z,
+    with the thrust clipped at 0 (a rotor cannot pull). Level at hover thrust: zero.
+    Unlike accel_to_thrust (a level-flight law) the tilt is taken into account, so a
+    tilted vehicle at hover thrust sinks, as it does.
+
+    attitude: [roll, pitch, yaw] in rad (ZYX, FRD body). thrust: normalised. hover_thrust:
+    the thrust that balances gravity, the same value the tiers normalised with.
+    """
+    roll, pitch, yaw = (float(v) for v in attitude)
+    specific_force = max(float(thrust), 0.0) / float(hover_thrust) * GRAVITY
+    cr, sr = np.cos(roll), np.sin(roll)
+    cp, sp = np.cos(pitch), np.sin(pitch)
+    cy, sy = np.cos(yaw), np.sin(yaw)
+    body_z = np.array([cy * sp * cr + sy * sr, sy * sp * cr - cy * sr, cp * cr])
+    return np.array([0.0, 0.0, GRAVITY]) - specific_force * body_z
+
+
 def attitude_to_rates_torques(desired_attitude: np.ndarray,
                               attitude: np.ndarray,
                               rates: np.ndarray,

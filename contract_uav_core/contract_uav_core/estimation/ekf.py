@@ -25,6 +25,13 @@ What W4-08 changed (K17, the core half of A-F7):
 - The estimator contract is checked with its own quantities and inputs (T8).
 - The filter works on six independent 2-state blocks (see PAIRS): the same
   numbers as the 12x12 form, up to rounding, at a fraction of the cost.
+
+What W4-08b changed (closed loop without GPS):
+- Without GPS velocity, the velocity follows the acceleration of the command
+  just sent (predict's accel_cmd, or set_command; estimation/command.py) plus a
+  bias learned while GPS was there, with a variance sized for the remaining
+  mismatch and capped by the speed envelope (T1). Keeping the last velocity was
+  right only when nobody steers: in closed loop the vehicle ran away.
 """
 
 import math
@@ -108,6 +115,22 @@ class ContractAwareEKF:
     # The limits are the speeds the benchmark vehicle can fly (its simulation clips the
     # horizontal speed at 3 m/s and the vertical at 2 m/s); set them from the airframe.
     NO_GPS_SPEED_LIMIT = (3.0, 3.0, 2.0)  # m/s, x y z
+    # W4-08b, T1: with a command (predict's accel_cmd, or set_command), a velocity component
+    # without GPS velocity is instead propagated with the commanded acceleration plus
+    # command_bias (below), and the position with it, so the estimate follows the vehicle's
+    # response to its own commands (estimation/command.py). Its variance then grows from its
+    # value at the loss by the mismatch noise: white acceleration noise of this spectral
+    # density, for what the bias does not cover (attitude lag, a change of drag or wind after
+    # the loss), sized from the closed-loop runs in the W4-08b report (worst error <= 0.15 of
+    # its 3 sigma). The speed envelope still caps it: the error of an estimate v_i cannot
+    # exceed |v_i| + limit_i, so the variance never exceeds ((|v_i| + limit_i) / 3)^2.
+    COMMAND_MISMATCH_PSD = 0.09   # (m/s^2)^2 / Hz: sigma 0.3 m/s^2 over one second
+    # command_bias: the acceleration the vehicle had beyond its command while GPS velocity was
+    # fused (drag, wind, a hover-thrust error), learned per axis by a critically damped
+    # second-order observer of the fused velocity with this time constant, and held without
+    # GPS. 0.5 s follows a wind change within about 2 s (with 1 s, a 9 m/s wind that had
+    # changed 5 s before the loss left the estimate 5.0 m off instead of 2.5 m; W4-08b report).
+    COMMAND_BIAS_TIME = 0.5       # s
     # When nothing is fused at all (both sensor contracts violated) the covariance grows by
     # this many more times the step's process noise (the legacy 2 Q).
     DEAD_RECKONING_EXTRA_Q = 2.0
@@ -195,6 +218,14 @@ class ContractAwareEKF:
         self.last_dt = self.dt
         self._last_q = self.Q.diagonal().tolist()
         self.position_trusted = True
+        # W4-08b, T1: the acceleration set_command gave, for the next predict; whether the
+        # last predict had a command; the learned bias, and the observer's own velocity
+        # (None until the first command)
+        self._command: Optional[np.ndarray] = None
+        self.command_available = False
+        self._step_accel: Optional[np.ndarray] = None
+        self.command_bias = np.zeros(3)
+        self._bias_velocity: Optional[np.ndarray] = None
         # T5: the published position is self.x[0:3] + glide_offset while it glides back
         # (None otherwise); whether the GPS is recovering; the GPS state rows (0-5) used in
         # the last update, and ever
@@ -237,22 +268,60 @@ class ContractAwareEKF:
             raise ValueError("P must be symmetric and couple only the rows of a pair in PAIRS "
                              "(a quantity and its rate)")
 
-    def predict(self, dt: Optional[float] = None):
+    def set_command(self, accel_cmd: Optional[np.ndarray]):
+        """The acceleration of the command just sent, for the next predict() (W4-08b, T1).
+
+        NED, m/s^2, gravity included (estimation/command.py makes it from the final thrust).
+        The next predict() that is not given accel_cmd itself uses it, once: a step without
+        a new command predicts without one. None clears it. The core calls this after each
+        control step, so that predict(dt) keeps its one-argument call.
+        """
+        self._command = None if accel_cmd is None else np.array(accel_cmd, dtype=float)
+
+    def predict(self, dt: Optional[float] = None, *, accel_cmd: Optional[np.ndarray] = None):
         """
         Prediction step: propagate state forward using motion model
 
         Constant velocity and constant rates: each quantity += its rate * dt, and per pair
         P <- F P F' + Q with F = [[1, dt], [0, 1]].
+
+        accel_cmd (W4-08b, T1): the NED acceleration the last command produces, m/s^2 with
+        gravity (default: the one set_command gave since the last predict, if any). A
+        velocity component the last update did not measure (no GPS velocity) is then
+        propagated with it plus command_bias, v += a dt and p += v dt + a dt^2 / 2, and its
+        variance grows by the mismatch noise (COMMAND_MISMATCH_PSD) instead of being held at
+        the speed envelope. A measured component keeps the constant-velocity model, so with
+        GPS nothing changes (the update of the step GPS velocity is lost adds the command
+        that step's predict left out). Without a command, or with a non-finite one, the
+        velocity is kept, as before. A command that is not 3 numbers raises ValueError.
         """
         if dt is None:
             dt = self.dt
         dt = float(dt)
+        accel = self._command if accel_cmd is None else np.array(accel_cmd, dtype=float)
+        self._command = None
+        if accel is not None:
+            if accel.shape != (3,):
+                raise ValueError(f"accel_cmd has shape {accel.shape}, expected (3,)")
+            if not np.all(np.isfinite(accel)):
+                accel = None
+        self.command_available = accel is not None
+        self._step_accel = accel
 
         x = self.x.tolist()
-        for a, b in self.PAIRS:
-            x[a] += dt * x[b]
+        for j, (a, b) in enumerate(self.PAIRS):
+            if accel is not None and j < 3 and not self.velocity_observed[j]:
+                acc = float(accel[j]) + float(self.command_bias[j])
+                x[a] += dt * (x[b] + 0.5 * dt * acc)
+                x[b] += dt * acc
+            else:
+                x[a] += dt * x[b]
         self.x = np.array(x)
         self.x[self.YAW] = wrap_angle(self.x[self.YAW])
+        if accel is None:                           # the bias observer restarts after a gap
+            self._bias_velocity = None
+        elif self._bias_velocity is not None:       # its own prediction
+            self._bias_velocity = self._bias_velocity + (accel + self.command_bias) * dt
 
         # Predict covariance, with the process noise of this step (T4)
         self.last_dt = dt
@@ -268,7 +337,9 @@ class ContractAwareEKF:
         q = [v * scale for v in self.Q.diagonal().tolist()]
         for i in range(3):
             if not self.velocity_observed[i]:
-                q[3 + i] = 0.0      # held at the speed envelope instead (_after_measurements)
+                # with a command: the mismatch noise (T1, W4-08b); without: held at the speed
+                # envelope instead (_after_measurements)
+                q[3 + i] = self.COMMAND_MISMATCH_PSD * dt if self.command_available else 0.0
         return q
 
     def process_noise(self, dt: float) -> np.ndarray:
@@ -279,6 +350,8 @@ class ContractAwareEKF:
         the speed envelope (NO_GPS_SPEED_LIMIT). The first predict after a GPS loss cannot know
         of it yet and adds the nominal velocity noise once (0.1 m^2/s^2 at 50 Hz); the envelope
         that the same update then sets is at least (limit / 3)^2 = 1 m^2/s^2, so it dominates.
+        With a command (the last predict's, W4-08b) such a component gets
+        COMMAND_MISMATCH_PSD * dt instead, and the envelope only caps it.
         """
         return np.diag(self._process_noise(dt))
 
@@ -653,11 +726,30 @@ class ContractAwareEKF:
         used = set()
         for key in ('gps_position', 'gps_velocity'):
             used.update(self.last_fused.get(key, ()), self.last_reset.get(key, ()))
+        observed_before = self.velocity_observed
         self.velocity_observed = np.array([row in used for row in (3, 4, 5)])
+        if self.command_available:
+            dt = self.last_dt
+            for i in range(3):
+                if observed_before[i] and not self.velocity_observed[i]:
+                    # T1, the step GPS velocity is lost: this step's predict still kept the
+                    # velocity (it was measured until now), so add the command it left out
+                    acc = float(self._step_accel[i]) + float(self.command_bias[i])
+                    self.x[3 + i] += acc * dt
+                    self.x[i] += 0.5 * acc * dt * dt
         for i in range(3):          # T4, S-1: an unmeasured velocity's error is bounded by the envelope
             if not self.velocity_observed[i]:
                 bound = (abs(float(self.x[3 + i])) + self.NO_GPS_SPEED_LIMIT[i]) / 3.0
-                self._cov[i][2] = max(self._cov[i][2], bound * bound)
+                if self.command_available:
+                    # T1 (W4-08b): grown by the mismatch noise in predict; the envelope caps
+                    # it, keeping the correlation coefficient (so the block stays positive)
+                    paa, pab, pbb = self._cov[i]
+                    if pbb > bound * bound:
+                        self._cov[i] = [paa, pab * bound / math.sqrt(pbb), bound * bound]
+                else:
+                    self._cov[i][2] = max(self._cov[i][2], bound * bound)
+        if self.command_available:
+            self._observe_command_bias(observed_before)
 
         returned = (used - self._gps_rows_last) & self._gps_rows_ever
         if returned or 'gps_position' in self.last_reset:
@@ -677,6 +769,30 @@ class ContractAwareEKF:
         self._gps_rows_ever |= used
 
         self.position_trusted = bool(self._eph() <= self.POSITION_UNTRUSTED_EPH)
+
+    def _observe_command_bias(self, observed_before: np.ndarray):
+        """Learn command_bias from the fused velocity (T1, W4-08b).
+
+        Per axis, an alpha-beta observer: its velocity w was predicted with the command plus
+        the bias (predict); here the error e = v - w against the filter's velocity corrects
+        w += 2 (dt / T) e and the bias += (dt / T^2) e, T = COMMAND_BIAS_TIME (critically
+        damped, natural frequency 1 / T). Only while GPS velocity is fused on the axis, in
+        this update and the one before: otherwise w restarts from the filter's velocity and
+        the bias is held, so neither an outage nor the correction at the return teaches it.
+        The observer also starts from the filter's velocity at the first command, or after
+        a step without one.
+        """
+        dt, T = self.last_dt, self.COMMAND_BIAS_TIME
+        fresh = self._bias_velocity is None
+        if fresh:
+            self._bias_velocity = self.x[3:6].copy()
+        for i in range(3):
+            if self.velocity_observed[i] and observed_before[i] and not fresh:
+                e = float(self.x[3 + i] - self._bias_velocity[i])
+                self._bias_velocity[i] += 2.0 * dt / T * e
+                self.command_bias[i] += dt / (T * T) * e
+            else:
+                self._bias_velocity[i] = self.x[3 + i]
 
     def _eph(self) -> float:
         """sqrt(P_xx + P_yy) of the published position (get_covariance), in m."""
@@ -729,6 +845,8 @@ class ContractAwareEKF:
         sqrt(P_zz), in m; gliding: the position is gliding back (T5) and glide_offset is
         the published position minus the estimate; fused / rejected / reset: per
         measurement, the state rows fused, rejected by the gate, or reset to it.
+        W4-08b: command: the last predict had a commanded acceleration (T1); command_bias:
+        the learned acceleration beyond the command, NED m/s^2.
         """
         epv_var = self._cov[2][0]
         if self.glide_offset is not None:
@@ -743,6 +861,8 @@ class ContractAwareEKF:
             'fused': dict(self.last_fused),
             'rejected': dict(self.last_rejected),
             'reset': dict(self.last_reset),
+            'command': self.command_available,
+            'command_bias': self.command_bias.copy(),
         }
 
 

@@ -24,6 +24,7 @@ from .contracts.monitor import HierarchicalContractMonitor
 from .contracts.spec import ContractStatus
 from .contracts.preflight import ControllerPreflightMixin
 from .estimation.ekf import ContractAwareEKF
+from .estimation.command import commanded_acceleration
 from .control.switcher import ControllerSwitcher
 from .control.supervisor import FlightModeSupervisor, FlightMode
 from .safety.cbf import CBFSafetyFilter
@@ -204,7 +205,7 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
             self.last_wind_sensor = None
 
         # 2. State estimation (predict + update)
-        self.ekf.predict(dt_predict)  # Propagate state forward (self.dt when t is None)
+        self.ekf.predict(dt_predict)  # Propagate state forward (self.dt when t is None), with the last step's command (10b)
         state, estimation_ok = self.ekf.update(measurements, raw_sensors, self.time)
         state_dict = self.ekf.get_state()
 
@@ -273,6 +274,12 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
         control, cbf_intervened = self.cbf_filter.filter_control(
             state_dict, nominal_control, self.time
         )
+
+        # 10b. The command just sent, as the acceleration it produces, for the EKF's next
+        # predict (W4-08b; estimation/command.py): after the CBF filter, with the hover
+        # thrust of the tier that made it
+        tier = self.controller_switcher.controllers[self.controller_switcher.get_active_controller()]
+        self.ekf.set_command(commanded_acceleration(control, state_dict['attitude'], imu_ok, tier.hover_thrust))
 
         # 11.-14. Runtime monitors, contract monitoring and the flight log (telemetry.py)
         active_controller, flight_mode = self._record_step(
