@@ -7,6 +7,10 @@ estimate snapped back. Now: per-second process noise, the last velocity kept
 with a variance that covers any velocity within NO_GPS_SPEED_LIMIT (fix round,
 S-1; first a 0.2 m/s^2 random walk, which a braking vehicle left), an untrusted
 flag, and a published position that glides back at <= MAX_RECOVERY_SPEED.
+
+W4-08b (T2): a return more than RESET_OFFSET (5 m) away is reset instead, with a
+reset event. The glide tests below therefore use outages that leave about 4 m
+(they used about 10 m, which is now reset: see test_ekf_reset.py).
 """
 from __future__ import annotations
 
@@ -161,13 +165,17 @@ def test_dead_reckoning_adds_the_extra_process_noise():
 
 # --- T5: smooth recovery -----------------------------------------------------------------------
 
-def outage_then_stop(dt=DT):
-    """10 s of GPS at 1 m/s, then a 10 s outage in which the truth stops: the dead-reckoned
-    estimate keeps going and ends about 10 m off. dt: the estimator's step."""
+# An outage that leaves the estimate about 4 m off: inside RESET_OFFSET, so it glides (W4-08b)
+GLIDE_OUTAGE = 4.0  # s
+
+
+def outage_then_stop(dt=DT, outage=GLIDE_OUTAGE):
+    """10 s of GPS at 1 m/s, then an outage in which the truth stops: the dead-reckoned
+    estimate keeps going and ends about 1 m per second of outage off. dt: the estimator's step."""
     flight = Flight([1.0, 0.0, 0.0], dt=dt)
     flight.fly(10.0)
     flight.vel = np.zeros(3)
-    flight.fly(10.0, gps=False)
+    flight.fly(outage, gps=False)
     return flight
 
 
@@ -178,7 +186,7 @@ def test_gps_return_glides_at_most_2_m_s(dt):
     0.01 s loop would glide at 4 m/s)."""
     flight = outage_then_stop(dt)
     ekf = flight.ekf
-    assert np.linalg.norm(flight.error()) > 9.0
+    assert 3.5 < np.linalg.norm(flight.error()) < ekf.RESET_OFFSET
     published = ekf.get_state()['position']
     rates, covered = [], []
     for k in range(int(round(8.0 / dt))):
@@ -194,6 +202,7 @@ def test_gps_return_glides_at_most_2_m_s(dt):
     assert all(covered)                                    # the covariance includes the glide offset
     assert not ekf.get_status()['gliding']
     assert np.linalg.norm(flight.error()) < 0.1
+    assert ekf.get_status()['xy_reset_counter'] == 0                  # glided, not reset
 
 
 def test_filter_takes_the_measurement_in_full_while_publishing_the_glide():
@@ -204,7 +213,7 @@ def test_filter_takes_the_measurement_in_full_while_publishing_the_glide():
     assert status['gliding']
     assert np.allclose(ekf.get_state()['position'], ekf.x[0:3] + status['glide_offset'])
     assert np.linalg.norm(ekf.x[0:3] - flight.pos) < 1.0        # the filter itself snapped back
-    assert np.linalg.norm(status['glide_offset']) > 8.0
+    assert np.linalg.norm(status['glide_offset']) > 3.0
     P, Pf = ekf.get_covariance(), ekf.P
     assert np.allclose(P[0:3, 0:3], Pf[0:3, 0:3] + np.outer(status['glide_offset'], status['glide_offset']))
 
@@ -231,9 +240,9 @@ def test_short_dropout_does_not_glide():
 # --- T5, per-axis and gated returns (review R-08, B-1 and S-2) ---------------------------------
 
 def per_axis_outage(mode, dt=DT):
-    """10 s of GPS at 1 m/s; then 10 s in which the truth stops and PX4 marks the horizontal
-    position and velocity invalid (xy_valid, v_xy_valid False) while z stays valid (baro), as
-    PX4 does when it loses GPS; then everything valid again, for 8 s; all at the step dt.
+    """10 s of GPS at 1 m/s; then GLIDE_OUTAGE s in which the truth stops and PX4 marks the
+    horizontal position and velocity invalid (xy_valid, v_xy_valid False) while z stays valid
+    (baro), as PX4 does when it loses GPS; then everything valid again, for 8 s; all at the step dt.
     Returns the published correction rate beyond the estimated velocity at each step after
     the return, whether the estimator was recovering then, and the estimator."""
     ekf = make_ekf(mode=mode)
@@ -252,11 +261,11 @@ def per_axis_outage(mode, dt=DT):
         pos = pos + vel * dt
         step(t, {})
     vel = np.zeros(3)
-    for _ in range(steps):
+    for _ in range(int(round(GLIDE_OUTAGE / dt))):
         t += dt
         step(t, {'xy_valid': False, 'v_xy_valid': False})
         assert ekf.last_fused['gps_position'] == (2,)          # z was fused all along
-    assert np.linalg.norm(ekf.get_state()['position'] - pos) > 9.0
+    assert 3.5 < np.linalg.norm(ekf.get_state()['position'] - pos) < ekf.RESET_OFFSET
     rates, recovering = [], []
     for _ in range(int(round(8.0 / dt))):
         before = ekf.get_state()
@@ -287,7 +296,9 @@ def test_gated_gps_return_does_not_move_the_published_position_unglided():
     """S-2: GPS back 200 m away after 20 s (beyond the gate even with the no-GPS covariance):
     the position is gated for 9 steps while the velocity is fused, and the velocity must not
     move the published position faster than the glide (it did at 13.6 m/s, 264 m/s with the
-    kept velocity 0.5 m/s off, for a 100 m return)."""
+    kept velocity 0.5 m/s off, for a 100 m return). W4-08b (T2): at the 10th step the gate
+    takes the position, and 200 m is beyond RESET_OFFSET, so it is reset with a reset event
+    (before: glided for 100 s); after it, no more jumps."""
     flight = Flight([0.0, 0.0, 0.0])
     flight.fly(10.0)
     ekf = flight.ekf
@@ -304,8 +315,13 @@ def test_gated_gps_return_does_not_move_the_published_position_unglided():
             assert 'gps_position' in ekf.last_rejected and 'gps_velocity' in ekf.last_fused, k
         if k == 9:
             assert 'gps_position' in ekf.last_reset
-    assert max(rates) <= ekf.MAX_RECOVERY_SPEED + 1e-9
-    assert ekf.recovering and ekf.get_status()['gliding']
+            status = ekf.get_status()
+            assert status['xy_reset_counter'] == 1 and status['z_reset_counter'] == 0
+            assert status['delta_xy'][0] > 190.0 and not status['gliding']
+            assert np.allclose(after['position'], flight.pos, atol=0.1)     # the controller sees it now
+    assert max(rates[:9]) <= ekf.MAX_RECOVERY_SPEED + 1e-9
+    assert max(rates[10:]) <= ekf.MAX_RECOVERY_SPEED + 1e-9
+    assert not ekf.recovering and ekf.get_status()['xy_reset_counter'] == 1
 
 
 # --- S-1: honest without GPS for manoeuvres, not only at constant velocity ----------------------
@@ -370,13 +386,17 @@ def test_outage_at_constant_velocity_is_no_worse_than_base():
 def test_position_is_untrusted_while_a_far_glide_is_in_progress():
     """S-4 (R-08 mutation M3): the untrusted flag uses the published covariance (P + d d').
     Right after the return the filter's own eph is small, but the published position is still
-    about 10 m from the estimate, so it is not trusted until the glide has brought it within 5 m."""
+    about 4 m from the estimate, so it is not trusted until the glide has brought it within the
+    threshold. W4-08b: a glide is now at most RESET_OFFSET = POSITION_UNTRUSTED_EPH = 5 m (a
+    farther return is reset), so this instance's threshold is lowered to 2.5 m to see the flag
+    follow the glide (before: a 10 m glide against 5 m)."""
     flight = outage_then_stop()
     ekf = flight.ekf
+    ekf.POSITION_UNTRUSTED_EPH = 2.5
     flight.step(gps=True)
     own_eph = np.sqrt(ekf.P[0, 0] + ekf.P[1, 1])
     assert own_eph < ekf.POSITION_UNTRUSTED_EPH
-    assert np.linalg.norm(ekf.glide_offset[0:2]) > 8.0
+    assert np.linalg.norm(ekf.glide_offset[0:2]) > 3.0
     assert ekf.position_trusted is False
     trusted_at = None
     for k in range(int(8.0 / DT)):

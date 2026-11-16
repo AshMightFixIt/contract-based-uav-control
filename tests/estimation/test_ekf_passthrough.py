@@ -130,7 +130,8 @@ def test_passthrough_glides_back_after_an_outage():
     meas, sensors = px4([0.0, 0.0, -5.0], [1.0, 0.0, 0.0], eph=0.5, epv=0.5, evh=0.1, evv=0.1)
     step(ekf, meas, sensors)
     lost = dict(sensors['gps'], valid=False)
-    for k in range(250):                       # 5 s dead-reckoned at 1 m/s: x = 5 m
+    for k in range(200):                       # 4 s dead-reckoned at 1 m/s: x = 4 m (W4-08b: 5 m
+                                               # now resets, RESET_OFFSET; this was 5 s)
         step(ekf, meas, {'gps': lost, 'imu': IMU})
     back, back_sensors = px4([0.0, 0.0, -5.0], [0.0, 0.0, 0.0], eph=0.5, epv=0.5, evh=0.1, evv=0.1)
     before = ekf.get_state()['position']

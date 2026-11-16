@@ -138,12 +138,14 @@ def test_g1_6_twenty_second_outage_bounded_honest_and_untrusted():
 
 
 def test_g1_6_recovery_correction_rate_at_most_2_m_s():
-    """G1.6: on GPS recovery the correction rate is <= 2 m/s (before: one-step snap)."""
+    """G1.6: on GPS recovery the correction rate is <= 2 m/s (before: one-step snap), for an
+    offset within RESET_OFFSET (5 m; W4-08b: a farther one is reset, see the next test). The
+    outage is 4 s (it was 10 s, about 10 m, which is now reset)."""
     truth = Truth(vel=(1.0, 0.0, 0.0))
     truth.fly(10.0)
     truth.vel = np.zeros(3)                 # the vehicle stops; dead reckoning keeps going
-    truth.fly(10.0, gps=NO_GPS)
-    assert np.linalg.norm(truth.position_error()) > 9.0
+    truth.fly(4.0, gps=NO_GPS)
+    assert 3.5 < np.linalg.norm(truth.position_error()) < truth.ekf.RESET_OFFSET
     rates = []
     for _ in range(int(8.0 / DT)):
         before = truth.ekf.get_state()
@@ -152,6 +154,26 @@ def test_g1_6_recovery_correction_rate_at_most_2_m_s():
         rates.append(np.linalg.norm(after['position'] - before['position'] - before['velocity'] * DT) / DT)
     assert max(rates) <= 2.0 + 1e-9
     assert np.linalg.norm(truth.position_error()) < 0.1
+    assert truth.ekf.get_status()['xy_reset_counter'] == 0
+
+
+def test_g1_6_large_offset_at_gps_return_is_reset_with_an_event():
+    """G1.6 (W4-08b T2): a GPS return beyond RESET_OFFSET is reset, not glided: the published
+    position is the measurement at once, and a reset event (xy_reset_counter, delta_xy) says by
+    how much it jumped (before: a 10 m offset glided for 5 s, a 52 m one for 26 s)."""
+    truth = Truth(vel=(1.0, 0.0, 0.0))
+    truth.fly(10.0)
+    truth.vel = np.zeros(3)
+    truth.fly(10.0, gps=NO_GPS)             # dead reckoning runs about 10 m ahead
+    before = truth.ekf.get_state()['position']
+    assert np.linalg.norm(before - truth.pos) > 9.0
+    truth.step()
+    status = truth.ekf.get_status()
+    assert np.linalg.norm(truth.position_error()) < 0.05
+    assert status['xy_reset_counter'] == 1 and status['z_reset_counter'] == 0
+    # the jump at the return step itself (from that step's prediction, 2 cm on from 'before')
+    assert np.allclose(status['delta_xy'], truth.ekf.get_state()['position'][0:2] - before[0:2], atol=0.05)
+    assert not status['gliding'] and not truth.ekf.recovering
 
 
 def test_g1_6_outlier_rejected_real_jump_accepted_after_10_rejects():

@@ -40,6 +40,13 @@ dict. The keys the estimator reads (W4-08 added the optional ones marked *):
       PX4's own estimate, they give its covariance (missing ones: the nominal
       measurement noise). In fusion mode they raise the GPS measurement noise to
       the reported accuracy (missing ones: the sensor contract's HDOP x UERE).
+    * xy_reset_counter, z_reset_counter: number (W4-08b). PX4's reset counters
+      (vehicle_local_position). In mode='passthrough' a change of one means PX4
+      reset that channel of its estimate: the published position takes the new
+      value at once (no glide) and the estimator records its own reset event
+      (ContractAwareEKF.get_status(): xy_reset_counter / delta_xy,
+      z_reset_counter / delta_z). PX4's delta_xy / delta_z are not read: the
+      estimator's delta is the jump of the position it publishes.
 - 'imu': dict
     attitude: shape (3,), [roll, pitch, yaw], rad. rates: shape (3,), rad/s.
     valid: bool. calibrated: bool. temperature: float, degrees C.

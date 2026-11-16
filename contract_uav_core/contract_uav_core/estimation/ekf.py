@@ -32,6 +32,9 @@ What W4-08b changed (closed loop without GPS):
   bias learned while GPS was there, with a variance sized for the remaining
   mismatch and capped by the speed envelope (T1). Keeping the last velocity was
   right only when nobody steers: in closed loop the vehicle ran away.
+- A GPS return more than RESET_OFFSET (5 m) away is reset, not glided, with a
+  PX4-style reset event in get_status(); in pass-through, PX4's own reset
+  counters reset too (T2). Smaller offsets still glide at <= 2 m/s.
 """
 
 import math
@@ -151,6 +154,20 @@ class ContractAwareEKF:
     MAX_RECOVERY_SPEED = 2.0  # m/s
     GPS_ROWS = frozenset(range(6))
     POSITION_ROWS = frozenset(range(3))
+    # Reset (W4-08b, T2): while recovering, a channel (horizontal, vertical) whose published
+    # position is more than RESET_OFFSET from the estimate, with the GPS position of that
+    # channel used in this update, is not glided: it is reset to the measurement (position,
+    # and velocity if measured), as PX4 does, and the reset is recorded (get_status:
+    # xy_reset_counter / delta_xy, z_reset_counter / delta_z, the jump of the published
+    # position) so that a controller can shift its setpoints by it. 5 m: a glide then hides
+    # at most the error at which the position is already called untrusted
+    # (POSITION_UNTRUSTED_EPH), and lasts at most 2.5 s at MAX_RECOVERY_SPEED; a larger real
+    # error reaches the controller at once (before: a 52 m error took 26 s).
+    RESET_OFFSET = 5.0  # m, horizontal norm and vertical, each
+    RESET_CHANNELS = (('xy', (0, 1)), ('z', (2,)))
+    # In mode='passthrough', a change of PX4's own reset counter in sensors['gps'] (PX4
+    # vehicle_local_position; interfaces.py) is a reset of that channel too, at any size.
+    PX4_RESET_COUNTERS = {'xy': 'xy_reset_counter', 'z': 'z_reset_counter'}
 
     def __init__(self, contract_monitor: HierarchicalContractMonitor, *, mode: str = 'fusion'):
         """mode: 'fusion' (default) fuses GPS and IMU measurements; 'passthrough' (T7) takes
@@ -233,6 +250,13 @@ class ContractAwareEKF:
         self.recovering = False
         self._gps_rows_last = frozenset()
         self._gps_rows_ever = set()
+        # T2 (W4-08b): reset events, as PX4 reports them (counter, and the jump of the last
+        # one); the GPS values fused in this update {row: (value, variance R)}; PX4's last
+        # reset counters seen (pass-through)
+        self.reset_counter = {'xy': 0, 'z': 0}
+        self.reset_delta = {'xy': np.zeros(2), 'z': 0.0}
+        self._gps_fused_values: Dict[int, Tuple[float, float]] = {}
+        self._px4_counters: Dict[str, Optional[float]] = {'xy': None, 'z': None}
 
         logger.info("Contract-Aware EKF initialized")
 
@@ -503,6 +527,8 @@ class ContractAwareEKF:
                 self.initialized[key] = self.initialized[key] or inside
                 accepted.extend((row, value, r_all[row]) for row, value in components)
                 self.last_fused[key] = rows
+                if key in self.GPS_AXIS_FLAGS:          # for a reset on return (T2, W4-08b)
+                    self._gps_fused_values.update((row, (value, r_all[row])) for row, value in components)
             elif self.reject_count[key] + 1 < self.GATE_RESET_COUNT:
                 self.reject_count[key] += 1
                 self.last_rejected[key] = rows
@@ -622,7 +648,9 @@ class ContractAwareEKF:
         flagged valid, with their eph / epv covariance (_pass_through, T7). Then (_after_measurements):
         an unmeasured velocity keeps its value with the speed-envelope variance (T4), the
         position is flagged untrusted once eph > POSITION_UNTRUSTED_EPH (T4), and a
-        GPS that comes back (any row, either mode) glides in at <= MAX_RECOVERY_SPEED (T5).
+        GPS that comes back (any row, either mode) glides in at <= MAX_RECOVERY_SPEED (T5),
+        unless the offset exceeds RESET_OFFSET: then it is reset, with a reset event
+        (W4-08b, T2).
 
         Returns: (state_estimate, estimation_contract_satisfied); the state is the
         published one, as get_state()
@@ -635,6 +663,7 @@ class ContractAwareEKF:
 
         # Contract-based fusion strategy
         self.last_fused, self.last_rejected, self.last_reset = {}, {}, {}
+        self._gps_fused_values = {}
         published_before = self._published_position()
         if gps_ok and imu_ok:
             keys, R, estimation_quality = tuple(self.MEASUREMENT_ROWS), self.R_nominal, "nominal"
@@ -654,9 +683,11 @@ class ContractAwareEKF:
             for j, (a, b) in enumerate(self.PAIRS):
                 self._cov[j][0] += self._last_q[a] * extra
                 self._cov[j][2] += self._last_q[b] * extra
+        px4_counters = {}
         if self.mode == 'passthrough':
             self._pass_through(measurements, sensors)
-        self._after_measurements(published_before)
+            px4_counters = self._px4_reset_counters(sensors)
+        self._after_measurements(published_before, px4_counters)
         if estimation_quality != self.estimation_quality:
             log = logger.warning if estimation_quality == "emergency" else logger.info
             log(f"EKF fusion: {self.estimation_quality} -> {estimation_quality}")
@@ -705,8 +736,8 @@ class ContractAwareEKF:
                 values[name] = float(bounds[f'{name}_max'])
         return values
 
-    def _after_measurements(self, published_before: np.ndarray):
-        """Book-keeping after an update's measurements (T4, T5).
+    def _after_measurements(self, published_before: np.ndarray, px4_counters=None):
+        """Book-keeping after an update's measurements (T4, T5; W4-08b T1, T2).
 
         - The velocity components measured in this update set the next step's process noise,
           and an unmeasured one gets the speed-envelope variance (NO_GPS_SPEED_LIMIT).
@@ -721,6 +752,8 @@ class ContractAwareEKF:
           rejected) in this update. The filter itself takes the measurements in full: only
           what is published glides, and get_covariance() adds the remaining offset to the
           position covariance, so the covariance stays honest.
+        - Reset (W4-08b, T2): a channel whose offset exceeds RESET_OFFSET is reset instead of
+          glided (_reset_on_return), and so is one PX4 reports reset (px4_counters).
         - The position is trusted while the published eph <= POSITION_UNTRUSTED_EPH.
         """
         used = set()
@@ -748,8 +781,6 @@ class ContractAwareEKF:
                         self._cov[i] = [paa, pab * bound / math.sqrt(pbb), bound * bound]
                 else:
                     self._cov[i][2] = max(self._cov[i][2], bound * bound)
-        if self.command_available:
-            self._observe_command_bias(observed_before)
 
         returned = (used - self._gps_rows_last) & self._gps_rows_ever
         if returned or 'gps_position' in self.last_reset:
@@ -757,8 +788,12 @@ class ContractAwareEKF:
                 logger.info(f"EKF: GPS back on state rows {sorted(returned) or 'reset'}; the published "
                             f"position glides at <= {self.MAX_RECOVERY_SPEED} m/s")
             self.recovering = True
+        snapped = self._reset_on_return(published_before, used, px4_counters or {})
         if self.recovering:
             offset = published_before - self.x[0:3]
+            for channel, rows in self.RESET_CHANNELS:
+                if channel in snapped:
+                    offset[list(rows)] = 0.0        # reset: published as it is, not glided
             limit = self.MAX_RECOVERY_SPEED * self.last_dt
             distance = float(np.linalg.norm(offset))
             self.glide_offset = offset * (1.0 - limit / distance) if distance > limit else None
@@ -767,8 +802,61 @@ class ContractAwareEKF:
                 self.recovering = False
         self._gps_rows_last = frozenset(used)
         self._gps_rows_ever |= used
+        if self.command_available:          # after a reset, so the reset itself teaches nothing
+            self._observe_command_bias(observed_before)
 
         self.position_trusted = bool(self._eph() <= self.POSITION_UNTRUSTED_EPH)
+
+    def _px4_reset_counters(self, sensors: Dict[str, any]) -> Dict[str, float]:
+        """PX4's reset counters in sensors['gps'] (pass-through, T2): {channel: value} of those
+        present and finite."""
+        gps = sensors.get('gps') or {}
+        counters = {}
+        for channel, key in self.PX4_RESET_COUNTERS.items():
+            try:
+                value = float(gps.get(key))
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(value):
+                counters[channel] = value
+        return counters
+
+    def _reset_on_return(self, published_before: np.ndarray, used, px4_counters) -> Tuple[str, ...]:
+        """Reset the channels too far from the GPS to glide back (T2, W4-08b); returns them.
+
+        A channel ('xy': x and y; 'z') whose GPS position rows are used in this update is
+        reset if, while recovering, its published position is more than RESET_OFFSET from the
+        estimate (horizontal norm; vertical distance), or if PX4's reset counter of it changed
+        since the last update that used it (pass-through: px4_counters). Reset: the channel's
+        position rows fused in this update, and its velocity rows if fused, are set to the
+        measurement, variance R, no correlation (rows the gate reset already are, with 10 R;
+        in pass-through they are PX4's). The published position then jumps by
+        delta = estimate - published_before: reset_counter[channel] += 1 and
+        reset_delta[channel] = delta (get_status), as PX4's xy_reset_counter / delta_xy.
+        """
+        snapped = []
+        offset = published_before - self.x[0:3]
+        for channel, rows in self.RESET_CHANNELS:
+            if not all(row in used for row in rows):
+                continue
+            px4_reset = False
+            if channel in px4_counters:
+                last, self._px4_counters[channel] = self._px4_counters[channel], px4_counters[channel]
+                px4_reset = last is not None and px4_counters[channel] != last
+            far = self.recovering and float(np.linalg.norm(offset[list(rows)])) > self.RESET_OFFSET
+            if not (far or px4_reset):
+                continue
+            for row in rows + tuple(row + 3 for row in rows):
+                if row in self._gps_fused_values:
+                    self._set_row(row, *self._gps_fused_values[row])
+            delta = self.x[list(rows)] - published_before[list(rows)]
+            self.reset_counter[channel] += 1
+            self.reset_delta[channel] = delta.copy() if channel == 'xy' else float(delta[0])
+            snapped.append(channel)
+            logger.info(f"EKF: {channel} position reset by {np.round(delta, 2).tolist()} m "
+                           f"({'PX4 reset' if px4_reset else 'GPS back beyond the glide'}); "
+                           f"{channel}_reset_counter = {self.reset_counter[channel]}")
+        return tuple(snapped)
 
     def _observe_command_bias(self, observed_before: np.ndarray):
         """Learn command_bias from the fused velocity (T1, W4-08b).
@@ -846,7 +934,11 @@ class ContractAwareEKF:
         the published position minus the estimate; fused / rejected / reset: per
         measurement, the state rows fused, rejected by the gate, or reset to it.
         W4-08b: command: the last predict had a commanded acceleration (T1); command_bias:
-        the learned acceleration beyond the command, NED m/s^2.
+        the learned acceleration beyond the command, NED m/s^2. Reset events (T2), as PX4's
+        vehicle_local_position: xy_reset_counter / z_reset_counter count the resets of the
+        horizontal / vertical position (RESET_OFFSET; in pass-through also PX4's own), and
+        delta_xy (2,) / delta_z hold the jump of the published position at the last one. A
+        controller that holds a setpoint shifts it by the delta when the counter changes.
         """
         epv_var = self._cov[2][0]
         if self.glide_offset is not None:
@@ -863,6 +955,10 @@ class ContractAwareEKF:
             'reset': dict(self.last_reset),
             'command': self.command_available,
             'command_bias': self.command_bias.copy(),
+            'xy_reset_counter': self.reset_counter['xy'],
+            'delta_xy': self.reset_delta['xy'].copy(),
+            'z_reset_counter': self.reset_counter['z'],
+            'delta_z': self.reset_delta['z'],
         }
 
 
