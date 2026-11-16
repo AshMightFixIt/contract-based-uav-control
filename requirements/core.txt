@@ -1,6 +1,7 @@
 # Core set: the dependencies of the contract_uav_core package, i.e. everything
-# in it except contract_uav_core/planning/* (needs pacti, see pacti.txt) and
-# contract_uav_core/viz/* (needs pygame, see demos.txt).
+# in it except the offline pacti tools contract_uav_core/planning/pacti_contracts.py
+# and planning/export_contracts.py (see pacti.txt) and contract_uav_core/viz/*
+# (needs pygame, see demos.txt).
 # contract_uav_core/setup.py declares the same pins.
 # The package itself is installed separately:
 #   python -m pip install -e ./contract_uav_core

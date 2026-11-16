@@ -1,7 +1,7 @@
 """
 Horizon-Based Contract Planner
 
-Uses Pacti contracts to:
+Uses the planner's contracts to:
 1. Cascade contracts over a planning horizon
 2. Optimize safety margins at each step
 3. Re-plan when safety is threatened
@@ -10,18 +10,76 @@ Key Innovation:
 - PREDICTIVE planning using formal contract composition
 - ADAPTIVE horizon: shrink when safety margins are tight
 - GRACEFUL degradation: switch strategies when needed
+
+No Pacti at run time (W4-09, K10, K11). The contracts (pacti_contracts.py) are
+composed once, offline, by export_contracts.py, which writes their bounds to
+config/contracts.json. ContractBounds reads that file (through
+contracts/envelope.py) and the planner checks the same bounds with plain Python:
+a controller's assumptions are the input bounds Pacti's get_variable_bounds
+gave, and the closed-form error bound takes its numbers from the controller and
+dynamics guarantees. Before W4-09 every replan made these calls on the Pacti
+objects (about 120 to 160 ms), and the planner was off without Pacti.
 """
 
-from pacti.contracts import PolyhedralIoContract
-from typing import Dict, List, Optional, Tuple, NamedTuple
-from dataclasses import dataclass, field
+from typing import Dict, List, Mapping, Optional, Tuple
+from dataclasses import dataclass
 from enum import Enum
 import numpy as np
 import logging
 
-from .pacti_contracts import PactiContractLibrary
+from ..contracts.envelope import contract_bounds
 
 logger = logging.getLogger(__name__)
+
+CONTROLLERS = ('pid', 'mpc', 'hinf')
+
+
+class ContractBounds:
+    """The planner's contract bounds from config/contracts.json; no Pacti.
+
+    - input_bounds[c][v] = (lo, hi): the bounds of input v of controller c's
+      contract (Pacti's get_variable_bounds, computed offline). The planner
+      checks its values against them before it plans with c.
+    - decay: the tracking_error coefficient of the dynamics guarantee (0.9).
+    - steady_state_error(c, wind): wind coefficient * wind + constant, from c's
+      tracking_error guarantee.
+    """
+
+    def __init__(self, doc: Optional[Mapping] = None):
+        doc = contract_bounds() if doc is None else doc
+        contracts, planner = doc['contracts'], doc['planner']
+        self.input_bounds: Dict[str, Dict[str, Tuple[float, float]]] = {
+            c: {v: (-np.inf if lo is None else float(lo), np.inf if hi is None else float(hi))
+                for v, (lo, hi) in contracts[c]['input_bounds'].items()}
+            for c in CONTROLLERS
+        }
+        self.decay = float(planner['dynamics_decay'])
+        self.ss_params: Dict[str, Tuple[float, float]] = {
+            c: (float(p['wind_speed']), float(p['constant']))
+            for c, p in planner['steady_state_error'].items()
+        }
+
+    def has_controller(self, controller: str) -> bool:
+        return controller in self.input_bounds
+
+    def violated_assumption(self, controller: str, values: Dict[str, float]) -> Optional[str]:
+        """The first input of values outside controller's bounds, or None if all are inside.
+
+        NaN is outside every bound (W4-09). With Pacti's bounds the check was
+        `val < lo or val > hi`, which a NaN passes; the planner then found a NaN
+        margin, which min() skips, and returned a FEASIBLE plan.
+        """
+        for var, (lo, hi) in self.input_bounds[controller].items():
+            if var in values:
+                val = values[var]
+                if not lo <= val <= hi:
+                    return var
+        return None
+
+    def steady_state_error(self, controller: str, wind_speed: float) -> float:
+        """e_ss = wind_coeff * wind_speed + constant, from the controller's tracking_error guarantee."""
+        wind_coeff, constant = self.ss_params[controller]
+        return wind_coeff * wind_speed + constant
 
 
 class PlanStatus(Enum):
@@ -40,7 +98,6 @@ class HorizonStep:
     controller: str                 # 'pid', 'mpc', or 'hinf'
     tracking_error_bound: float     # Upper bound on tracking error
     safety_margin: float            # Distance from safety limit
-    contract: Optional[PolyhedralIoContract] = None
 
 
 @dataclass
@@ -70,24 +127,24 @@ class PlannerConfig:
 
 class HorizonPlanner:
     """
-    Plans over a horizon using Pacti contract composition.
+    Plans over a horizon using contract bounds composed offline (ContractBounds).
 
     Architecture:
-        Current State -> Cascade Contracts -> Optimize Margins -> Plan/Replan
+        Current State -> Assumption Check -> Closed-form Error Bound -> Margins -> Plan
 
-    At each planning step:
-    1. Build horizon contract by composing dynamics over N steps
-    2. For each step, compute safety margin (safety_limit - tracking_error_bound)
-    3. If margin < threshold, try:
-       a. Shorter horizon
-       b. Different controller
-       c. Modified target
-    4. Return best feasible plan
+    plan():
+    1. Try PID, MPC, then H-inf at max_horizon; a controller is tried only if the
+       state and wind lie inside its contract's input bounds
+    2. For each step t, bound the tracking error in closed form (_propagate_error)
+       and compute the safety margin (safety_limit - tracking_error_bound)
+    3. If no controller is safe, try MPC, then H-inf, at each shorter horizon
+    4. Return the first safe plan, else an INFEASIBLE plan; AdaptiveRePlanner
+       then returns the emergency plan (H-inf)
     """
 
     def __init__(self, config: Optional[PlannerConfig] = None):
         self.config = config or PlannerConfig()
-        self.contracts = PactiContractLibrary()
+        self.contracts = ContractBounds()
         self.current_plan: Optional[Plan] = None
         self.replan_count = 0
 
@@ -165,15 +222,11 @@ class HorizonPlanner:
         # the correct closed-form 0.9^t * e_0 + (1-0.9^t) * e_ss at each step t.
         initial_tracking_error = current_state.get('tracking_error', 0.0)
 
-        # Get environment parameters
+        # Get environment parameters (the controller contracts use only the wind)
         wind_speed = environment.get('wind_speed', 0.0)
-        gps_sats = environment.get('gps_satellites', 12.0)
-        gps_hdop = environment.get('gps_hdop', 1.0)
-        battery = environment.get('battery_voltage', 12.0)
 
         # Check if controller assumptions are satisfied
-        ctrl_contract = self.contracts.get_contract(controller)
-        if ctrl_contract is None:
+        if not self.contracts.has_controller(controller):
             return Plan(
                 horizon_length=horizon,
                 steps=[],
@@ -192,7 +245,7 @@ class HorizonPlanner:
         }
 
         # Check if assumptions are satisfied
-        assumptions_ok = self._check_assumptions(ctrl_contract, ctrl_assumptions)
+        assumptions_ok = self._check_assumptions(controller, ctrl_assumptions)
 
         if not assumptions_ok:
             return Plan(
@@ -206,9 +259,6 @@ class HorizonPlanner:
 
         # Cascade dynamics over horizon
         for t in range(horizon):
-            # Build step contract by composing controller with dynamics
-            step_contract = self._build_step_contract(controller, t)
-
             # Closed-form bound: e_t = 0.9^t * e_0 + (1 - 0.9^t) * e_ss(wind, ctrl)
             error_bound = self._propagate_error(initial_tracking_error, wind_speed, t, controller)
 
@@ -220,7 +270,6 @@ class HorizonPlanner:
                 controller=controller,
                 tracking_error_bound=error_bound,
                 safety_margin=margin,
-                contract=step_contract
             )
             steps.append(step)
 
@@ -252,45 +301,18 @@ class HorizonPlanner:
         )
 
     def _check_assumptions(self,
-                           contract: PolyhedralIoContract,
+                           controller: str,
                            values: Dict[str, float]) -> bool:
         """
-        Check if contract assumptions are satisfied by given values.
+        Check if the controller's contract assumptions are satisfied by given values:
+        each value must lie in its input's bounds (config/contracts.json).
         """
-        # For each assumption constraint, check if value is within bounds
-        try:
-            for var in contract.inputvars:
-                var_name = str(var)
-                if var_name in values:
-                    bounds = contract.get_variable_bounds(var_name)
-                    val = values[var_name]
-                    if val < bounds[0] or val > bounds[1]:
-                        logger.debug(f"Assumption violated: {var_name}={val} not in {bounds}")
-                        return False
-            return True
-        except Exception as e:
-            logger.warning(f"Error checking assumptions: {e}")
-            return True  # Optimistic if we can't check
-
-    def _build_step_contract(self,
-                             controller: str,
-                             timestep: int) -> Optional[PolyhedralIoContract]:
-        """
-        Return the pre-cached ctrl ∘ dynamics contract.
-        Falls back to on-demand composition if the cache entry is missing.
-        """
-        cached = self.contracts.get_step_contract(controller)
-        if cached is not None:
-            return cached
-        # Fallback: compose on demand (cache missed at init)
-        try:
-            ctrl = self.contracts.get_contract(controller)
-            dyn = self.contracts.get_contract('dynamics')
-            if ctrl and dyn:
-                return ctrl.compose(dyn)
-        except Exception as e:
-            logger.warning(f"Failed to compose step contract: {e}")
-        return None
+        violated = self.contracts.violated_assumption(controller, values)
+        if violated is not None:
+            logger.debug(f"Assumption violated: {violated}={values[violated]} not in "
+                         f"{self.contracts.input_bounds[controller][violated]}")
+            return False
+        return True
 
     def _propagate_error(self,
                          initial_error: float,
@@ -307,9 +329,10 @@ class HorizonPlanner:
 
         This gives different bounds per controller:
           MPC (wind_coeff=0.15) is tightest, H-inf (0.50 + 1.0) is most conservative.
+        Both numbers are read from config/contracts.json (ContractBounds).
         """
-        decay_n = 0.9 ** steps
-        e_ss = self.contracts.get_controller_ss_error(controller, wind_speed)
+        decay_n = self.contracts.decay ** steps
+        e_ss = self.contracts.steady_state_error(controller, wind_speed)
         return decay_n * initial_error + (1 - decay_n) * e_ss
 
     def replan(self,
@@ -393,70 +416,43 @@ class HorizonPlanner:
 
 class AdaptiveRePlanner:
     """
-    Higher-level replanning strategies when basic horizon planning fails.
+    Higher-level replanning when basic horizon planning fails.
 
-    Strategies (in order of preference):
-    1. Shrink horizon - less lookahead, more reactive
-    2. Switch controller - PID -> H-inf
-    3. Modify target - slow down, change waypoint
-    4. Emergency hover - stop and stabilize
+    HorizonPlanner.plan already tries every controller at the full horizon, then
+    MPC and H-inf at every shorter horizon down to min_horizon, all at the real
+    wind. If none of these plans is safe, find_feasible_plan returns the
+    emergency plan (H-inf, INFEASIBLE).
+
+    Before W4-09 it then tried three more strategies (K10): an unreachable
+    "controller switched" branch; H-inf at horizons max_horizon-2, -4, ... down
+    to min_horizon, which plan() had already rejected; and H-inf at min_horizon
+    with the wind lowered by 1 m/s ("modify target"), which approved H-inf at
+    16 m/s, above its 15 m/s assumption. Pretending the wind is lower is not
+    sound, and at the real wind that last try is also a plan plan() had already
+    rejected, so all three are gone.
     """
 
     def __init__(self, planner: HorizonPlanner):
         self.planner = planner
-        self.strategy_attempts = 0
-        self.max_attempts = 5
 
     def find_feasible_plan(self,
                            current_state: Dict[str, float],
                            target: np.ndarray,
-                           environment: Dict[str, float]) -> Tuple[Plan, Dict[str, any]]:
+                           environment: Dict[str, float]) -> Tuple[Plan, Dict[str, bool]]:
         """
-        Try multiple strategies to find a feasible plan.
+        Find a safe plan, or fall back to the emergency plan.
 
-        Returns: (plan, modifications) where modifications describes
-                 any changes made (horizon, controller, target)
+        Returns: (plan, modifications) where modifications['emergency_mode'] is
+                 True when no safe plan exists
         """
-        modifications = {
-            'horizon_reduced': False,
-            'controller_switched': False,
-            'target_modified': False,
-            'emergency_mode': False
-        }
+        modifications = {'emergency_mode': False}
 
-        # Strategy 1: Try with PID at full horizon
+        # Every controller at the full horizon, then MPC and H-inf at shorter horizons
         plan = self.planner.plan(current_state, target, environment)
         if plan.is_safe():
             return plan, modifications
 
-        # Strategy 2: Already tried H-inf in plan(), check if it worked
-        if plan.recommended_controller == 'hinf' and plan.is_safe():
-            modifications['controller_switched'] = True
-            return plan, modifications
-
-        # Strategy 3: Shrink horizon progressively
-        for h in range(self.planner.config.max_horizon - 2,
-                       self.planner.config.min_horizon - 1, -2):
-            plan = self.planner._try_plan(current_state, environment, h, 'hinf')
-            if plan.is_safe():
-                modifications['horizon_reduced'] = True
-                modifications['new_horizon'] = h
-                logger.info(f"Found feasible plan with reduced horizon: {h}")
-                return plan, modifications
-
-        # Strategy 4: Modify target (slow approach)
-        # Reduce effective target distance
-        modified_env = environment.copy()
-        modified_env['wind_speed'] = max(0, environment.get('wind_speed', 0) - 1)
-
-        plan = self.planner._try_plan(current_state, modified_env,
-                                      self.planner.config.min_horizon, 'hinf')
-        if plan.is_safe():
-            modifications['target_modified'] = True
-            logger.info("Found feasible plan with modified approach")
-            return plan, modifications
-
-        # Strategy 5: Emergency mode
+        # Emergency mode
         logger.error("All strategies failed - entering emergency mode")
         modifications['emergency_mode'] = True
         return Plan(

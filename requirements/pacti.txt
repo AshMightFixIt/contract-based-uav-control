@@ -1,7 +1,8 @@
-# Pacti set: the demos set plus an exact pacti pin, so the horizon planner is
-# active. With it, benchmarks/benchmark_controllers.py reproduces the
-# docs/RESULTS.md section 1 table (Adaptive mission time 53.780 s). Checked by
-# the slow test: `make test-pacti`.
+# Pacti set: the demos set plus an exact pacti pin. Pacti is needed only offline:
+# for `make test-pacti`, and for planning/export_contracts.py, which writes the
+# planner's limits to contract_uav_core/config/contracts.json. The horizon planner
+# runs without pacti, so benchmarks/benchmark_controllers.py gives the same
+# results with or without it (Adaptive mission time 54.320 s).
 #
 # Python floor: 3.10
 #   - pacti 0.3.1 declares Requires-Python >=3.10 on PyPI and requires

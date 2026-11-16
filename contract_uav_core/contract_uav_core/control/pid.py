@@ -18,7 +18,8 @@ from typing import Dict
 import logging
 
 from .base import BaseController
-from ..frames import accel_to_attitude, attitude_to_rates_torques
+from ..frames import (LEGACY_THRUST_TO_ACCEL, accel_to_attitude, accel_to_thrust,
+                      attitude_to_rates_torques)
 from ..interfaces import AccelCommand
 
 logger = logging.getLogger(__name__)
@@ -33,8 +34,10 @@ class PIDController(BaseController):
     - Guarantees: Fast response (<5s), low overshoot (<30%), efficient
     """
 
-    def __init__(self, dt: float = 0.02):
-        super().__init__("PID", dt)
+    def __init__(self, dt: float = 0.02, airframe=None):
+        """airframe: optional config.airframe.Airframe; sets hover_thrust, min_thrust and
+        max_thrust (base.py). Without one: hover 0.5, thrust limits [0, 1]."""
+        super().__init__("PID", dt, airframe)
 
         # Position PID gains (outer loop) - tuned for stability in simplified simulation
         # MUCH lower gains to prevent overshoot
@@ -50,14 +53,11 @@ class PIDController(BaseController):
         # Rate PID gains (innermost loop)
         self.kp_rate = np.array([0.08, 0.08, 0.06])  # [p, q, r]
 
-        # Limits
+        # Limits (thrust: min_thrust / max_thrust, set in base.py from the airframe; else [0, 1])
         self.max_tilt = 0.22  # ~13 degrees max tilt
         self.max_rate = 1.0  # rad/s
-        self.max_thrust = 1.0
-        self.min_thrust = 0.0
 
-        # Hover thrust (normalized) - this counteracts gravity
-        self.hover_thrust = 0.5
+        # hover_thrust (normalized, counteracts gravity): base.py, from the airframe; else 0.5
 
         # Anti-windup
         self.integral_limit = 2.0  # reduced to prevent windup
@@ -92,10 +92,10 @@ class PIDController(BaseController):
         Inner loop: Attitude → desired rates
         Innermost loop: Rates → motor commands
 
-        Returns the AccelCommand: accel is the PID acceleration demand (all
-        three axes; its z is not used, the thrust comes from the altitude law
-        below), yaw is the setpoint's yaw. compute_control (base.py) returns its
-        legacy dict.
+        Returns the AccelCommand: accel x and y are the PID acceleration demand
+        (they set the tilt), accel z is the altitude law's vertical demand (it
+        sets the thrust, frames.accel_to_thrust); yaw is the setpoint's yaw.
+        compute_control (base.py) returns its legacy dict.
         """
         
         # Extract state
@@ -132,7 +132,8 @@ class PIDController(BaseController):
         # - Positive roll (right wing down) -> rightward (positive Y)
         # So to accelerate forward (pos X), need negative pitch
         # And to accelerate right (pos Y), need positive roll
-        # (frames.py: accel_to_attitude, yaw-blind; limit tilt angles)
+        # (frames.py: accel_to_attitude rotates the demand by target_yaw into the
+        # heading frame, P1.2; limit tilt angles)
         desired_attitude = accel_to_attitude(desired_accel, target_yaw, self.max_tilt)
         
         # === INNER LOOPS: Attitude -> rates -> torques (frames.py) ===
@@ -140,20 +141,23 @@ class PIDController(BaseController):
             desired_attitude, attitude, rates,
             self.kp_att, self.kd_att, self.max_rate, self.kp_rate)
         
-        # === THRUST CONTROL ===
-        # Desired thrust = hover thrust + altitude correction
-        # hover_thrust counteracts gravity, corrections adjust for tracking
+        # === THRUST CONTROL (P1.1, P1.2) ===
+        # PD altitude law -> NED vertical acceleration demand -> thrust about hover.
+        # NED z is down: a target above (altitude_error < 0) gives accel_z < 0, i.e.
+        # thrust above hover (frames.accel_to_thrust). The gains are the legacy
+        # thrust-unit gains (kp_pos[2] * 0.1 = 0.08 per m, kd_pos[2] * 0.05 = 0.03 per
+        # m/s at hover 0.5) in m/s^2: times LEGACY_THRUST_TO_ACCEL = g / 0.5. The legacy
+        # law was thrust = hover + correction: less thrust to climb (K01).
         altitude_error = target_pos[2] - position[2]
         altitude_rate_error = -velocity[2]  # Want zero vertical velocity
 
-        # PD control on altitude with gravity feedforward
         thrust_correction = (self.kp_pos[2] * altitude_error * 0.1 +
                             self.kd_pos[2] * altitude_rate_error * 0.05)
-        desired_thrust = self.hover_thrust + thrust_correction
-        desired_thrust = np.clip(desired_thrust, self.min_thrust, self.max_thrust)
-        
+        accel_z = thrust_correction * LEGACY_THRUST_TO_ACCEL
+        desired_thrust = accel_to_thrust(accel_z, self.hover_thrust, self.min_thrust, self.max_thrust)
+
         return AccelCommand(
-            accel=desired_accel,
+            accel=np.array([desired_accel[0], desired_accel[1], accel_z]),
             yaw=target_yaw,
             thrust=desired_thrust,
             torques=torques,  # [roll_torque, pitch_torque, yaw_torque]

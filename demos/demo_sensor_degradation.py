@@ -52,7 +52,7 @@ class DroneSimulation:
         thrust = control.get('thrust', 0.5)
         desired_att = control.get('desired_attitude', np.zeros(3))
 
-        vertical_accel = (thrust - 0.5) * 8.0
+        vertical_accel = -(thrust - 0.5) * 8.0  # NED z is down: thrust above hover climbs (K01)
         self.velocity[2] += vertical_accel * self.dt
 
         max_accel = 2.0

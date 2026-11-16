@@ -1,0 +1,955 @@
+{
+  "contracts": {
+    "actuator": {
+      "assumptions": [
+        {
+          "coefficients": {
+            "battery_voltage": 1.0
+          },
+          "constant": 12.6,
+          "text": "battery_voltage <= 12.6"
+        },
+        {
+          "coefficients": {
+            "battery_voltage": -1.0
+          },
+          "constant": -10.5,
+          "text": "battery_voltage >= 10.5"
+        },
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 1.0,
+          "text": "control_effort <= 1"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": 0.0,
+          "text": "control_effort >= 0"
+        },
+        {
+          "coefficients": {
+            "motor_temp": 1.0
+          },
+          "constant": 80.0,
+          "text": "motor_temp <= 80"
+        },
+        {
+          "coefficients": {
+            "motor_temp": -1.0
+          },
+          "constant": -10.0,
+          "text": "motor_temp >= 10"
+        }
+      ],
+      "guarantees": [
+        {
+          "coefficients": {
+            "thrust_accuracy": 1.0
+          },
+          "constant": 1.1,
+          "text": "thrust_accuracy <= 1.1"
+        },
+        {
+          "coefficients": {
+            "thrust_accuracy": -1.0
+          },
+          "constant": -0.9,
+          "text": "thrust_accuracy >= 0.9"
+        },
+        {
+          "coefficients": {
+            "torque_accuracy": 1.0
+          },
+          "constant": 1.1,
+          "text": "torque_accuracy <= 1.1"
+        },
+        {
+          "coefficients": {
+            "torque_accuracy": -1.0
+          },
+          "constant": -0.9,
+          "text": "torque_accuracy >= 0.9"
+        }
+      ],
+      "input_bounds": {
+        "battery_voltage": [
+          10.5,
+          12.6
+        ],
+        "control_effort": [
+          0.0,
+          1.0
+        ],
+        "motor_temp": [
+          10.0,
+          80.0
+        ]
+      },
+      "input_vars": [
+        "battery_voltage",
+        "control_effort",
+        "motor_temp"
+      ],
+      "output_vars": [
+        "thrust_accuracy",
+        "torque_accuracy"
+      ]
+    },
+    "dynamics": {
+      "assumptions": [
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 1.0,
+          "text": "control_effort <= 1"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": 0.0,
+          "text": "control_effort >= 0"
+        },
+        {
+          "coefficients": {
+            "dt": 1.0
+          },
+          "constant": 0.1,
+          "text": "dt <= 0.1"
+        },
+        {
+          "coefficients": {
+            "dt": -1.0
+          },
+          "constant": -0.01,
+          "text": "dt >= 0.01"
+        },
+        {
+          "coefficients": {
+            "tracking_error": 1.0
+          },
+          "constant": 10.0,
+          "text": "tracking_error <= 10"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 15.0,
+          "text": "wind_speed <= 15"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "guarantees": [
+        {
+          "coefficients": {
+            "next_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "next_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_change": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_change >= 0"
+        },
+        {
+          "coefficients": {
+            "dt": -2.0,
+            "position_change": 1.0
+          },
+          "constant": 0.0,
+          "text": "-2*dt + position_change <= 0"
+        },
+        {
+          "coefficients": {
+            "next_tracking_error": 1.0,
+            "tracking_error": -0.9,
+            "wind_speed": -0.1
+          },
+          "constant": 0.0,
+          "text": "next_tracking_error - 0.9*tracking_error - 0.1*wind_speed <= 0"
+        }
+      ],
+      "input_bounds": {
+        "control_effort": [
+          0.0,
+          1.0
+        ],
+        "dt": [
+          0.01,
+          0.1
+        ],
+        "tracking_error": [
+          0.0,
+          10.0
+        ],
+        "wind_speed": [
+          0.0,
+          15.0
+        ]
+      },
+      "input_vars": [
+        "control_effort",
+        "dt",
+        "tracking_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "next_tracking_error",
+        "position_change"
+      ]
+    },
+    "ekf": {
+      "assumptions": [
+        {
+          "coefficients": {
+            "attitude_meas_error": 1.0
+          },
+          "constant": 0.2,
+          "text": "attitude_meas_error <= 0.2"
+        },
+        {
+          "coefficients": {
+            "attitude_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_meas_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "position_meas_error <= 5"
+        },
+        {
+          "coefficients": {
+            "position_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": 1.0
+          },
+          "constant": 0.3,
+          "text": "rate_meas_error <= 0.3"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": 1.0
+          },
+          "constant": 1.0,
+          "text": "velocity_meas_error <= 1"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_meas_error >= 0"
+        }
+      ],
+      "guarantees": [
+        {
+          "coefficients": {
+            "attitude_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "rate_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "attitude_est_error": 1.0,
+            "attitude_meas_error": -0.5
+          },
+          "constant": 0.01,
+          "text": "attitude_est_error - 0.5*attitude_meas_error <= 0.01"
+        },
+        {
+          "coefficients": {
+            "position_est_error": 1.0,
+            "position_meas_error": -0.7
+          },
+          "constant": 0.1,
+          "text": "position_est_error - 0.7*position_meas_error <= 0.1"
+        },
+        {
+          "coefficients": {
+            "rate_est_error": 1.0,
+            "rate_meas_error": -0.5
+          },
+          "constant": 0.02,
+          "text": "rate_est_error - 0.5*rate_meas_error <= 0.02"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": 1.0,
+            "velocity_meas_error": -0.7
+          },
+          "constant": 0.05,
+          "text": "velocity_est_error - 0.7*velocity_meas_error <= 0.05"
+        }
+      ],
+      "input_bounds": {
+        "attitude_meas_error": [
+          0.0,
+          0.2
+        ],
+        "position_meas_error": [
+          0.0,
+          5.0
+        ],
+        "rate_meas_error": [
+          0.0,
+          0.3
+        ],
+        "velocity_meas_error": [
+          0.0,
+          1.0
+        ]
+      },
+      "input_vars": [
+        "attitude_meas_error",
+        "position_meas_error",
+        "rate_meas_error",
+        "velocity_meas_error"
+      ],
+      "output_vars": [
+        "attitude_est_error",
+        "position_est_error",
+        "rate_est_error",
+        "velocity_est_error"
+      ]
+    },
+    "gps": {
+      "assumptions": [
+        {
+          "coefficients": {
+            "gps_hdop": 1.0
+          },
+          "constant": 10.0,
+          "text": "gps_hdop <= 10"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -1.0
+          },
+          "constant": -0.5,
+          "text": "gps_hdop >= 0.5"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": 1.0
+          },
+          "constant": 24.0,
+          "text": "gps_satellites <= 24"
+        },
+        {
+          "coefficients": {
+            "gps_satellites": -1.0
+          },
+          "constant": -4.0,
+          "text": "gps_satellites >= 4"
+        }
+      ],
+      "guarantees": [
+        {
+          "coefficients": {
+            "position_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -0.5,
+            "position_meas_error": 1.0
+          },
+          "constant": 0.0,
+          "text": "-0.5*gps_hdop + position_meas_error <= 0"
+        },
+        {
+          "coefficients": {
+            "gps_hdop": -0.1,
+            "velocity_meas_error": 1.0
+          },
+          "constant": 0.0,
+          "text": "-0.1*gps_hdop + velocity_meas_error <= 0"
+        }
+      ],
+      "input_bounds": {
+        "gps_hdop": [
+          0.5,
+          10.0
+        ],
+        "gps_satellites": [
+          4.0,
+          24.0
+        ]
+      },
+      "input_vars": [
+        "gps_hdop",
+        "gps_satellites"
+      ],
+      "output_vars": [
+        "position_meas_error",
+        "velocity_meas_error"
+      ]
+    },
+    "hinf": {
+      "assumptions": [
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 20.0,
+          "text": "initial_tracking_error <= 20"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": 1.0
+          },
+          "constant": 10.0,
+          "text": "position_est_error <= 10"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "velocity_est_error <= 5"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 15.0,
+          "text": "wind_speed <= 15"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "guarantees": [
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 0.9,
+          "text": "control_effort <= 0.9"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": -0.3,
+          "text": "control_effort >= 0.3"
+        },
+        {
+          "coefficients": {
+            "settling_time": 1.0
+          },
+          "constant": 10.0,
+          "text": "settling_time <= 10"
+        },
+        {
+          "coefficients": {
+            "settling_time": -1.0
+          },
+          "constant": -3.0,
+          "text": "settling_time >= 3"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0,
+            "tracking_error": 1.0,
+            "wind_speed": -0.5
+          },
+          "constant": 1.0,
+          "text": "-position_est_error + tracking_error - 0.5*wind_speed <= 1"
+        }
+      ],
+      "input_bounds": {
+        "initial_tracking_error": [
+          0.0,
+          20.0
+        ],
+        "position_est_error": [
+          0.0,
+          10.0
+        ],
+        "velocity_est_error": [
+          0.0,
+          5.0
+        ],
+        "wind_speed": [
+          0.0,
+          15.0
+        ]
+      },
+      "input_vars": [
+        "initial_tracking_error",
+        "position_est_error",
+        "velocity_est_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "control_effort",
+        "settling_time",
+        "tracking_error"
+      ]
+    },
+    "imu": {
+      "assumptions": [
+        {
+          "coefficients": {
+            "imu_temp_deviation": 1.0
+          },
+          "constant": 20.0,
+          "text": "imu_temp_deviation <= 20"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": -1.0
+          },
+          "constant": 0.0,
+          "text": "imu_temp_deviation >= 0"
+        }
+      ],
+      "guarantees": [
+        {
+          "coefficients": {
+            "attitude_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "attitude_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "rate_meas_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "rate_meas_error >= 0"
+        },
+        {
+          "coefficients": {
+            "attitude_meas_error": 1.0,
+            "imu_temp_deviation": -0.005
+          },
+          "constant": 0.02,
+          "text": "attitude_meas_error - 0.005*imu_temp_deviation <= 0.02"
+        },
+        {
+          "coefficients": {
+            "imu_temp_deviation": -0.01,
+            "rate_meas_error": 1.0
+          },
+          "constant": 0.05,
+          "text": "-0.01*imu_temp_deviation + rate_meas_error <= 0.05"
+        }
+      ],
+      "input_bounds": {
+        "imu_temp_deviation": [
+          0.0,
+          20.0
+        ]
+      },
+      "input_vars": [
+        "imu_temp_deviation"
+      ],
+      "output_vars": [
+        "attitude_meas_error",
+        "rate_meas_error"
+      ]
+    },
+    "mpc": {
+      "assumptions": [
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 10.0,
+          "text": "initial_tracking_error <= 10"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "position_est_error <= 5"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": 1.0
+          },
+          "constant": 2.0,
+          "text": "velocity_est_error <= 2"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 8.0,
+          "text": "wind_speed <= 8"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "guarantees": [
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 0.7,
+          "text": "control_effort <= 0.7"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": -0.1,
+          "text": "control_effort >= 0.1"
+        },
+        {
+          "coefficients": {
+            "settling_time": 1.0
+          },
+          "constant": 7.0,
+          "text": "settling_time <= 7"
+        },
+        {
+          "coefficients": {
+            "settling_time": -1.0
+          },
+          "constant": -1.5,
+          "text": "settling_time >= 1.5"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -0.3,
+            "tracking_error": 1.0,
+            "wind_speed": -0.15
+          },
+          "constant": 0.1,
+          "text": "-0.3*position_est_error + tracking_error - 0.15*wind_speed <= 0.1"
+        }
+      ],
+      "input_bounds": {
+        "initial_tracking_error": [
+          0.0,
+          10.0
+        ],
+        "position_est_error": [
+          0.0,
+          5.0
+        ],
+        "velocity_est_error": [
+          0.0,
+          2.0
+        ],
+        "wind_speed": [
+          0.0,
+          8.0
+        ]
+      },
+      "input_vars": [
+        "initial_tracking_error",
+        "position_est_error",
+        "velocity_est_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "control_effort",
+        "settling_time",
+        "tracking_error"
+      ]
+    },
+    "pid": {
+      "assumptions": [
+        {
+          "coefficients": {
+            "initial_tracking_error": 1.0
+          },
+          "constant": 5.0,
+          "text": "initial_tracking_error <= 5"
+        },
+        {
+          "coefficients": {
+            "initial_tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "initial_tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": 1.0
+          },
+          "constant": 2.0,
+          "text": "position_est_error <= 2"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "position_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": 1.0
+          },
+          "constant": 0.5,
+          "text": "velocity_est_error <= 0.5"
+        },
+        {
+          "coefficients": {
+            "velocity_est_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "velocity_est_error >= 0"
+        },
+        {
+          "coefficients": {
+            "wind_speed": 1.0
+          },
+          "constant": 3.0,
+          "text": "wind_speed <= 3"
+        },
+        {
+          "coefficients": {
+            "wind_speed": -1.0
+          },
+          "constant": 0.0,
+          "text": "wind_speed >= 0"
+        }
+      ],
+      "guarantees": [
+        {
+          "coefficients": {
+            "control_effort": 1.0
+          },
+          "constant": 0.8,
+          "text": "control_effort <= 0.8"
+        },
+        {
+          "coefficients": {
+            "control_effort": -1.0
+          },
+          "constant": -0.2,
+          "text": "control_effort >= 0.2"
+        },
+        {
+          "coefficients": {
+            "settling_time": 1.0
+          },
+          "constant": 5.0,
+          "text": "settling_time <= 5"
+        },
+        {
+          "coefficients": {
+            "settling_time": -1.0
+          },
+          "constant": -1.0,
+          "text": "settling_time >= 1"
+        },
+        {
+          "coefficients": {
+            "tracking_error": -1.0
+          },
+          "constant": 0.0,
+          "text": "tracking_error >= 0"
+        },
+        {
+          "coefficients": {
+            "position_est_error": -1.0,
+            "tracking_error": 1.0,
+            "wind_speed": -0.3
+          },
+          "constant": 0.2,
+          "text": "-position_est_error + tracking_error - 0.3*wind_speed <= 0.2"
+        }
+      ],
+      "input_bounds": {
+        "initial_tracking_error": [
+          0.0,
+          5.0
+        ],
+        "position_est_error": [
+          0.0,
+          2.0
+        ],
+        "velocity_est_error": [
+          0.0,
+          0.5
+        ],
+        "wind_speed": [
+          0.0,
+          3.0
+        ]
+      },
+      "input_vars": [
+        "initial_tracking_error",
+        "position_est_error",
+        "velocity_est_error",
+        "wind_speed"
+      ],
+      "output_vars": [
+        "control_effort",
+        "settling_time",
+        "tracking_error"
+      ]
+    }
+  },
+  "environment": {
+    "pacti": "0.3.1"
+  },
+  "generator": "contract_uav_core.planning.export_contracts",
+  "planner": {
+    "derivation": "steady_state_error[c]: the wind_speed coefficient and the constant of controller c's guarantee tracking_error <= ... (its estimation-error term is not used); dynamics_decay: the tracking_error coefficient of the dynamics guarantee next_tracking_error <= ... (its wind_speed term is not used either: the closed form takes the wind's effect from each controller's e_ss instead, so that term would count the wind twice); e_ss(wind) = wind_speed * wind + constant. The planner left out both terms before W4-09 too",
+    "dynamics_decay": 0.9,
+    "steady_state_error": {
+      "hinf": {
+        "constant": 1.0,
+        "wind_speed": 0.5
+      },
+      "mpc": {
+        "constant": 0.1,
+        "wind_speed": 0.15
+      },
+      "pid": {
+        "constant": 0.2,
+        "wind_speed": 0.3
+      }
+    }
+  },
+  "schema_version": 1,
+  "source": {
+    "objects": "PactiContractLibrary().contracts",
+    "path": "contract_uav_core/planning/pacti_contracts.py",
+    "sha256": "e418559425b79dfd14841732a9764b31eb53f63a27715d0d80d171fcaeb0b707"
+  },
+  "term_form": "each term means sum(coefficients[v] * v) <= constant; input_bounds[v] is Pacti's get_variable_bounds(v), [min, max]; numbers are rounded to 10 significant digits"
+}

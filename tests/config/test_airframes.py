@@ -201,8 +201,8 @@ def test_cross_field_checks(airframe):
 
 def test_schema_version_and_name(airframe):
     data = raw(airframe, 'x500_sitl')
-    data['schema_version'] = 2
-    expect_error(airframe, data, 'schema_version', 'expected 1, got 2')
+    data['schema_version'] = 3
+    expect_error(airframe, data, 'schema_version', 'expected 2, got 3')
     data = raw(airframe, 'x500_sitl')
     data['name'] = ''
     expect_error(airframe, data, 'name', 'non-empty string')
@@ -216,7 +216,7 @@ def test_file_errors(airframe, tmp_path):
     assert airframe.load_airframe_file(other).name == 'x500_sitl'
     # Duplicate keys are rejected instead of silently keeping the last one.
     dup = tmp_path / 'dup.yaml'
-    dup.write_text(text.replace('schema_version: 1\n', 'schema_version: 1\nschema_version: 1\n'),
+    dup.write_text(text.replace('schema_version: 2\n', 'schema_version: 2\nschema_version: 2\n'),
                    encoding='utf-8')
     with pytest.raises(airframe.AirframeError, match=r"dup\.yaml: .*duplicate key 'schema_version'"):
         airframe.load_airframe_file(dup)

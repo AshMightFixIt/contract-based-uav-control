@@ -1,19 +1,46 @@
-"""The tiers' legacy control dict, computed through compute_accel_command, is unchanged.
+"""The tiers' legacy control dict: the batch-3 change from 79d0287 is exactly the intended one.
 
 The three functions legacy_*_compute_control below are the compute_control
 methods of PIDController, MPCController and HInfinityController as they were at
 commit 79d0287, before the acceleration-to-attitude mapping moved to frames.py
 and the tiers gained compute_accel_command. They are copied verbatim (trailing
-whitespace removed) and run on a controller instance as ``self``.
+whitespace removed) and run on a controller instance as ``self``. They are the
+record of the original behaviour.
 
-For each tier, one controller runs the frozen legacy method, one runs
-compute_control and one runs compute_accel_command().to_legacy_dict(), on the
-same sequence of states and setpoints: states recorded from a closed-loop run
-of the core (benchmark_racing's simulation and wind schedule, the tier forced as
-the benchmarks force it) plus hand-made edge cases. After every step the three
+W4-05 (batch 3, P1.1/P1.2) changes that behaviour on purpose, so this test no
+longer pins it byte for byte. The functions reference_*_compute_control are the
+same three methods with only these edits, each marked ``# W4-05`` in the code:
+- P1.2, heading-aware tilt: the horizontal demand (a_N, a_E) is rotated by the
+  yaw of the attitude setpoint into (a_forward, a_right) before pitch =
+  -a_forward / 9.81 and roll = a_right / 9.81 (PID, MPC: the setpoint's yaw;
+  H-inf: the current yaw, which is the yaw it commands).
+- Fix round, review nit N2, tilt limit on the magnitude: if sqrt(roll^2 +
+  pitch^2) exceeds the tier's max_tilt, both are scaled to it, keeping the
+  direction (was: roll and pitch clipped separately). Marked ``# W4-05 (N2)``.
+- P1.1/P1.2, physically signed thrust normalised by the hover thrust:
+  thrust = hover * (1 - a_z / 9.81), clipped to the tier's thrust limits
+  (self.min_thrust, self.max_thrust: [0, 1] without an airframe), where a_z is
+  the MPC's QP input, or the PID's / H-inf's legacy thrust-unit correction
+  times 9.81 / 0.5 (the H-inf's limited to +-0.8 * 9.81, its old [0.1, 0.9]).
+Everything else (the integrators, the warm start, the inner loops, the keys,
+their order and the value types) is as at 79d0287.
+
+test_legacy_dict_matches_the_reference: for each tier, with and without an
+airframe, one controller runs the reference, one runs compute_control and one
+runs compute_accel_command().to_legacy_dict(), on the same sequence of states
+and setpoints: states recorded from a closed-loop run of the core
+(benchmark_racing's simulation and wind schedule, the tier forced as the
+benchmarks force it) plus hand-made edge cases. After every step the three
 dicts must match exactly: same keys in the same order, same value types, and
 arrays equal byte for byte (so -0.0 and 0.0 differ); the controllers' internal
 state must match too.
+
+test_change_from_79d0287_is_only_the_intended_one ties the reference to the
+original, with no airframe (hover 0.5): the PID and H-inf thrust is the old
+thrust mirrored about 0.5, the MPC's moves half as far from 0.5 the other way,
+and wherever the yaw used is exactly 0 and the old tilt was inside the limit the
+attitude, torques and rates are the old ones; where the old tilt reached the
+limit, the new tilt magnitude is exactly the limit.
 """
 from __future__ import annotations
 
@@ -290,6 +317,251 @@ def legacy_hinf_compute_control(self,
 
 
 # ---------------------------------------------------------------------------
+# Intended reference: 79d0287 plus the W4-05 edits (marked; see the module docstring)
+# ---------------------------------------------------------------------------
+def reference_pid_compute_control(self,
+                   state: Dict[str, np.ndarray],
+                   setpoint: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    """legacy_pid_compute_control with the W4-05 edits."""
+
+    # Extract state
+    position = state['position']  # [x, y, z]
+    velocity = state['velocity']  # [vx, vy, vz]
+    attitude = state['attitude']  # [roll, pitch, yaw]
+    rates = state['rates']  # [p, q, r]
+
+    # Extract setpoints
+    target_pos = setpoint.get('position', position)
+    target_vel = setpoint.get('velocity', np.zeros(3))
+    target_yaw = setpoint.get('yaw', attitude[2])
+
+    # === OUTER LOOP: Position Control ===
+    pos_error = target_pos - position
+    vel_error = target_vel - velocity
+
+    # PID for desired acceleration
+    self.integral_error += pos_error * self.dt
+    self.integral_error = np.clip(self.integral_error,
+                                  -self.integral_limit,
+                                  self.integral_limit)
+
+    d_error = (pos_error - self.last_error) / self.dt
+    self.last_error = pos_error.copy()
+
+    desired_accel = (self.kp_pos * pos_error +
+                    self.ki_pos * self.integral_error +
+                    self.kd_pos * d_error)
+
+    cos_yaw, sin_yaw = np.cos(target_yaw), np.sin(target_yaw)                 # W4-05
+    a_forward = cos_yaw * desired_accel[0] + sin_yaw * desired_accel[1]       # W4-05
+    a_right = -sin_yaw * desired_accel[0] + cos_yaw * desired_accel[1]        # W4-05
+    desired_pitch = -a_forward / 9.81  # W4-05: was -desired_accel[0] / 9.81
+    desired_roll = a_right / 9.81      # W4-05: was desired_accel[1] / 9.81
+    desired_yaw = target_yaw
+
+    # Limit tilt angles
+    tilt = np.hypot(desired_roll, desired_pitch)                              # W4-05 (N2): was a clip per axis
+    if tilt > self.max_tilt:                                                  # W4-05 (N2)
+        desired_roll = desired_roll / tilt * self.max_tilt                    # W4-05 (N2)
+        desired_pitch = desired_pitch / tilt * self.max_tilt                  # W4-05 (N2)
+
+    desired_attitude = np.array([desired_roll, desired_pitch, desired_yaw])
+
+    # === INNER LOOP: Attitude Control ===
+    att_error = desired_attitude - attitude
+
+    # Normalize yaw error to [-pi, pi]
+    att_error[2] = np.arctan2(np.sin(att_error[2]), np.cos(att_error[2]))
+
+    # PD control for desired rates
+    desired_rates = self.kp_att * att_error - self.kd_att * rates
+    desired_rates = np.clip(desired_rates, -self.max_rate, self.max_rate)
+
+    # === INNERMOST LOOP: Rate Control ===
+    rate_error = desired_rates - rates
+
+    # P control for torques
+    torques = self.kp_rate * rate_error
+
+    # === THRUST CONTROL ===
+    altitude_error = target_pos[2] - position[2]
+    altitude_rate_error = -velocity[2]  # Want zero vertical velocity
+
+    thrust_correction = (self.kp_pos[2] * altitude_error * 0.1 +
+                        self.kd_pos[2] * altitude_rate_error * 0.05)
+    accel_z = thrust_correction * (9.81 / 0.5)                                 # W4-05
+    desired_thrust = self.hover_thrust * (1.0 - accel_z / 9.81)  # W4-05: was hover + correction
+    desired_thrust = np.clip(desired_thrust, self.min_thrust, self.max_thrust)
+
+    # Return control output
+    control = {
+        'thrust': desired_thrust,
+        'torques': torques,  # [roll_torque, pitch_torque, yaw_torque]
+        'desired_attitude': desired_attitude,
+        'desired_rates': desired_rates
+    }
+
+    return control
+
+
+def reference_mpc_compute_control(self,
+                   state: Dict[str, np.ndarray],
+                   setpoint: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    """legacy_mpc_compute_control with the W4-05 edits."""
+    import time
+    t_start = time.perf_counter()
+
+    position = state['position']
+    velocity = state['velocity']
+    attitude = state['attitude']
+    rates = state['rates']
+
+    target_pos = setpoint.get('position', position)
+    target_vel = setpoint.get('velocity', np.zeros(3))
+
+    # State vector: [pos_error, vel_error] relative to target
+    x0 = np.concatenate([position - target_pos, velocity - target_vel])
+
+    # Reference trajectory: drive error to zero
+    N, nx, nu = self.N, self.n_x, self.n_u
+    X_ref = np.zeros(N * nx)  # All zeros = go to target
+
+    # Compute gradient: f = T'Q(S*x0 - X_ref)
+    predicted_free = self._S @ x0 - X_ref
+    f = self._TQ @ predicted_free
+
+    # Optimal unconstrained solution: U* = -H_inv * f
+    U_star = -self._H_inv @ f
+
+    # Warm start: blend with shifted previous solution
+    if self._prev_U is not None:
+        U_warm = np.zeros_like(U_star)
+        U_warm[:-nu] = self._prev_U[nu:]  # shift by one step
+        U_warm[-nu:] = self._prev_U[-nu:]  # repeat last
+        U_star = 0.7 * U_star + 0.3 * U_warm
+
+    # Clip to acceleration constraints
+    for i in range(N):
+        idx = i * nu
+        U_star[idx:idx+2] = np.clip(U_star[idx:idx+2],
+                                     -self.max_lateral_accel,
+                                     self.max_lateral_accel)
+        U_star[idx+2] = np.clip(U_star[idx+2],
+                                 -self.max_vertical_accel,
+                                 self.max_vertical_accel)
+
+    # Save for warm start
+    self._prev_U = U_star.copy()
+
+    # Extract first input (acceleration command)
+    accel_cmd = U_star[0:3]
+
+    desired_thrust = self.hover_thrust * (1.0 - accel_cmd[2] / 9.81)  # W4-05: was hover + a_z / 9.81
+    desired_thrust = np.clip(desired_thrust, self.min_thrust, self.max_thrust)  # W4-05: was 0.0, 1.0
+
+    desired_yaw = setpoint.get('yaw', attitude[2])
+    cos_yaw, sin_yaw = np.cos(desired_yaw), np.sin(desired_yaw)               # W4-05
+    a_forward = cos_yaw * accel_cmd[0] + sin_yaw * accel_cmd[1]               # W4-05
+    a_right = -sin_yaw * accel_cmd[0] + cos_yaw * accel_cmd[1]                # W4-05
+    desired_roll = a_right / 9.81      # W4-05: was accel_cmd[1] / 9.81
+    desired_pitch = -a_forward / 9.81  # W4-05: was -accel_cmd[0] / 9.81
+
+    # Clip tilt
+    max_tilt = np.arctan2(self.max_lateral_accel, 9.81)  # ~17°
+    tilt = np.hypot(desired_roll, desired_pitch)                              # W4-05 (N2): was a clip per axis
+    if tilt > max_tilt:                                                       # W4-05 (N2)
+        desired_roll = desired_roll / tilt * max_tilt                         # W4-05 (N2)
+        desired_pitch = desired_pitch / tilt * max_tilt                       # W4-05 (N2)
+
+    desired_attitude = np.array([desired_roll, desired_pitch, desired_yaw])
+
+    # Inner loop: PD attitude control (same as PID inner loop)
+    att_error = desired_attitude - attitude
+    att_error[2] = np.arctan2(np.sin(att_error[2]), np.cos(att_error[2]))
+    desired_rates_cmd = self.kp_att * att_error - self.kd_att * rates
+    desired_rates_cmd = np.clip(desired_rates_cmd, -2.0, 2.0)
+
+    # Rate → torque
+    rate_error = desired_rates_cmd - rates
+    torques = 0.08 * rate_error
+
+    self.last_solve_time = time.perf_counter() - t_start
+
+    return {
+        'thrust': desired_thrust,
+        'torques': torques,
+        'desired_attitude': desired_attitude,
+        'desired_rates': desired_rates_cmd,
+    }
+
+
+def reference_hinf_compute_control(self,
+                   state: Dict[str, np.ndarray],
+                   setpoint: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    """legacy_hinf_compute_control with the W4-05 edits."""
+
+    position = state['position']
+    velocity = state['velocity']
+    attitude = state['attitude']
+    rates = state['rates']
+
+    target_pos = setpoint.get('position', position)
+
+    # === POSITION TRACKING (with integral wind rejection) ===
+    pos_error = target_pos - position
+    vel_error = -velocity  # want zero velocity (fight drift)
+
+    # Integrate position error for sustained wind rejection
+    self.pos_integral += pos_error * self.dt
+    self.pos_integral = np.clip(self.pos_integral, -self.int_limit, self.int_limit)
+
+    desired_accel = (self.k_pos * pos_error +
+                     self.k_vel * vel_error +
+                     self.k_int * self.pos_integral)
+
+    cos_yaw, sin_yaw = np.cos(attitude[2]), np.sin(attitude[2])               # W4-05
+    a_forward = cos_yaw * desired_accel[0] + sin_yaw * desired_accel[1]       # W4-05
+    a_right = -sin_yaw * desired_accel[0] + cos_yaw * desired_accel[1]        # W4-05
+    desired_pitch = -a_forward / 9.81  # W4-05: was -desired_accel[0] / 9.81, clipped per axis
+    desired_roll = a_right / 9.81      # W4-05: was desired_accel[1] / 9.81, clipped per axis
+    tilt = np.hypot(desired_roll, desired_pitch)                              # W4-05 (N2)
+    if tilt > self.max_tilt:                                                  # W4-05 (N2)
+        desired_roll = desired_roll / tilt * self.max_tilt                    # W4-05 (N2)
+        desired_pitch = desired_pitch / tilt * self.max_tilt                  # W4-05 (N2)
+    target_attitude = np.array([desired_roll, desired_pitch, attitude[2]])
+
+    # === RATE DAMPING (Highest Priority) ===
+    rate_damping_torque = -self.k_rate_damping * rates
+
+    # === ATTITUDE STABILIZATION ===
+    att_error = target_attitude - attitude
+    att_error[2] = np.arctan2(np.sin(att_error[2]), np.cos(att_error[2]))
+
+    attitude_torque = self.k_attitude * att_error
+
+    torques = rate_damping_torque + attitude_torque
+
+    # === ALTITUDE HOLD (from setpoint) ===
+    altitude_error = target_pos[2] - position[2]
+    altitude_rate_error = 0.0 - velocity[2]
+
+    thrust_correction = (self.k_altitude * altitude_error +
+                        self.k_altitude_rate * altitude_rate_error)
+    accel_z = np.clip(thrust_correction * (9.81 / 0.5),                        # W4-05
+                      -0.8 * 9.81, 0.8 * 9.81)                                 # W4-05: was thrust in [0.1, 0.9]
+    desired_thrust = self.hover_thrust * (1.0 - accel_z / 9.81)  # W4-05: was hover + correction
+    desired_thrust = np.clip(desired_thrust, self.min_thrust, self.max_thrust)
+
+    control = {
+        'thrust': desired_thrust,
+        'torques': torques,
+        'desired_attitude': target_attitude,
+        'desired_rates': np.zeros(3)
+    }
+
+    return control
+
+# ---------------------------------------------------------------------------
 # Inputs: recorded from a closed-loop run (see the module docstring), then edge cases
 # ---------------------------------------------------------------------------
 # Recorded with the core at 79d0287: AdaptiveDroneController(dt=0.02,
@@ -441,12 +713,19 @@ STATE_FIELDS = {
 }
 
 
-def controller(tier):
+TIERS = ['PID', 'MPC', 'Hinf']
+# No airframe (hover 0.5, limits [0, 1]), and both packaged airframes (hover 0.6 and 0.22).
+AIRFRAMES = [None, 'x500_sitl', 'dexi']
+
+
+def controller(tier, airframe=None):
+    from contract_uav_core.config.airframe import load_airframe
     from contract_uav_core.control.hinf import HInfinityController
     from contract_uav_core.control.mpc import MPCController
     from contract_uav_core.control.pid import PIDController
 
-    return {'PID': PIDController, 'MPC': MPCController, 'Hinf': HInfinityController}[tier](0.02)
+    cls = {'PID': PIDController, 'MPC': MPCController, 'Hinf': HInfinityController}[tier]
+    return cls(0.02) if airframe is None else cls(0.02, airframe=load_airframe(airframe))
 
 
 LEGACY = {
@@ -454,32 +733,80 @@ LEGACY = {
     'MPC': legacy_mpc_compute_control,
     'Hinf': legacy_hinf_compute_control,
 }
+REFERENCE = {
+    'PID': reference_pid_compute_control,
+    'MPC': reference_mpc_compute_control,
+    'Hinf': reference_hinf_compute_control,
+}
 
 
-@pytest.mark.parametrize("tier", ['PID', 'MPC', 'Hinf'])
-def test_legacy_dict_is_unchanged(tier):
-    old, new, via_cmd = controller(tier), controller(tier), controller(tier)
+def assert_same_state(ref, others, tier, where):
+    for field in STATE_FIELDS[tier]:
+        expected = getattr(ref, field)
+        for other in others:
+            got = getattr(other, field)
+            assert (got is None) == (expected is None), (where, field)
+            if expected is not None:
+                assert got.tobytes() == expected.tobytes(), (where, field)
+
+
+@pytest.mark.parametrize("airframe", AIRFRAMES)
+@pytest.mark.parametrize("tier", TIERS)
+def test_legacy_dict_matches_the_reference(tier, airframe):
+    ref, new, via_cmd = controller(tier, airframe), controller(tier, airframe), controller(tier, airframe)
     for step, (state, sp) in enumerate(sequence(tier)):
-        where = f"{tier} step {step}"
-        expected = LEGACY[tier](old, state, sp)
+        where = f"{tier} {airframe} step {step}"
+        expected = REFERENCE[tier](ref, state, sp)
         assert_identical(expected, new.compute_control(state, sp), where)
         assert_identical(expected, via_cmd.compute_accel_command(state, sp).to_legacy_dict(), where)
-        for field in STATE_FIELDS[tier]:
-            ref = getattr(old, field)
-            for other in (new, via_cmd):
-                got = getattr(other, field)
-                assert (got is None) == (ref is None), (where, field)
-                if ref is not None:
-                    assert got.tobytes() == ref.tobytes(), (where, field)
+        assert_same_state(ref, (new, via_cmd), tier, where)
 
 
-@pytest.mark.parametrize("tier", ['PID', 'MPC', 'Hinf'])
-def test_accel_command_fields_feed_the_mapping(tier):
-    """accel and yaw are the inputs of frames.accel_to_attitude (and of the MPC thrust)."""
+@pytest.mark.parametrize("tier", TIERS)
+def test_change_from_79d0287_is_only_the_intended_one(tier):
+    """No airframe (hover 0.5): thrust mirrored (MPC: halved), the rest as before at yaw 0 within the tilt limit."""
+    old, new = controller(tier), controller(tier)
+    max_tilt = np.arctan2(old.max_lateral_accel, 9.81) if tier == 'MPC' else old.max_tilt
+    yaw_zero_steps = saturated_steps = thrust_steps = 0
+    for step, (state, sp) in enumerate(sequence(tier)):
+        where = f"{tier} step {step}"
+        before = LEGACY[tier](old, state, sp)
+        after = new.compute_control(state, sp)
+        assert list(after) == list(before), where
+        assert all(type(after[k]) is type(before[k]) for k in before), where
+        if tier == 'MPC':
+            # was hover + a_z / g, now hover * (1 - a_z / g) = hover - 0.5 a_z / g
+            if 0.0 < before['thrust'] < 1.0:        # the old [0, 1] clip did not act
+                assert after['thrust'] - 0.5 == pytest.approx(-(before['thrust'] - 0.5) / 2, abs=1e-12), where
+                thrust_steps += 1
+        else:
+            # the same correction, opposite sign: mirrored about 0.5 (clips [0, 1] and [0.1, 0.9] too)
+            assert after['thrust'] == pytest.approx(1.0 - before['thrust'], abs=1e-12), where
+            thrust_steps += 1
+        yaw_used = state['attitude'][2] if tier == 'Hinf' else sp.get('yaw', state['attitude'][2])
+        old_tilt = np.hypot(before['desired_attitude'][0], before['desired_attitude'][1])
+        new_tilt = np.hypot(after['desired_attitude'][0], after['desired_attitude'][1])
+        assert new_tilt <= max_tilt * (1 + 1e-12), where           # N2: never beyond the limit
+        if yaw_used == 0.0 and old_tilt < max_tilt:  # the rotation is the identity, no clip acted
+            for key in ('desired_attitude', 'torques', 'desired_rates'):
+                assert np.array_equal(after[key], before[key]), (where, key)
+            yaw_zero_steps += 1
+        elif old_tilt >= max_tilt:                   # the old per-axis clip acted: now the magnitude is the limit
+            assert new_tilt == pytest.approx(max_tilt, rel=1e-12), where
+            saturated_steps += 1
+        assert_same_state(old, (new,), tier, where)  # integrators and warm start untouched
+    assert thrust_steps >= 6 and yaw_zero_steps >= 1 and saturated_steps >= 1, (  # both branches ran
+        thrust_steps, yaw_zero_steps, saturated_steps)
+
+
+@pytest.mark.parametrize("airframe", AIRFRAMES)
+@pytest.mark.parametrize("tier", TIERS)
+def test_accel_command_fields_feed_the_mapping(tier, airframe):
+    """accel x/y and yaw are the inputs of frames.accel_to_attitude; accel z of frames.accel_to_thrust."""
     from contract_uav_core import frames
     from contract_uav_core.interfaces import AccelCommand
 
-    ctrl = controller(tier)
+    ctrl = controller(tier, airframe)
     max_tilt = np.arctan2(ctrl.max_lateral_accel, 9.81) if tier == 'MPC' else ctrl.max_tilt
     for state, sp in sequence(tier):
         cmd = ctrl.compute_accel_command(state, sp)
@@ -489,10 +816,12 @@ def test_accel_command_fields_feed_the_mapping(tier):
         assert cmd.yaw == expected_yaw
         again = frames.accel_to_attitude(cmd.accel, cmd.yaw, max_tilt)
         assert again.tobytes() == cmd.desired_attitude.tobytes()
-        if tier == 'MPC':
+        thrust = frames.accel_to_thrust(cmd.accel[2], ctrl.hover_thrust, ctrl.min_thrust, ctrl.max_thrust)
+        assert thrust == cmd.thrust and type(thrust) is type(cmd.thrust)
+        if tier == 'MPC' and airframe is None:
             assert frames.mpc_accel_to_thrust(cmd.accel[2], ctrl.hover_thrust) == cmd.thrust
         if tier == 'Hinf':
-            assert cmd.accel[2] == 0.0
+            assert abs(cmd.accel[2]) <= ctrl.max_vertical_accel
 
 
 def test_switcher_accel_command_uses_the_active_controller():

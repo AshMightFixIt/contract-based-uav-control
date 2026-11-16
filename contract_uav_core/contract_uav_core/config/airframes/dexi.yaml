@@ -1,15 +1,18 @@
 # DroneBlocks DEXI 5 (PX4 airframe 4601_droneblocks_dexi_5).
-# Schema and loader: contract_uav_core/config/airframe.py. Not read by the legacy
-# scripts or the control path yet.
+# Schema and loader: contract_uav_core/config/airframe.py. The control tiers take
+# it as an option (control/base.py); the switcher, the core and the legacy
+# scripts do not pass it yet.
 #
 # Every number carries {value, unit, status, source}: status is px4_airframe
 # (set in the PX4 airframe file), px4_param_default (PX4's default when the
-# airframe does not set it), model_sdf (Gazebo model), assumed (no PX4 source;
+# airframe does not set it), model_sdf (Gazebo model), datasheet (a component
+# datasheet value no PX4 parameter holds, with a note), assumed (no PX4 source;
 # plant section only) or unknown (value null, with a note). Sources are PX4
 # v1.16.2 files on raw.githubusercontent.com; "#Ln" is the line.
+# The section unavailable lists the contract variables PX4 gives no reading for.
 # These are PX4's defaults for the airframe, not measurements of a vehicle:
 # the parameters on the actual DEXI may differ (check 5).
-schema_version: 1
+schema_version: 2
 name: dexi
 description: DroneBlocks DEXI 5, PX4 v1.16.2 airframe defaults
 px4:
@@ -86,6 +89,16 @@ battery:
     param: BAT1_V_CHARGED
     source: https://raw.githubusercontent.com/PX4/PX4-Autopilot/v1.16.2/src/lib/battery/module.yaml#L40
     note: PX4 default, confirm on the vehicle (check 5). Not set by the airframe file
+  v_full_cell:
+    value: 4.2
+    unit: V
+    status: datasheet
+    source: null
+    note: >-
+      Full-charge voltage of one LiPo cell, the usual cell-datasheet maximum; no PX4 parameter
+      holds it (BAT1_V_CHARGED above is the level PX4's charge estimate calls full). The top of
+      the pack voltage range, 6 x 4.2 = 25.2 V. A high-voltage (LiHV) pack charges to 4.35 V
+      per cell; confirm the cell type on the vehicle's batteries (check 5)
   capacity:
     value: 4000.0
     unit: mAh
@@ -117,3 +130,14 @@ plant:
       not measured, confirm on the vehicle (check 5). It scales the wind force linearly
       (2 N at 10 m/s relative wind) and sets the top speed. The plant also needs the
       unknown mass to turn it into an acceleration.
+
+# Contract variables with no PX4 source on this airframe (P1.3). The core has no
+# reading for them, so a contract on one must not be checked against a made-up value.
+unavailable:
+  motor_temperature:
+    status: unavailable
+    note: >-
+      PX4 publishes no motor temperature. ESC telemetry, where the ESCs send it, gives an ESC
+      temperature, which is not the motor's; whether the DEXI's ESCs send one is not known
+      (check 5). The contracts' motor_temperature input (contracts/library.py) has no source;
+      the ROS node fills in a fixed 25 C today (A-F11)

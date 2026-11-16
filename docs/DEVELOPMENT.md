@@ -29,9 +29,9 @@ python --version  # Should be >= 3.8
 pip install -e ./contract_uav_core
 pip install -r requirements/demos.txt
 
-# For the tests (make test), and optionally the pacti planner
+# For the tests (make test), and optionally pacti
 pip install -r requirements/test.txt
-pip install -r requirements/pacti.txt   # optional: pacti, for the horizon planner and make test-pacti
+pip install -r requirements/pacti.txt   # optional: pacti, for make test-pacti and planning/export_contracts.py
 
 # Verify installation
 python -c "import numpy; import matplotlib; print('✓ Dependencies OK')"
@@ -292,7 +292,9 @@ get_covariance() -> np.ndarray
 
 #### Other packages
 
-- `planning/`: the Pacti horizon planner (needs pacti; the core runs without it).
+- `planning/`: the horizon planner. It reads its limits from `config/contracts.json`,
+  which `planning/export_contracts.py` writes offline with Pacti. Only
+  `export_contracts.py` and `pacti_contracts.py` need Pacti, and nothing imports them at run time.
 - `sim/`: `sensor_faults.py` and `battery_model.py` for the demos and benchmarks;
   `quadrotor.py`, the reference plant; `racing_scenario.py`, the old racing plant
   shared by `benchmarks/benchmark_racing.py` and `demos/demo_racing_live.py`;

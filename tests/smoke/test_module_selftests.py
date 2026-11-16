@@ -3,8 +3,9 @@
 This replaces test_all.sh. Each module runs as
 ``python -m contract_uav_core.<module>``, from pytest's temp dir, against the
 installed package (checked by the ``core_package`` fixture in conftest.py).
-Only the exit code is checked, not the printed output. The three planning
-modules import pacti, so they are skipped without it.
+Only the exit code is checked, not the printed output.
+planning.pacti_contracts imports pacti, so it is skipped without it; since
+W4-09 the horizon planner and the integrated planner do not need pacti.
 """
 from __future__ import annotations
 
@@ -24,8 +25,8 @@ SELF_TESTS = {
     "contract_uav_core.safety.cbf": False,
     "contract_uav_core.core": False,
     "contract_uav_core.planning.pacti_contracts": True,
-    "contract_uav_core.planning.horizon_planner": True,
-    "contract_uav_core.planning.integrated_planner": True,
+    "contract_uav_core.planning.horizon_planner": False,
+    "contract_uav_core.planning.integrated_planner": False,
 }
 
 

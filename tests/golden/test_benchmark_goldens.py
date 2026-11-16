@@ -15,8 +15,11 @@ and trailing whitespace is stripped, so the comparison is identical on Windows.
 Goldens:
   benchmark_controllers.nopacti.txt         requirements-only (pacti hidden)
   benchmark_sensor_degradation.nopacti.txt  requirements-only (pacti hidden)
-  benchmark_controllers.pacti.txt           pacti 0.3.1, planner active; this is
-                                            docs/RESULTS.md section 1 (slow, opt-in)
+  benchmark_controllers.pacti.txt           pacti 0.3.1 installed (opt-in, about 30 s).
+                                            The planner runs without pacti, so this
+                                            equals benchmark_controllers.nopacti.txt.
+                                            docs/RESULTS.md section 1 still shows the
+                                            numbers from before batch 3 (K19).
 
 To regenerate after a reviewed, intentional behaviour change:
   make golden-update         (the two requirements-only goldens)
@@ -150,12 +153,15 @@ def test_benchmark_matches_golden_without_pacti(
 def test_benchmark_controllers_with_pacti_reproduces_results_section_1(
     repo_copy, run_python, pacti_available, update_goldens
 ):
-    """docs/RESULTS.md section 1 needs the horizon planner, hence pacti (~8.5 min)."""
+    """The controller benchmark with pacti installed (about 30 s). Since W4-09 the planner
+    does not need pacti, so this equals the no-pacti golden. The test name keeps the old
+    docs/RESULTS.md section 1 reference; that section still shows pre-batch-3 numbers (K19)."""
     if not pacti_available:
         pytest.skip("pacti is not installed: pip install -r requirements/pacti.txt")
     proc = run_benchmark(run_python, repo_copy, "benchmark_controllers.py", timeout=3600)
     results = extract_results(proc.stdout)
     if not update_goldens:
-        # The headline number of docs/RESULTS.md section 1; without pacti it is 63.240.
-        assert adaptive_cell(results, "Mission Time (s)") == "53.780", environment_summary()
+        # The headline Adaptive mission time. Since W4-09 the planner runs without pacti too,
+        # so the no-pacti golden (benchmark_controllers.nopacti.txt) gives the same 54.320.
+        assert adaptive_cell(results, "Mission Time (s)") == "54.320", environment_summary()
     check_golden(results, "benchmark_controllers.pacti.txt", update_goldens)
