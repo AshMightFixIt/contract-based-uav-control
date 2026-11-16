@@ -29,8 +29,8 @@ What W4-08 changed (K17, the core half of A-F7):
 What W4-08b changed (closed loop without GPS):
 - Without GPS velocity, the velocity follows the acceleration of the command
   just sent (predict's accel_cmd, or set_command; estimation/command.py) plus a
-  bias learned while GPS was there, with a variance sized for the remaining
-  mismatch and capped by the speed envelope (T1). Keeping the last velocity was
+  bias learned while GPS was there (time constant 1 s), with a variance sized
+  for the remaining mismatch and capped by the speed envelope (T1). Keeping the last velocity was
   right only when nobody steers: in closed loop the vehicle ran away.
 - A GPS return more than RESET_OFFSET (5 m) away is reset, not glided, with a
   PX4-style reset event in get_status(); in pass-through, PX4's own reset
@@ -131,9 +131,11 @@ class ContractAwareEKF:
     # command_bias: the acceleration the vehicle had beyond its command while GPS velocity was
     # fused (drag, wind, a hover-thrust error), learned per axis by a critically damped
     # second-order observer of the fused velocity with this time constant, and held without
-    # GPS. 0.5 s follows a wind change within about 2 s (with 1 s, a 9 m/s wind that had
-    # changed 5 s before the loss left the estimate 5.0 m off instead of 2.5 m; W4-08b report).
-    COMMAND_BIAS_TIME = 0.5       # s
+    # GPS. The time constant trades noise for tracking (closed loop, 1 cm/s velocity noise;
+    # W4-08b report): with 1 s a 20 s hover outage drifted at most 0.65 m over 6 seeds (0.5 s:
+    # 1.25 m, 2 s: 0.31 m), and a wind change is followed within about 4 s (in a saturating
+    # 9 m/s wind the estimate ended 5.8 m off after 8 s; 0.5 s: 3.0 m, 2 s: 12.2 m).
+    COMMAND_BIAS_TIME = 1.0       # s
     # When nothing is fused at all (both sensor contracts violated) the covariance grows by
     # this many more times the step's process noise (the legacy 2 Q).
     DEAD_RECKONING_EXTRA_Q = 2.0

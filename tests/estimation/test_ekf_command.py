@@ -230,12 +230,13 @@ def test_the_command_of_the_step_gps_is_lost_is_not_dropped():
 # --- the bias ------------------------------------------------------------------------------------
 
 def test_bias_is_learned_with_gps_and_held_without():
-    """A constant acceleration beyond the command (e.g. wind drag) is learned within 3 s while GPS
-    velocity is fused, held through an outage, and not changed by the correction at the return."""
+    """A constant acceleration beyond the command (e.g. wind drag) is learned within 5 s (five
+    time constants) while GPS velocity is fused, held through an outage, and not changed by the
+    correction at the return."""
     bias = np.array([0.3, -0.15, 0.2])
     truth = Truth(bias=bias)
     command = np.array([-0.3, 0.15, -0.2])           # the controller balances it: the truth hovers
-    for _ in range(150):
+    for _ in range(250):
         truth.step(command)
     assert truth.ekf.command_bias == pytest.approx(bias, abs=0.03)
     for _ in range(250):
