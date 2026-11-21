@@ -47,7 +47,7 @@ class MPCController(BaseController):
         # Constraints
         self.max_lateral_accel = 3.0    # m/s², ~17° tilt
         self.max_vertical_accel = 5.0   # m/s²
-        self.hover_thrust = 0.5
+        self.hover_thrust = 0.728
 
         # Attitude inner loop (same structure as PID)
         self.kp_att = np.array([1.5, 1.5, 1.0])

@@ -122,6 +122,7 @@ class FlightModeSupervisor:
         # Select controller (supervisor may override recommendation)
         controller = self._select_controller(recommended_controller)
 
+        controller = "MPC"
         return setpoint, controller
 
     def _check_transitions(self, state, conditions, gps_available, current_time):

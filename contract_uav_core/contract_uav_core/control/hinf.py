@@ -33,19 +33,19 @@ class HInfinityController(BaseController):
         # Aggressive damping gains
         self.k_rate_damping = 0.8  # Very aggressive rate damping
         self.k_attitude = 5.0      # Strong attitude correction
-        self.k_altitude = 0.05     # Altitude hold gain (conservative to avoid overshoot)
-        self.k_altitude_rate = 0.15  # Altitude rate damping (helps slow descent)
+        self.k_altitude = 0.08     # Altitude hold gain (conservative to avoid overshoot)
+        self.k_altitude_rate = 0.03  # Altitude rate damping (helps slow descent)
 
         # Position tracking gains (robust but active wind rejection)
         self.k_pos = np.array([0.35, 0.35, 0.0])  # lateral position tracking
         self.k_vel = np.array([0.7, 0.7, 0.0])     # velocity damping (fight wind drift)
-        self.k_int = np.array([0.10, 0.10, 0.0])   # integral for wind rejection
+        self.k_int = np.array([0.1, 0.1, 0.0])   # integral for wind rejection
         self.int_limit = 8.0  # anti-windup clamp
         self.pos_integral = np.zeros(3)
         self.max_tilt = 0.22  # ~13° — enough tilt to reject strong wind
 
         # Hover thrust (normalized) - this counteracts gravity
-        self.hover_thrust = 0.5
+        self.hover_thrust = 0.728
 
     def reset(self):
         """Reset controller state"""
@@ -113,8 +113,8 @@ class HInfinityController(BaseController):
 
         # === ALTITUDE HOLD (from setpoint) ===
         # Thrust = hover_thrust + corrections for altitude tracking
-        altitude_error = target_pos[2] - position[2]
-        altitude_rate_error = 0.0 - velocity[2]
+        altitude_error = position[2] - target_pos[2]
+        altitude_rate_error = velocity[2]
 
         thrust_correction = (self.k_altitude * altitude_error +
                             self.k_altitude_rate * altitude_rate_error)

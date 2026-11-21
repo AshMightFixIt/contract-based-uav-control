@@ -57,7 +57,7 @@ class PIDController(BaseController):
         self.min_thrust = 0.0
 
         # Hover thrust (normalized) - this counteracts gravity
-        self.hover_thrust = 0.5
+        self.hover_thrust = 0.728
 
         # Anti-windup
         self.integral_limit = 2.0  # reduced to prevent windup
@@ -139,18 +139,25 @@ class PIDController(BaseController):
         desired_rates, torques = attitude_to_rates_torques(
             desired_attitude, attitude, rates,
             self.kp_att, self.kd_att, self.max_rate, self.kp_rate)
-        
-        # === THRUST CONTROL ===
-        # Desired thrust = hover thrust + altitude correction
-        # hover_thrust counteracts gravity, corrections adjust for tracking
-        altitude_error = target_pos[2] - position[2]
-        altitude_rate_error = -velocity[2]  # Want zero vertical velocity
 
-        # PD control on altitude with gravity feedforward
-        thrust_correction = (self.kp_pos[2] * altitude_error * 0.1 +
-                            self.kd_pos[2] * altitude_rate_error * 0.05)
+        # === THRUST CONTROL ===
+        # NED coordinates: positive Z is downward
+
+        altitude_error = position[2] - target_pos[2]
+        altitude_rate_error = velocity[2] - target_vel[2]
+
+        thrust_correction = (
+            self.kp_pos[2] * altitude_error * 0.1 +
+            self.kd_pos[2] * altitude_rate_error * 0.05
+        )
+
         desired_thrust = self.hover_thrust + thrust_correction
-        desired_thrust = np.clip(desired_thrust, self.min_thrust, self.max_thrust)
+
+        desired_thrust = np.clip(
+            desired_thrust,
+            self.min_thrust,
+            self.max_thrust
+        )
         
         return AccelCommand(
             accel=desired_accel,

@@ -266,11 +266,15 @@ class AdaptiveDroneController(ControllerPreflightMixin, ConditionsMixin,
 
         # 9. Compute nominal control
         nominal_control = self.controller_switcher.compute_control(state_dict, setpoint)
-
+        '''
         # 10. CBF safety filter
         control, cbf_intervened = self.cbf_filter.filter_control(
             state_dict, nominal_control, self.time
         )
+        '''
+        # TEMPORARY: PID-only diagnostic in SITL
+        control = nominal_control
+        cbf_intervened = False
 
         # 11.-14. Runtime monitors, contract monitoring and the flight log (telemetry.py)
         active_controller, flight_mode = self._record_step(

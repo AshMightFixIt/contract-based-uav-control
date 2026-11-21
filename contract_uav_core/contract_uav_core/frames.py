@@ -31,16 +31,37 @@ How the three copies compared (checked line by line):
 import numpy as np
 
 
+# def accel_to_attitude(accel: np.ndarray, yaw, max_tilt) -> np.ndarray:
+#     """Desired [roll, pitch, yaw] from an NED acceleration demand (yaw-blind).
+
+#     From pid.py (formerly controllers.py:157-158); mpc.py and hinf.py computed
+#     the same values.
+#     """
+#     desired_pitch = -accel[0] / 9.81  # Negative: forward accel needs nose down
+#     desired_roll = accel[1] / 9.81    # Positive: right accel needs right roll
+
+#     # Limit tilt angles
+#     desired_roll = np.clip(desired_roll, -max_tilt, max_tilt)
+#     desired_pitch = np.clip(desired_pitch, -max_tilt, max_tilt)
+
+#     return np.array([desired_roll, desired_pitch, yaw])
+
 def accel_to_attitude(accel: np.ndarray, yaw, max_tilt) -> np.ndarray:
-    """Desired [roll, pitch, yaw] from an NED acceleration demand (yaw-blind).
+    """Convert world-frame NED acceleration into desired roll/pitch/yaw."""
 
-    From pid.py (formerly controllers.py:157-158); mpc.py and hinf.py computed
-    the same values.
-    """
-    desired_pitch = -accel[0] / 9.81  # Negative: forward accel needs nose down
-    desired_roll = accel[1] / 9.81    # Positive: right accel needs right roll
+    ax, ay = accel[0], accel[1]
 
-    # Limit tilt angles
+    cy = np.cos(yaw)
+    sy = np.sin(yaw)
+
+    # Rotate NED horizontal acceleration into heading-aligned axes
+    ax_body = cy * ax + sy * ay
+    ay_body = -sy * ax + cy * ay
+
+    # Existing controller convention
+    desired_pitch = -ax_body / 9.81
+    desired_roll = ay_body / 9.81
+
     desired_roll = np.clip(desired_roll, -max_tilt, max_tilt)
     desired_pitch = np.clip(desired_pitch, -max_tilt, max_tilt)
 
@@ -93,12 +114,20 @@ def hinf_attitude_torques(target_attitude: np.ndarray,
     return torques
 
 
-def mpc_accel_to_thrust(accel_z, hover_thrust):
-    """MPC: normalised thrust from the vertical acceleration demand. From mpc.py.
+# def mpc_accel_to_thrust(accel_z, hover_thrust):
+#     """MPC: normalised thrust from the vertical acceleration demand. From mpc.py.
 
-    Simulation convention: thrust > hover -> z increases (descent in NED).
-    MPC accel_cmd[2] < 0 means "move z negative" (climb) -> need less thrust.
+#     Simulation convention: thrust > hover -> z increases (descent in NED).
+#     MPC accel_cmd[2] < 0 means "move z negative" (climb) -> need less thrust.
+#     """
+#     desired_thrust = hover_thrust + accel_z / 9.81
+#     desired_thrust = np.clip(desired_thrust, 0.0, 1.0)
+#     return desired_thrust
+
+def mpc_accel_to_thrust(accel_z, hover_thrust):
+    """Convert desired NED vertical acceleration to normalized PX4 thrust.
+
+    Negative NED acceleration = upward acceleration = more thrust.
     """
-    desired_thrust = hover_thrust + accel_z / 9.81
-    desired_thrust = np.clip(desired_thrust, 0.0, 1.0)
-    return desired_thrust
+    desired_thrust = hover_thrust * (1.0 - accel_z / 9.81)
+    return float(np.clip(desired_thrust, 0.0, 1.0))
